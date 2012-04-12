@@ -34,6 +34,11 @@ win = psychopy.visual.Window( ( 1536, 1024 ),
                               allowGUI = True
                             )
 
+status = psychopy.visual.TextStim( win = win,
+                                   text = "",
+                                   pos = ( 0, -0.75 )
+                                 )
+
 mask = psychopy.filters.makeMask( 256,
                                   radius = ap_diam_pix / 256,
                                   shape = "circle",
@@ -49,9 +54,9 @@ keep_going = True
 while keep_going:
 
 	# pick a random image
-	im_id = i_img[ np.random.randint( i_img.shape[ 0 ] ) ]
+	im_l_id = i_img[ np.random.randint( i_img.shape[ 0 ] ) ]
 
-	img_l = stimuli.utils.read_van_hateren( im_id + 1,
+	img_l = stimuli.utils.read_van_hateren( im_l_id + 1,
 	                                        path = im_path,
 	                                        scale = "norm",
 	                                        region = ( reg_rows, reg_cols_l ),
@@ -61,12 +66,14 @@ while keep_going:
 
 	same = bool( np.random.randint( 2 ) )
 
-	same = True
+#	same = True
 
 	if not same:
-		im_id = i_img[ np.random.randint( i_img.shape[ 0 ] ) ]
+		im_r_id = i_img[ np.random.randint( i_img.shape[ 0 ] ) ]
+	else:
+		im_r_id = im_l_id
 
-	img_r = stimuli.utils.read_van_hateren( im_id + 1,
+	img_r = stimuli.utils.read_van_hateren( im_r_id + 1,
 	                                        path = im_path,
 	                                        scale = "norm",
 	                                        region = ( reg_rows, reg_cols_r ),
@@ -86,6 +93,9 @@ while keep_going:
 
 	any( im.draw() for im in imgs )
 
+	status.setText( "Image %d, Image %d" % ( im_l_id + 1, im_r_id + 1 ) )
+
+	status.draw()
 
 	fixation.draw()
 

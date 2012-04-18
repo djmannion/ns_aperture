@@ -94,7 +94,7 @@ def _get_stim_conf():
 	stim_conf[ "scale_mode" ] = "norm"
 
 	# hardcode the desired image ids
-	stim_conf[ "img_ids" ] = np.array( (    6,   12,   47,   58,   72,   90,
+	stim_conf[ "img_ids" ] = np.array( (    6,   12,  504,   58,   72,   90,
 	                                       98,  110,  181,  230,  285,  342,
 	                                      400,  460,  474,  482,  485,  561,
 	                                      567,  639,  664,  727,  730,  737,

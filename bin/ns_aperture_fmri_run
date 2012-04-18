@@ -1,0 +1,75 @@
+#! /usr/bin/python2 -O
+# ^ want to run it with optimisations turned on
+
+"""Parses the command-line input and executes a run of the natural scenes
+through apertures fMRI experiment.
+"""
+
+import sys, os
+import argparse
+
+#import ns_aperture.fmri.exp
+
+desc = "Executes a run of the natural scenes through apertures fMRI experiment"
+
+eg = """
+Example usage:
+  run subject s1021 on their third run, which is of type AB:
+    ns_aperture_fmri_run s1021 3 AB
+
+---N.B.---
+
+* The script must be run from the ns_aperture/bin directory.
+
+"""
+
+target_dir = "ns_aperture/bin"
+
+current_dir = os.getcwd()
+
+if current_dir[ -len( target_dir ): ] != target_dir:
+
+	raise IOError( "".join( [ "Script needs to be launched from ",
+	                          target_dir
+	                        ]
+	                      )
+	             )
+
+# use this formatter so we can supply our own indentation
+fmt = argparse.RawDescriptionHelpFormatter
+
+parser = argparse.ArgumentParser( description = desc,
+                                  epilog = eg,
+                                  formatter_class = fmt,
+                                )
+
+parser.add_argument( "subj_id",
+                     help = "Subject identifier"
+                   )
+
+parser.add_argument( "run_no",
+                     type = int,
+                     help = "Run number"
+                   )
+
+parser.add_argument( "order",
+                     choices = ( "AB", "BA" ),
+                     help = "Block ordering"
+                   )
+
+args = parser.parse_args()
+
+# check the arguments are valid
+if len( args.subj_id ) != 5 or args.subj_id[ 0 ] != "s":
+	raise ValueError( "Subject ID needs to be in the format of sXXXX" )
+
+#exit_status = ns_aperture.fmri.exp.run( args.subj_id,
+#                                        args.run_no,
+#                                        args.order
+#                                      )
+
+print args.subj_id, args.run_no, args.order
+
+exit_status = 0
+
+sys.exit( exit_status )

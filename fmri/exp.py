@@ -67,7 +67,11 @@ def run( subj_id, run_num, order ):
 		win.close()
 		raise
 
+	all( stim_patch.draw() for stim_patch in stim[ 0 ] )
 
+	win.flip()
+
+	psychopy.core.waitKeys()
 
 	win.close()
 

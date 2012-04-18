@@ -32,8 +32,6 @@ def _get_stim_conf():
 	-------------
 	db_path : string
 		Path to the image database (the image files)
-	db_sel_path : string
-		Path to the numpy datafile specifying the image set
 	im_dim : 2-item list
 		( n_rows, n_cols ) dimensions of each (full) image
 	im_deg_pp : scalar float
@@ -46,6 +44,8 @@ def _get_stim_conf():
 	patch_rect : 2-item list of 2-item list of 2-item list
 		Coordinates of each patch, in the original image dimensions. Arranged as
 		( patch 1, patch 2 ) -> ( top left, bottom right ) -> ( i_row, i_col )
+	img_ids : numpy vector of ints
+		Identifiers (one-based) for the set of candidate images.
 
 	Notes
 	-----
@@ -56,8 +56,6 @@ def _get_stim_conf():
 	stim_conf = {}
 
 	stim_conf[ "db_path" ] = "../im_db"
-
-	stim_conf[ "db_sel_path" ] = "../data/im_sel.npy"
 
 	stim_conf[ "im_dim" ] = ( 1024, 1536 )
 	stim_conf[ "im_deg_pp" ] = 1.0 / 60.0
@@ -92,6 +90,8 @@ def _get_stim_conf():
 	                              )
 	                              for c_pix in patch_centre_pix
 	                            ]
+
+	stim_conf[ "scale_mode" ] = "norm"
 
 	# hardcode the desired image ids
 	stim_conf[ "img_ids" ] = np.array( (    6,   12,   47,   58,   72,   90,

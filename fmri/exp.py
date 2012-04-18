@@ -62,18 +62,90 @@ def run( subj_id, run_num, order ):
 	                            )
 
 	try:
+		fixation = init_fixation( conf, win )
 		stim = init_stim( conf, win )
 	except:
 		win.close()
 		raise
 
-	all( stim_patch.draw() for stim_patch in stim[ 0 ] )
+	# initialise the clock that keeps track of how long the run has been going
+	run_clock = psychopy.core.Clock()
+
+	# set the keys
+	quit_key = 'q'
+	trigger_key = '5'
+
+	# wait for the trigger
+	fixation.draw()
 
 	win.flip()
 
-	psychopy.core.waitKeys()
+	k = psychopy.event.waitKeys( keyList = [ quit_key, trigger_key ] )
 
-	win.close()
+	# start the clock
+	run_clock.reset()
+
+	# quit, if the user wanted to
+	if quit_key in k:
+
+		print "User aborted"
+
+		win.close()
+
+		return 1
+
+	run_time = run_clock.getTime()
+
+	# keep looping until the time has elapsed
+	while run_time < conf[ "exp" ][ "run_len_s" ]:
+
+		i_evt = np.where( run_time > seq[ :, seq_ind[ "time_s" ] ] )[ 0 ][ -1 ]
+
+		evt_time = run_time - seq[ i_evt, seq_ind[ "time_s" ] ]
+
+		evt_stims = [ stim[ int( seq[ i_evt, seq_ind[ "img_i_L" ] ] ) ][ 0 ],
+		              stim[ int( seq[ i_evt, seq_ind[ "img_i_R" ] ] ) ][ 1 ]
+		            ]
+
+		if evt_time < 1:
+
+			[ evt_stim.draw() for evt_stim in evt_stims ]
+
+		# draw the fixation
+		fixation.draw()
+
+		# draw to the screen
+		win.flip()
+
+		# get any responses
+		keys = psychopy.event.getKeys( timeStamped = run_clock )
+
+		for ( key, timestamp ) in keys:
+
+			if key == quit_key:
+				print "User abort"
+				win.close()
+				return 1
+
+		run_time = run_clock.getTime()
+
+
+
+def init_fixation( conf, win ):
+	"""
+	"""
+
+	fix_rad_pix = psychopy.misc.deg2pix( conf[ "stim" ][ "fix_rad_deg" ],
+	                                     win.monitor
+	                                   )
+
+	fixation = psychopy.visual.Circle( win = win,
+	                                   radius = fix_rad_pix,
+	                                   units = "pix",
+	                                   fillColor = conf[ "stim" ][ "fix_col_inact" ]
+	                                 )
+
+	return fixation
 
 
 def init_stim( conf, win ):
@@ -98,18 +170,15 @@ def init_stim( conf, win ):
 	# stimuli in the configuration are in the space of the images
 	# now, we need to convert them to the space of our display
 
-	# load our display info
-	m = psychopy.monitors.Monitor( conf[ "acq" ][ "monitor_name" ] )
-
 	# degrees per pixel for this monitor
-	m_dpp = psychopy.misc.pix2deg( 1, m )
+	m_dpp = psychopy.misc.pix2deg( 1, win.monitor )
 
 	# scale factor relative to the dpp of the image space
 	scale_fac = stim_conf[ "im_deg_pp" ] / m_dpp
 
 	patch_size = mask.shape[ 0 ] * scale_fac
 
-	patch_pos = [ psychopy.misc.deg2pix( stim_conf[ "patch_ecc_deg" ], m ) *
+	patch_pos = [ psychopy.misc.deg2pix( stim_conf[ "patch_ecc_deg" ], win.monitor ) *
 	              offset
 	              for offset in ( -1, +1 )
 	            ]
@@ -135,7 +204,7 @@ def init_stim( conf, win ):
 			                                 size = patch_size,
 			                                 units = "pix",
 			                                 mask = mask,
-			                                 pos = p_pos
+			                                 pos = ( p_pos, 0 )
 			                               )
 
 			im_stim.extend( [ tex ] )

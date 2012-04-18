@@ -116,6 +116,10 @@ def _get_stim_conf():
 	                                )
 
 
+	stim_conf[ "fix_rad_deg" ] = 0.05
+	stim_conf[ "fix_col_inact" ] = ( -1, -1, -1, 1 )
+	stim_conf[ "fix_col_act" ] = ( -1, 1, -1, 1 )
+
 	return stim_conf
 
 

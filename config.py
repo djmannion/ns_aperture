@@ -93,6 +93,29 @@ def _get_stim_conf():
 	                              for c_pix in patch_centre_pix
 	                            ]
 
+	# hardcode the desired image ids
+	stim_conf[ "img_ids" ] = np.array( (    6,   12,   47,   58,   72,   90,
+	                                       98,  110,  181,  230,  285,  342,
+	                                      400,  460,  474,  482,  485,  561,
+	                                      567,  639,  664,  727,  730,  737,
+	                                      752,  756,  821, 1068, 1083, 1087,
+	                                     1117, 1166, 1234, 1270, 1398, 1402,
+	                                     1435, 1448, 1466, 1467, 1471, 1472,
+	                                     1489, 1501, 1520, 1523, 1526, 1531,
+	                                     1533, 1537, 1543, 1544, 1559, 1565,
+	                                     1566, 1568, 1570, 1574, 1575, 1578,
+	                                     1579, 1580, 1583, 1584, 1601, 1611,
+	                                     1614, 1618, 1626, 1629, 1632, 1639,
+	                                     1647, 1654, 1656, 1657, 1663, 1676,
+	                                     1679, 1933, 1950, 1957, 2066, 2260,
+	                                     2329, 2339, 2360, 2429, 2745, 2889,
+	                                     2994, 2997, 3024, 3035, 3057, 3061,
+	                                     3065, 3086, 3099, 3194, 3261, 3266,
+	                                     3276, 3287, 3297, 3302, 3325, 3336
+	                                  )
+	                                )
+
+
 	return stim_conf
 
 
@@ -114,11 +137,11 @@ def _get_exp_conf():
 		Length of each block, in seconds.
 	run_dur_s : scalar float
 		Length of each run, in seconds.
-	n_events_per_block : scalar integer
+	n_evt_per_block : scalar integer
 		Number of events per block.
-	n_events_per_run : scalar integer
+	n_evt_per_run : scalar integer
 		Number of events per run.
-	event_len_s : scalar float
+	evt_len_s : scalar float
 		Length of each 'event' within a block, in seconds.
 
 	Notes
@@ -137,13 +160,13 @@ def _get_exp_conf():
 
 	exp_conf[ "run_len_s" ] = exp_conf[ "n_blocks" ] * exp_conf[ "block_len_s" ]
 
-	exp_conf[ "n_events_per_block" ] = 12
+	exp_conf[ "n_evt_per_block" ] = 12
 
-	exp_conf[ "n_events_per_run" ] = ( exp_conf[ "n_events_per_block" ] *
-	                                   exp_conf[ "n_blocks" ]
-	                                 )
+	exp_conf[ "n_evt_per_run" ] = ( exp_conf[ "n_evt_per_block" ] *
+	                                exp_conf[ "n_blocks" ]
+	                              )
 
-	exp_conf[ "event_len_s" ] = exp_conf[ "block_len_s" ] / exp_conf[ "n_events_per_block" ]
+	exp_conf[ "evt_len_s" ] = exp_conf[ "block_len_s" ] / exp_conf[ "n_evt_per_block" ]
 
 	return exp_conf
 
@@ -212,3 +235,35 @@ def _get_acq_conf():
 	acq_conf[ "slice_order" ] = fmri_tools.utils.get_slice_order( 36 )
 
 	return acq_conf
+
+
+def get_subj_conf():
+	"""Gets the configuration info for each subject.
+
+	Returns
+	-------
+	subj_id : string
+		Subject ID, in the Olman lab system.
+	acq_date : string
+		Acquisition date, in YYYYMMDD format.
+	comments : string
+		Any comments about the scanning session.
+
+	Notes
+	-----
+	* Return values are within a dictionary, which is itself within a dictionary
+	  indexed by subject ID.
+
+	"""
+
+#	s1000 = { "subj_id" : "s1000",
+#	          "acq_date" : "20120106",
+#	          "comments" : ""
+#	        }
+
+#	subj_conf = { "s1000" : s1000,
+#	            }
+
+	subj_conf = {}
+
+	return subj_conf

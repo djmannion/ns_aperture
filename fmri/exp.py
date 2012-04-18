@@ -108,8 +108,12 @@ def run( subj_id, run_num, order ):
 		            ]
 
 		if evt_time < 1:
-
 			[ evt_stim.draw() for evt_stim in evt_stims ]
+
+		if ( 1 < evt_time < 1.2 ) and ( i_evt in task ):
+			fixation.setColor( conf[ "stim" ][ "fix_col_act" ] )
+		else:
+			fixation.setColor( conf[ "stim" ][ "fix_col_inact" ] )
 
 		# draw the fixation
 		fixation.draw()

@@ -60,8 +60,8 @@ def run( subj_id, run_num, order ):
 	# initialise the display window
 	win = psychopy.visual.Window( ( 1024, 768 ),
 	                              monitor = conf[ "acq" ][ "monitor_name" ],
-	                              fullscr = False,
-	                              allowGUI = True
+	                              fullscr = True,
+	                              allowGUI = False
 	                            )
 
 	stat_txt = psychopy.visual.TextStim( win = win,

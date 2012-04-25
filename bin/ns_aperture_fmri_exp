@@ -107,8 +107,6 @@ for i_run in np.arange( args.start - 1, args.end ):
 
 		exit_status = ns_aperture.fmri.loc.run( inf[ 0 ] )
 
-		exit_status = 0
-
 	if exit_status == 1:
 		print "Aborting sequence"
 		sys.exit( exit_status )

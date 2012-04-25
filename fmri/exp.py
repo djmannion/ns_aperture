@@ -1,6 +1,8 @@
 """Natural scenes through apertures fMRI experiment.
 """
 
+from __future__ import division
+
 import os
 
 import numpy as np

@@ -1,4 +1,4 @@
-"""CONFIG
+"""Configuration for the natural scenes through apertures fMRI experiment.
 """
 
 from __future__ import division
@@ -7,8 +7,18 @@ import numpy as np
 
 import fmri_tools.utils
 
+
 def get_conf():
-	"""
+	"""Overall experiment configuration.
+
+	Returns
+	-------
+	conf : dict, with items:
+		exp : holds overall experiment configurations
+		stim : stimulus configuration
+		task : behavioural task configuration
+		acq : acquisition configuration
+
 	"""
 
 	conf = { "exp" : _get_exp_conf(),
@@ -46,6 +56,14 @@ def _get_stim_conf():
 		( patch 1, patch 2 ) -> ( top left, bottom right ) -> ( i_row, i_col )
 	img_ids : numpy vector of ints
 		Identifiers (one-based) for the set of candidate images.
+	fix_rad_deg : float
+		Radius of the fixation circle, in degrees visual angle.
+	fix_col_inact : three-item tuple of floats
+		Colour of inner fixation circle when task is inactive.
+	fix_col_act : three-item tuple of floats
+		Colour of inner fixation circle when task is active.
+	loc_sf_cpd : float
+		Spatial frequency of the localiser stimulus, in cycles per degree
 
 	Notes
 	-----
@@ -119,6 +137,9 @@ def _get_stim_conf():
 	stim_conf[ "fix_rad_deg" ] = 0.075
 	stim_conf[ "fix_col_inact" ] = ( -1, -1, -1 )
 	stim_conf[ "fix_col_act" ] = ( -1, 1, -1 )
+
+	stim_conf[ "loc_sf_cpd" ] = 2.0
+	stim_conf[ "loc_rev_rate_hz" ] = 2
 
 	return stim_conf
 

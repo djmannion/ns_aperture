@@ -1,0 +1,114 @@
+#! /usr/bin/python2 -O
+# ^ want to run it with optimisations turned on
+
+"""Parses the command-line input and executes multiple runs of the natural scenes
+through apertures fMRI experiment.
+"""
+
+import sys, os
+import argparse
+
+import numpy as np
+
+import ns_aperture.fmri.exp, ns_aperture.fmri.loc
+
+desc = "Executes the natural scenes through apertures fMRI experiment"
+
+eg = """
+Example usage:
+  run subject s1021 through all runs:
+    ns_aperture_fmri_exp s1021
+
+  run subject s1021 through runs 3 to the end
+    ns_aperture_fmri_exp s1021 --start=3
+
+  run subject s1021 only on run 2
+    ns_aperture_fmri_exp s1021 --start=1 --end=1
+
+---N.B.---
+
+* The script must be run from the ns_aperture/bin directory.
+
+"""
+
+target_dir = "ns_aperture/bin"
+
+current_dir = os.getcwd()
+
+if current_dir[ -len( target_dir ): ] != target_dir:
+
+	raise IOError( "".join( [ "Script needs to be launched from ",
+	                          target_dir
+	                        ]
+	                      )
+	             )
+
+run_info = ( ( "AB", "exp" ),   # 1
+             ( "BA", "exp" ),   # 2
+             ( "AB", "exp" ),   # 3
+             ( "BA", "exp" ),   # 4
+             ( "AB", "exp" ),   # 5
+             ( "BA", "exp" ),   # 6
+             ( "AB", "exp" ),   # 7
+             ( "BA", "exp" ),   # 8
+             ( "AB", "exp" ),   # 9
+             ( "BA", "exp" ),   # 10
+             ( "AB", "loc" ),   # 11
+             ( "BA", "loc" )    # 12
+           )
+
+# use this formatter so we can supply our own indentation
+fmt = argparse.RawDescriptionHelpFormatter
+
+parser = argparse.ArgumentParser( description = desc,
+                                  epilog = eg,
+                                  formatter_class = fmt,
+                                )
+
+parser.add_argument( "subj_id",
+                     help = "Subject identifier"
+                   )
+
+parser.add_argument( "--start",
+                     type = int,
+                     help = "Start run",
+                     default = 1
+                   )
+
+parser.add_argument( "--end",
+                     help = "End run",
+                     type = int,
+                     default = len( run_info )
+                   )
+
+args = parser.parse_args()
+
+# check the arguments are valid
+if len( args.subj_id ) != 5 or args.subj_id[ 0 ] != "s":
+	raise ValueError( "Subject ID needs to be in the format of sXXXX" )
+
+for i_run in np.arange( args.start - 1, args.end ):
+
+	inf = run_info[ i_run ]
+
+	if inf[ 1 ] == "exp":
+
+		print "Executing: ns_aperture.fmri.exp.run( %s, %d, %s )" % (
+		      args.subj_id, i_run + 1, inf[ 0 ] )
+
+		exit_status = ns_aperture.fmri.exp.run( args.subj_id,
+                                            i_run + 1,
+                                            inf[ 0 ]  # block order
+                                          )
+
+	elif inf[ 1 ] == "loc":
+
+		print "Executing: ns_aperture.fmri.loc.run( %s )" % ( inf[ 0 ] )
+
+		exit_status = ns_aperture.fmri.loc.run( inf[ 0 ] )
+
+		exit_status = 0
+
+	if exit_status == 1:
+		print "Aborting sequence"
+		sys.exit( exit_status )

@@ -8,7 +8,7 @@ through apertures fMRI experiment.
 import sys, os
 import argparse
 
-#import ns_aperture.fmri.exp
+import ns_aperture.fmri.exp
 
 desc = "Executes a run of the natural scenes through apertures fMRI experiment"
 
@@ -63,13 +63,9 @@ args = parser.parse_args()
 if len( args.subj_id ) != 5 or args.subj_id[ 0 ] != "s":
 	raise ValueError( "Subject ID needs to be in the format of sXXXX" )
 
-#exit_status = ns_aperture.fmri.exp.run( args.subj_id,
-#                                        args.run_no,
-#                                        args.order
-#                                      )
-
-print args.subj_id, args.run_no, args.order
-
-exit_status = 0
+exit_status = ns_aperture.fmri.exp.run( args.subj_id,
+                                        args.run_no,
+                                        args.order
+                                      )
 
 sys.exit( exit_status )

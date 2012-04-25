@@ -91,7 +91,7 @@ def _get_stim_conf():
 	                              for c_pix in patch_centre_pix
 	                            ]
 
-	stim_conf[ "scale_mode" ] = "norm"
+	stim_conf[ "scale_mode" ] = "mean"
 
 	# hardcode the desired image ids
 	stim_conf[ "img_ids" ] = np.array( (    6,   12,  504,   58,   72,   90,
@@ -116,9 +116,9 @@ def _get_stim_conf():
 	                                )
 
 
-	stim_conf[ "fix_rad_deg" ] = 0.05
-	stim_conf[ "fix_col_inact" ] = ( -1, -1, -1, 1 )
-	stim_conf[ "fix_col_act" ] = ( -1, 1, -1, 1 )
+	stim_conf[ "fix_rad_deg" ] = 0.075
+	stim_conf[ "fix_col_inact" ] = ( -1, -1, -1 )
+	stim_conf[ "fix_col_act" ] = ( -1, 1, -1 )
 
 	return stim_conf
 
@@ -147,6 +147,8 @@ def _get_exp_conf():
 		Number of events per run.
 	evt_len_s : scalar float
 		Length of each 'event' within a block, in seconds.
+	evt_stim_s : scalar float
+		Length of stimulus presentation within each event.
 
 	Notes
 	-----
@@ -171,6 +173,8 @@ def _get_exp_conf():
 	                              )
 
 	exp_conf[ "evt_len_s" ] = exp_conf[ "block_len_s" ] / exp_conf[ "n_evt_per_block" ]
+
+	exp_conf[ "evt_stim_s" ] = 1.0
 
 	return exp_conf
 
@@ -197,6 +201,9 @@ def _get_task_conf():
 	task_conf = {}
 
 	task_conf[ "p" ] = 0.35
+
+	task_conf[ "evt_on_s" ] = 0.8
+	task_conf[ "evt_off_s" ] = 1.2
 
 	return task_conf
 

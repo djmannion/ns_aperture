@@ -1,4 +1,4 @@
-"""
+"""Natural scenes through apertures fMRI experiment.
 """
 
 import os
@@ -9,7 +9,7 @@ import psychopy.visual, psychopy.filters, psychopy.misc, psychopy.event
 import psychopy.core, psychopy.log
 
 import ns_aperture.config
-import stimuli.psychopy_ext
+import stimuli.psychopy_ext, stimuli.utils
 
 __author__ = "Damien Mannion"
 __license__ = "GPL"
@@ -53,6 +53,7 @@ def run( subj_id, run_num, order ):
 
 	# initialise the behavioural task details
 	task = init_task( conf )
+	task_resp = []
 
 	# initialise the display window
 	win = psychopy.visual.Window( ( 1024, 768 ),
@@ -61,9 +62,15 @@ def run( subj_id, run_num, order ):
 	                              allowGUI = True
 	                            )
 
+	stat_txt = psychopy.visual.TextStim( win = win,
+	                                     text = "Loading stimuli...",
+	                                     height = 16,
+	                                     units = "pix"
+	                                   )
+
 	try:
 		fixation = init_fixation( conf, win )
-		stim = init_stim( conf, win )
+		stim = init_stim( conf, win, stat_txt )
 	except:
 		win.close()
 		raise
@@ -73,7 +80,7 @@ def run( subj_id, run_num, order ):
 
 	# set the keys
 	quit_key = 'q'
-	trigger_key = '5'
+	trigger_key = 't'
 
 	# wait for the trigger
 	fixation.draw()
@@ -87,14 +94,13 @@ def run( subj_id, run_num, order ):
 
 	# quit, if the user wanted to
 	if quit_key in k:
-
 		print "User aborted"
-
 		win.close()
-
 		return 1
 
 	run_time = run_clock.getTime()
+
+	trig_count = 1
 
 	# keep looping until the time has elapsed
 	while run_time < conf[ "exp" ][ "run_len_s" ]:
@@ -107,13 +113,22 @@ def run( subj_id, run_num, order ):
 		              stim[ int( seq[ i_evt, seq_ind[ "img_i_R" ] ] ) ][ 1 ]
 		            ]
 
-		if evt_time < 1:
-			[ evt_stim.draw() for evt_stim in evt_stims ]
+		# if the event time is less than how long we want the stimulus up for, draw
+		# the stimuli
+		if evt_time < conf[ "exp" ][ "evt_stim_s" ]:
+			_ = [ evt_stim.draw() for evt_stim in evt_stims ]
 
-		if ( 1 < evt_time < 1.2 ) and ( i_evt in task ):
-			fixation.setColor( conf[ "stim" ][ "fix_col_act" ] )
+		# set the fixation colour based on the event time, gated by whether it is a
+		# task event or not
+		if ( ( conf[ "task" ][ "evt_on_s" ] <
+		       evt_time <
+		       conf[ "task" ][ "evt_off_s" ]
+		     ) and
+		     ( i_evt in task )
+		   ):
+			fixation.setFillColor( conf[ "stim" ][ "fix_col_act" ] )
 		else:
-			fixation.setColor( conf[ "stim" ][ "fix_col_inact" ] )
+			fixation.setFillColor( conf[ "stim" ][ "fix_col_inact" ] )
 
 		# draw the fixation
 		fixation.draw()
@@ -131,12 +146,46 @@ def run( subj_id, run_num, order ):
 				win.close()
 				return 1
 
+			elif key == trigger_key:
+				trig_count += 1
+
+			else:
+				task_resp.extend( [ ( key, timestamp ) ] )
+
 		run_time = run_clock.getTime()
 
+	# all done, time for cleanup
+	# first, close the window
+	win.close()
+
+	# now save the sequence
+	np.save( seq_path, seq )
+
+	# convert the response list into an np array for saving
+	task_resp_np = np.array( task_resp,
+	                         dtype = [ ( "key", "S10" ), ( "time", float ) ]
+	                       )
+	# and save
+	np.save( task_path, task_resp_np )
+
+	return 0
 
 
 def init_fixation( conf, win ):
-	"""
+	"""Initialises the fixation display.
+
+	Parameters
+	----------
+	conf : dict
+		Experiment configuration, as output from ``ns_apertures.config.get_conf()``
+	win : Window object
+		PsychoPy window.
+
+	Returns
+	-------
+	fixation : Circle object
+		PsychoPy stimulus object for fixation.
+
 	"""
 
 	fix_rad_pix = psychopy.misc.deg2pix( conf[ "stim" ][ "fix_rad_deg" ],
@@ -146,14 +195,30 @@ def init_fixation( conf, win ):
 	fixation = psychopy.visual.Circle( win = win,
 	                                   radius = fix_rad_pix,
 	                                   units = "pix",
-	                                   fillColor = conf[ "stim" ][ "fix_col_inact" ]
+	                                   fillColor = conf[ "stim" ][ "fix_col_inact" ],
+	                                   lineWidth = 1
 	                                 )
 
 	return fixation
 
 
-def init_stim( conf, win ):
-	"""
+def init_stim( conf, win, stat_txt ):
+	"""Initialises the stimuli for the experiment.
+
+	Parameters
+	----------
+	conf : dict
+		Experiment configuration, as output from ``ns_apertures.config.get_conf()``
+	win : Window object
+		PsychoPy window.
+	stat_txt : TextStim object
+		PsychoPy text object
+
+	Returns
+	-------
+	stim : list of PatchStim-s
+		Outer list is for a given image, inner list is for the image regions.
+
 	"""
 
 	stim_conf = conf[ "stim" ]
@@ -187,9 +252,15 @@ def init_stim( conf, win ):
 	              for offset in ( -1, +1 )
 	            ]
 
+	n = stim_conf[ "img_ids" ].shape[ 0 ]
+
 	stim = []
 
 	for ( i_im, im_id ) in enumerate( stim_conf[ "img_ids" ] ):
+
+		stat_txt.setText( "Loading stimuli (%d/%d)" % ( i_im + 1, n ) )
+		stat_txt.draw()
+		win.flip()
 
 		im_stim = []
 
@@ -219,7 +290,19 @@ def init_stim( conf, win ):
 
 
 def get_seq_ind():
-	"""
+	"""Defines a lookup table for the columns in the experiment sequence array.
+
+	Returns
+	-------
+	seq_ind : dict, containing items (all ints):
+		time_s : event onset time, in seconds
+		block_num : run block number
+		block_type : whether an 'A' or 'B' block
+		img_i_L : subset image index, for L stim
+		img_i_R : subset image index, for R stim
+		img_id_L : van Hateren image index, for L stim
+		img_id_R : van Hateren image index, for R stim
+
 	"""
 
 	seq_ind = { "time_s" : 0,
@@ -359,8 +442,8 @@ def get_log_paths( subj_id, run_num ):
 
 	"""
 
-	seq_path = os.path.join( "logs",
-	                         ( "%s_ns_aperture_seq_%d.npy" %
+	seq_path = os.path.join( "../logs",
+	                         ( "%s_ns_aperture_fmri_seq_%d.npy" %
 	                           ( subj_id, run_num )
 	                         )
 	                       )
@@ -368,8 +451,8 @@ def get_log_paths( subj_id, run_num ):
 	if os.path.exists( seq_path ):
 		raise IOError( "".join( [ "Path ", seq_path, " already exists" ] ) )
 
-	task_path = os.path.join( "logs",
-	                          ( "%s_ns_aperture_task_%d.npy" %
+	task_path = os.path.join( "../logs",
+	                          ( "%s_ns_aperture_fmri_task_%d.npy" %
 	                            ( subj_id, run_num )
 	                          )
 	                        )

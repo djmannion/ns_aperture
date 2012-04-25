@@ -10,6 +10,10 @@ import numpy as np
 import psychopy.visual, psychopy.filters, psychopy.misc, psychopy.event
 import psychopy.core, psychopy.log
 
+import psychopy.logging
+psychopy.logging.console.setLevel( psychopy.logging.CRITICAL )
+
+
 import ns_aperture.config
 import stimuli.psychopy_ext, stimuli.utils
 

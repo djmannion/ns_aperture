@@ -1,12 +1,11 @@
 """
-Set of routines to pre-process the fMRI data for the Glass patterns coherence
+Set of routines to pre-process the fMRI data for the natural scenes aperture
 fMRI experiment.
 """
 
 from __future__ import division
 
-import os.path as path
-import itertools
+import os.path
 
 import nipy
 import numpy as np
@@ -20,103 +19,68 @@ def convert( paths ):
 	Parameters
 	----------
 	paths : dict of strings
-		Subject path structure, as returned by 'get_subject_paths' in
-		'glass_coherence.config'.
+		Subject path structure, as returned by 'get_subj_paths' in
+		'ns_aperture.config'.
 
 	"""
 
-	# functionals
-	func_names = [ path.split( func_path )[ 1 ]
-	               for func_path in paths[ "func" ][ "orig" ]
-	             ]
+	# aggregate the dicom directories
+	dcm_dirs = ( paths[ "func" ][ "dcm_dirs" ] +
+	             paths[ "loc" ][ "dcm_dirs" ] +
+	             paths[ "fmap" ][ "dcm_mag_dirs" ] +
+	             paths[ "fmap" ][ "dcm_ph_dirs" ]
+	           )
 
-	map( fmri_tools.preproc.dcm_to_nii,
-	     paths[ "func" ][ "dcm_dirs" ],  # dcm path
-	     paths[ "func" ][ "dirs" ],  # nii path
-	     func_names  # nii name
-	   )
+	# aggregate the output directories
+	nii_dirs = ( paths[ "func" ][ "dirs" ] +
+	             paths[ "loc" ][ "dirs" ] +
+	             paths[ "fmap" ][ "dirs" ] +
+	             paths[ "fmap" ][ "dirs" ]
+	           )
 
-	# check that there hasn't been any mix-ups with the assignment of raw volumes
-	# to runs
-	# (need to add the extension)
-	full_func_paths = [ "".join( [ func_path, ".nii" ] )
-	                    for func_path in paths[ "func" ][ "orig" ]
-	                  ]
+	# aggregate the images paths
+	img_paths = ( paths[ "func" ][ "orig" ] +
+	              paths[ "loc" ][ "orig" ] +
+	              paths[ "fmap" ][ "mag" ] +
+	              paths[ "fmap" ][ "ph" ]
+	            )
 
-	assert( fmri_tools.utils.files_are_unique( full_func_paths ) )
-
-	# localisers
-	loc_names = [ path.split( loc_path )[ 1 ]
-	              for loc_path in paths[ "loc" ][ "orig" ]
+	# pull out the filenames
+	img_names = [ os.path.split( img_path )[ 1 ]
+	              for img_path in img_paths
 	            ]
 
+	# do the DCM -> NII conversion
 	map( fmri_tools.preproc.dcm_to_nii,
-	     paths[ "loc" ][ "dcm_dirs" ],  # dcm path
-	     paths[ "loc" ][ "dirs" ],  # nii path
-	     loc_names  # nii name
+	     dcm_dirs,
+	     nii_dirs,
+	     img_names
 	   )
 
-	# check that there hasn't been any mix-ups with the assignment of raw volumes
-	# to runs
-	# (need to add the extension)
-	full_loc_paths = [ "".join( [ loc_path, ".nii" ] )
-	                   for loc_path in paths[ "loc" ][ "orig" ]
+	# generate the full paths (with assumed extension) of the newly-created nifti
+	# files
+	full_img_paths = [ "%s.nii" % img_path
+	                   for img_path in img_paths
 	                 ]
 
-	assert( fmri_tools.utils.files_are_unique( full_loc_paths ) )
-
-	# fieldmaps - magnitude
-	mag_names = [ path.split( mag_path )[ 1 ]
-	              for mag_path in paths[ "fmap" ][ "mag" ]
-	            ]
-
-	map( fmri_tools.preproc.dcm_to_nii,
-	     paths[ "fmap" ][ "dcm_mag_dirs" ],  # dcm path
-	     paths[ "fmap" ][ "dirs" ],  # nii path
-	     mag_names  # nii name
-	   )
-
-	full_mag_paths = [ "".join( [ mag_path, ".nii" ] )
-	                    for mag_path in paths[ "fmap" ][ "mag" ]
-	                  ]
-
-	assert( fmri_tools.utils.files_are_unique( full_mag_paths ) )
-
-	# fieldmaps - phase
-	ph_names = [ path.split( ph_path )[ 1 ]
-	             for ph_path in paths[ "fmap" ][ "ph" ]
-	           ]
-
-	map( fmri_tools.preproc.dcm_to_nii,
-	     paths[ "fmap" ][ "dcm_ph_dirs" ],  # dcm path
-	     paths[ "fmap" ][ "dirs" ],  # nii path
-	     ph_names  # nii name
-	   )
-
-	full_ph_paths = [ "".join( [ ph_path, ".nii" ] )
-	                   for ph_path in paths[ "fmap" ][ "ph" ]
-	                 ]
-
-	assert( fmri_tools.utils.files_are_unique( full_ph_paths ) )
+	# check that they are all unique
+	assert( fmri_tools.utils.files_are_unique( full_img_paths ) )
 
 
-def st_motion_correct( paths, acq_conf, preproc_conf, subj_conf ):
-	"""Performs slice-timing and motion correction
+def st_motion_correct( paths, conf, subj_conf ):
+	"""Performs slice-timing and motion correction.
 
 	Parameters
 	----------
 	paths : dict of strings
 		Subject path structure, as returned by 'get_subj_paths' in
-		'glass_coherence.config'.
-	acq_conf : dict
-		Experiment configuration, as returned by 'get_acq_conf' in
-		'glass_coherence.config'.
-	preproc_conf : dict
-		Preprocessing configuration, as returned by 'get_preproc_conf' in
-		'glass_coherence.config'.
+		'ns_aperture.config'.
+	conf : dict
+		Experiment configuration, as returned by 'get_conf' in
+		'ns_aperture.config'.
 	subj_conf : dict
 		Subject configuration, as returned by 'get_subj_conf' in
-		'glass_coherence.config', for this subject.
+		'ns_aperture.config', for this subject.
 
 	"""
 
@@ -127,7 +91,8 @@ def st_motion_correct( paths, acq_conf, preproc_conf, subj_conf ):
 	run_order = subj_conf[ "run_st_mot_order" ]
 
 	# reorder the paths
-
+	# (the -1 is because the runs are specified in subj_conf in a one-based
+	# index; ie. run 1 is the first run)
 	orig_paths = [ paths[ im_type ][ "orig" ][ i_run - 1 ]
 	               for i_run, im_type in run_order
 	             ]
@@ -135,48 +100,63 @@ def st_motion_correct( paths, acq_conf, preproc_conf, subj_conf ):
 	               for i_run, im_type in run_order
 	             ]
 
+	# pull out the important information from the config
+	slice_order = conf[ "acq" ][ "slice_order" ]
+	tr_s = conf[ "acq" ][ "tr_s" ]
+	slice_info = ( conf[ "acq" ][ "slice_axis" ],
+	               conf[ "acq" ][ "slice_acq_dir" ]
+	             )
 
+	# run the motion correction algorithm (slow)
 	motion_est = fmri_tools.preproc.correct_st_motion( orig_paths,
 	                                                   corr_paths,
-	                                                   acq_conf[ "slice_order" ],
-	                                                   acq_conf[ "tr_s" ],
-	                                                   ( preproc_conf[ "slice_axis" ],
-	                                                     preproc_conf[ "slice_acq_dir" ]
-	                                                   )
+	                                                   slice_order,
+	                                                   tr_s,
+	                                                   slice_info,
 	                                                 )
 
+	# save the estimated motion parameters
 	np.save( paths[ "func" ][ "motion_estimates" ],
 	         arr = motion_est
 	       )
 
+	# make a summary image from the corrected files
+	fmri_tools.preproc.gen_sess_summ_img( corr_paths,
+	                                      paths[ "func" ][ "corr_summ" ]
+	                                    )
 
-def fieldmaps( paths, acq_conf, subj_conf ):
+
+def fieldmaps( paths, conf, subj_conf ):
 	"""Prepare the fieldmaps.
 
 	Parameters
 	----------
 	paths : dict of strings
 		Subject path structure, as returned by 'get_subj_paths' in
-		'glass_coherence.config'.
-	acq_conf : dict
-		Experiment configuration, as returned by 'get_acq_conf' in
-		'glass_coherence.config'.
+		'ns_aperture.config'.
+	conf : dict
+		Experiment configuration, as returned by 'get_conf' in
+		'ns_aperture.config'.
 	subj_conf : dict
 		Subject configuration, as returned by 'get_subj_conf' in
-		'glass_coherence.config', for this subject.
+		'ns_aperture.config', for this subject.
+
 	"""
+
+	# duplicate the delta TE for each fieldmap acquired
+	delta_te_ms = ( [ conf[ "acq" ][ "delta_te_ms" ] ] *
+	                subj_conf[ "n_fmaps" ]
+	              )
 
 	map( fmri_tools.preproc.make_fieldmap,
 	     paths[ "fmap" ][ "mag" ],
 	     paths[ "fmap" ][ "ph" ],
 	     paths[ "fmap" ][ "fmap" ],
-	     itertools.repeat( acq_conf[ "delta_te_ms" ],
-	                       subj_conf[ "n_fmaps" ]
-	                     )
+	     delta_te_ms
 	   )
 
 
-def unwarp( paths, acq_conf, preproc_conf, subj_conf ):
+def unwarp( paths, conf ):
 	"""Uses the fieldmaps to unwarp the functional images and create a mean image
 	of all the unwarped functional images.
 
@@ -184,59 +164,43 @@ def unwarp( paths, acq_conf, preproc_conf, subj_conf ):
 	----------
 	paths : dict of strings
 		Subject path structure, as returned by 'get_subj_paths' in
-		'glass_coherence.config'.
-	acq_conf : dict
-		Experiment configuration, as returned by 'get_acq_conf' in
-		'glass_coherence.config'.
-	preproc_conf : dict
-		Preprocessing configuration, as returned by 'get_preproc_conf' in
-		'glass_coherence.config'.
-	subj_conf : dict
-		Subject configuration, as returned by 'get_subj_conf' in
-		'glass_coherence.config', for this subject.
+		'ns_aperture.config'.
+	conf : dict
+		Experiment configuration, as returned by 'get_conf' in
+		'ns_aperture.config'.
 
 	"""
 
-	# perform the unwarping on the funcs
+	# combine the experiment and localiser functional info
+	func_corr = paths[ "func" ][ "corr" ] + paths[ "loc" ][ "corr" ]
+	func_fmap = paths[ "func" ][ "fmap" ] + paths[ "loc" ][ "fmap" ]
+	func_uw = paths[ "func" ][ "uw" ] + paths[ "loc" ][ "uw" ]
+
+	# duplicate the dwell time and phase encode direction for each image
+	dwell_ms = [ conf[ "acq" ][ "dwell_ms" ] ] * len( func_corr )
+	ph_encode_dir = [ conf[ "acq" ][ "ph_encode_dir" ] ] * len( func_corr )
+
+	# perform the unwarping
 	map( fmri_tools.preproc.unwarp,
-	     paths[ "func" ][ "corr" ],
-	     paths[ "func" ][ "fmap" ],
-	     paths[ "func" ][ "uw" ],
-	     itertools.repeat( acq_conf[ "dwell_ms" ],
-	                       subj_conf[ "n_runs" ]
-	                     ),
-	     itertools.repeat( preproc_conf[ "phase_encode_dir" ],
-	                       subj_conf[ "n_runs" ]
-	                     )
+	     func_corr,
+	     func_fmap,
+	     func_uw,
+	     dwell_ms,
+	     ph_encode_dir
 	   )
 
 	# create a mean image of the unwarped data
-	fmri_tools.preproc.mean_image( paths[ "func" ][ "uw" ],
+	fmri_tools.preproc.mean_image( func_uw,
 	                               paths[ "func" ][ "mean" ]
 	                             )
 
-	# perform the unwarping on the localisers
-	map( fmri_tools.preproc.unwarp,
-	     paths[ "loc" ][ "corr" ],
-	     paths[ "loc" ][ "fmap" ],
-	     paths[ "loc" ][ "uw" ],
-	     itertools.repeat( acq_conf[ "dwell_ms" ],
-	                       subj_conf[ "n_loc_runs" ]
-	                     ),
-	     itertools.repeat( preproc_conf[ "phase_encode_dir" ],
-	                       subj_conf[ "n_loc_runs" ]
-	                     )
-	   )
-
 	# produce a summary image
-	fmri_tools.preproc.gen_sess_summ_img( ( paths[ "func" ][ "uw" ] +
-	                                        paths[ "loc" ][ "uw" ]
-	                                      ),
-	                                      paths[ "func" ][ "summ" ]
+	fmri_tools.preproc.gen_sess_summ_img( func_uw,
+	                                      paths[ "func" ][ "uw_summ" ]
 	                                    )
 
 
-def make_roi_images( paths, ana_conf, preproc_conf ):
+def make_roi_images( paths, conf ):
 	"""Converts the ROI matlab files to nifti images in register with the
 	subject's anatomical.
 
@@ -244,59 +208,53 @@ def make_roi_images( paths, ana_conf, preproc_conf ):
 	----------
 	paths : dict of strings
 		Subject path structure, as returned by 'get_subj_paths' in
-		'glass_coherence.config'.
-	ana_conf : dict
-		Analysis configuration, as returned by 'get_analysis_conf' in
-		'glass_coherence.config'.
-	preproc_conf : dict
-		Preprocessing configuration, as returned by 'get_preproc_conf' in
-		'glass_coherence.config', for this subject.
+		'ns_aperture.config'.
+	conf : dict
+		Experiment configuration, as returned by 'get_conf' in
+		'ns_aperture.config'.
 
 	"""
 
-	n_rois = len( ana_conf[ "rois" ] )
+	n_rois = len( conf[ "ana" ][ "rois" ] )
 
 	# python nifti loader needs the extension
-	anat_path = "".join( [ paths[ "anat" ][ "anat" ],
-	                       ".nii"
-	                     ]
-	                   )
+	anat_path = [ "%s.nii" % paths[ "anat" ][ "anat" ] ] * n_rois
 
-	roi_paths = [ "".join( [ roi_path, ".nii" ] )
+	roi_paths = [ "%s.nii" % roi_path
 	              for roi_path in paths[ "roi" ][ "orig" ]
 	            ]
+
+	roi_ax = [ conf[ "ana" ][ "roi_ax" ] ] * n_rois
+	roi_ax_order = [ conf[ "ana" ][ "roi_ax_order" ] ] * n_rois
 
 	# convert the ROI mat files to nifti images
 	map( fmri_tools.preproc.roi_to_nii,
 	     paths[ "roi" ][ "mat" ],
-	     itertools.repeat( anat_path, n_rois ),
+	     anat_path,
 	     roi_paths,
-	     itertools.repeat( preproc_conf[ "roi_ax" ], n_rois ),
-	     itertools.repeat( preproc_conf[ "roi_ax_order" ], n_rois )
+	     roi_ax,
+	     roi_ax_order
 	   )
 
 
-def prepare_rois( paths, ana_conf ):
+def prepare_rois( paths, conf ):
 	"""Extracts and writes the coordinates of each ROI.
 
 	Parameters
 	----------
 	paths : dict of strings
 		Subject path structure, as returned by 'get_subj_paths' in
-		'glass_coherence.config'.
-	ana_conf : dict
-		Analysis configuration, as returned by 'get_analysis_conf' in
-		'glass_coherence.config'.
+		'ns_aperture.config'.
+	conf : dict
+		Experiment configuration, as returned by 'get_conf' in
+		'ns_aperture.config'.
 
 	"""
 
-	for ( i_roi, roi_name ) in enumerate( ana_conf[ "rois" ] ):
+	for ( i_roi, roi_name ) in enumerate( conf[ "ana" ][ "rois" ] ):
 
 		# load the ROI image
-		roi = nipy.load_image( "".join( [ paths[ "roi" ][ "rs" ][ i_roi ],
-		                                  ".nii"
-		                                ]
-		                              )
+		roi = nipy.load_image( "%s.nii" % paths[ "roi" ][ "rs" ][ i_roi ]
 		                     ).get_data()
 
 		# get rid of any NaNs
@@ -306,95 +264,116 @@ def prepare_rois( paths, ana_conf ):
 		coords = np.nonzero( roi )
 
 		# and save
-		np.save( "".join( [ paths[ "analysis" ][ "coords" ],
-		                    "-",
-		                    roi_name
-		                  ]
-		                ),
+		np.save( "%s-%s.npy" % ( paths[ "ana" ][ "coords" ], roi_name ),
 		         arr = coords
 		       )
 
 
-def roi_vtc_cull( paths, ana_conf ):
-	"""Culls voxels from each ROI based on their mean-normalised variance.
+def form_vtcs( paths, conf, subj_conf ):
+	"""Extracts the voxel time courses for each voxel in each ROI
 
 	Parameters
 	----------
 	paths : dict of strings
 		Subject path structure, as returned by 'get_subj_paths' in
-		'glass_coherence.config'.
-	ana_conf : dict
-		Analysis configuration, as returned by 'get_analysis_conf' in
-		'glass_coherence.config'.
+		'ns_aperture.config'.
+	conf : dict
+		Experiment configuration, as returned by 'get_conf' in
+		'ns_aperture.config'.
+	subj_conf : dict
+		Subject configuration, as returned by 'get_subj_conf' in
+		'ns_aperture.config', for this subject.
 
 	"""
 
-	for roi_name in ana_conf[ "rois" ]:
+	for roi_name in conf[ "ana" ][ "rois" ]:
 
-		# load the coordinates
-		coords = np.load( "".join( [ paths[ "analysis" ][ "coords" ],
-		                             "-", roi_name, ".npy"
-		                           ]
-		                         )
-		                )
-
-		# load the vtc
-		vtc = np.load( "".join( [ paths[ "analysis" ][ "vtc" ],
-		                          "-", roi_name, ".npy"
-		                        ]
-		                      )
-		             )
-
-		# do a quick check to make sure the coords have the expected shape
-		assert( coords.shape[ 0 ] == 3 )
-		assert( coords.shape[ 1 ] == vtc.shape[ -1 ] )
+		# load the coordinates for the roi
+		coords = np.load( "%s-%s.npy" % ( paths[ "ana" ][ "coords" ], roi_name ) )
 
 		n_voxels = coords.shape[ 1 ]
 
-		# this is a logical matrix showing if the voxel passes the selection
-		# criteria for each run
-		retain = np.empty( ( vtc.shape[ 1:3 ] ) )
+		# initialise the vtc
+		vtc = np.empty( ( conf[ "exp" ][ "n_vols_per_run" ],
+		                  subj_conf[ "n_runs" ],
+		                  n_voxels
+		                )
+		              )
 
-		# this is the number of voxels post-culling (for each run)
-		cutoff_n = np.round( ( 1 - ana_conf[ "cull_prop" ] ) * n_voxels )
+		# fill with NaNs, to be safe
+		vtc.fill( np.NAN )
 
-		for i_run in xrange( vtc.shape[ 1 ] ):
+		# loop through each unwarped image (run) file
+		for ( i_run, run_path ) in enumerate( paths[ "func" ][ "uw" ] ):
 
-			# decision statistic is mean-normalised variance
-			dec_stat = ( np.var( vtc[ :, i_run, : ], axis = 0 ) /
-			             np.mean( vtc[ :, i_run, : ], axis = 0 )
-			           )
+			# load the run file
+			run_img = nipy.load_image( "%s.nii" % run_path ).get_data()
 
-			# sort in ascending order
-			dec_stat_sorted = np.sort( dec_stat )
+			# iterate through each voxel in the roi
+			for i_voxel in xrange( n_voxels ):
 
-			# extract the critical stat value
-			crit_stat = dec_stat_sorted[ cutoff_n ]
+				# extract the voxel data (timecourse) at the voxel coordinate
+				vox_data = run_img[ coords[ 0, i_voxel ],
+				                    coords[ 1, i_voxel ],
+				                    coords[ 2, i_voxel ],
+				                    :
+				                  ]
 
-			retain[ i_run, : ] = dec_stat < crit_stat
+				# store the voxel data
+				vtc[ :, i_run, i_voxel ] = vox_data
 
-		# to be retained, has to be retained for all runs
-		vox_to_retain = np.all( retain, axis = 0 )
 
-		# do the cullin'
-		vtc = vtc[ :, :, vox_to_retain ]
-		coords = coords[ :, vox_to_retain ]
+		# discard the unwanted volumes and compensate for the HRF delay
+		vtc = vtc[ conf[ "exp" ][ "run_range_hrf_corr" ], :, : ]
 
-		# and re-save
-		np.save( "".join( [ paths[ "analysis" ][ "coords_sel" ],
-		                           "-", roi_name, ".npy"
-		                         ]
-		                ),
-		         coords
-		       )
+		# check that it has been filled up correctly
+		assert( np.sum( np.isnan( vtc ) ) == 0 )
 
 		# save the vtc
-		np.save( "".join( [ paths[ "analysis" ][ "vtc_sel" ],
-		                           "-", roi_name, ".npy"
-		                         ]
-		                ),
-		         vtc
+		np.save( "%s-%s.npy" % ( paths[ "ana" ][ "vtc" ], roi_name ),
+		         arr = vtc
 		       )
+
+		# initialise the localiser vtc
+		loc_vtc = np.empty( ( conf[ "exp" ][ "n_vols_per_run" ],
+		                      subj_conf[ "n_loc_runs" ],
+		                      n_voxels
+		                    )
+		                  )
+
+		# fill with NaNs, to be safe
+		loc_vtc.fill( np.NAN )
+
+		# loop through each unwarped image (run) file
+		for ( i_run, run_path ) in enumerate( paths[ "loc" ][ "uw" ] ):
+
+			# load the run file
+			run_img = nipy.load_image( "%s.nii" % run_path ).get_data()
+
+			# iterate through each voxel in the roi
+			for i_voxel in xrange( n_voxels ):
+
+				# extract the voxel data (timecourse) at the voxel coordinate
+				vox_data = run_img[ coords[ 0, i_voxel ],
+				                    coords[ 1, i_voxel ],
+				                    coords[ 2, i_voxel ],
+				                    :
+				                  ]
+
+				# store the voxel data
+				loc_vtc[ :, i_run, i_voxel ] = vox_data
+
+		# discard the unwanted volumes and compensate for the HRF delay
+		loc_vtc = loc_vtc[ conf[ "exp" ][ "run_range_hrf_corr" ], :, : ]
+
+		# check that it has been filled up correctly
+		assert( np.sum( np.isnan( loc_vtc ) ) == 0 )
+
+		# save the localiser vtc
+		np.save( "%s-%s.npy" % ( paths[ "ana" ][ "loc_vtc" ], roi_name ),
+		         arr = loc_vtc
+		       )
+
 
 def avg_vtcs( paths, ana_conf ):
 	"""Averages the timecourses over all the (selected) voxels in a ROI.
@@ -486,143 +465,6 @@ def localiser_analysis( paths, exp_conf, ana_conf, acq_conf ):
 		         arr = stat
 		       )
 
-
-def form_vtcs( paths, ana_conf, subj_conf, exp_conf, acq_conf ):
-	"""Extracts the voxel time courses for each voxel in each ROI
-
-	Parameters
-	----------
-	paths : dict of strings
-		Subject path structure, as returned by 'get_subj_paths' in
-		'glass_coherence.config'.
-	ana_conf : dict
-		Analysis configuration, as returned by 'get_analysis_conf' in
-		'glass_coherence.config'.
-	subj_conf : dict
-		Subject configuration, as returned by 'get_subj_conf' in
-		'glass_coherence.config', for this subject.
-	exp_conf : dict
-		Experiment configuration, as returned by 'get_exp_conf' in
-		'glass_coherence.config'.
-
-	"""
-
-	for roi_name in ana_conf[ "rois" ]:
-
-		# load the coordinates
-		coords = np.load( "".join( [ paths[ "analysis" ][ "coords" ],
-		                             "-", roi_name, ".npy"
-		                           ]
-		                         )
-		                )
-
-		# do a quick check to make sure the coords have the expected shape
-		assert( coords.shape[ 0 ] == 3 )
-
-		n_voxels = coords.shape[ 1 ]
-
-		n_vols_per_run = int( exp_conf[ "n_blocks" ] *
-		                      exp_conf[ "block_len_s" ] /
-		                      acq_conf[ "tr_s" ]
-		                    )
-
-		vol_range_start = int( exp_conf[ "rej_start_blocks" ] *
-		                       exp_conf[ "block_len_s" ] /
-		                       acq_conf[ "tr_s" ]
-		                     )
-
-		vol_range_end = int( n_vols_per_run -
-		                     ( exp_conf[ "rej_end_blocks" ] *
-		                       exp_conf[ "block_len_s" ] /
-		                       acq_conf[ "tr_s" ]
-		                     )
-		                   )
-
-		vol_range = np.arange( vol_range_start, vol_range_end )
-
-		vol_range += exp_conf[ "hrf_corr_vol" ]
-
-		# initialise the vtc
-		vtc = np.empty( ( n_vols_per_run,
-		                  subj_conf[ "n_runs" ],
-		                  n_voxels
-		                )
-		              )
-
-		# fill with NaNs, to be safe
-		vtc.fill( np.NAN )
-
-		# loop through each unwarped image (run) file
-		for ( i_run, run_path ) in enumerate( paths[ "func" ][ "uw" ] ):
-
-			# load the run file
-			run_img = nipy.load_image( "".join( [ run_path, ".nii" ] ) ).get_data()
-
-			# iterate through each voxel in the roi
-			for i_voxel in xrange( n_voxels ):
-
-				# extract the voxel data (timecourse) at the voxel coordinate
-				vox_data = run_img[ coords[ 0, i_voxel ],
-				                    coords[ 1, i_voxel ],
-				                    coords[ 2, i_voxel ],
-				                    :
-				                  ]
-
-				# store the voxel data
-				vtc[ :, i_run, i_voxel ] = vox_data
-
-
-		# discard the unwanted volumes
-		vtc = vtc[ vol_range, :, : ]
-
-		# save the vtc
-		np.save( "".join( [ paths[ "analysis" ][ "vtc" ],
-		                   "-", roi_name
-		                  ]
-		                ),
-		         arr = vtc
-		       )
-
-		# initialise the localiser vtc
-		loc_vtc = np.empty( ( n_vols_per_run,
-		                      subj_conf[ "n_loc_runs" ],
-		                      n_voxels
-		                    )
-		                  )
-
-		# fill with NaNs, to be safe
-		loc_vtc.fill( np.NAN )
-
-		# loop through each unwarped image (run) file
-		for ( i_run, run_path ) in enumerate( paths[ "loc" ][ "uw" ] ):
-
-			# load the run file
-			run_img = nipy.load_image( "".join( [ run_path, ".nii" ] ) ).get_data()
-
-			# iterate through each voxel in the roi
-			for i_voxel in xrange( n_voxels ):
-
-				# extract the voxel data (timecourse) at the voxel coordinate
-				vox_data = run_img[ coords[ 0, i_voxel ],
-				                    coords[ 1, i_voxel ],
-				                    coords[ 2, i_voxel ],
-				                    :
-				                  ]
-
-				# store the voxel data
-				loc_vtc[ :, i_run, i_voxel ] = vox_data
-
-
-		# discard the unwanted volumes
-		loc_vtc = loc_vtc[ vol_range, :, : ]
-
-		# save the vtc
-		np.save( "".join( [ paths[ "analysis" ][ "loc_vtc" ],
-		                   "-", roi_name
-		                  ]
-		                ),
-		         arr = loc_vtc
-		       )
 
 
 def get_design( paths, acq_conf, subj_conf, exp_conf ):

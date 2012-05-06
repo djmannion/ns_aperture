@@ -1,5 +1,5 @@
 ====================================================
-Analysis code for Glass pattern coherence experiment
+Analysis code for natural scenes aperture experiment
 ====================================================
 
 Requirements
@@ -20,9 +20,9 @@ Prepare the filesystem
 
 1. Make the subject's directory structure::
 
-    mkdir -p sXXXX/{anat,analysis,fmap/f{1,2},func/run{1,2,3,4},log,roi}
+    mkdir -p sXXXX/{anat,analysis,fmap/f1,func/run{01,02,03,04,05,06,07,08,09,10},loc,log,roi}
 
-2. Copy the subject's runtime logfile to the ``log`` directory.
+2. Copy the subject's runtime logfiles to the ``log`` directory.
 
 3. Make symlinks named ``raw`` in each functional run directory that link to the location of its associated raw DICOM directory::
 
@@ -47,30 +47,41 @@ Prepare the filesystem
 Update the experiment information file
 --------------------------------------
 
-Edit ``get_subj_conf`` within ``glass_coherence/config.py`` and add the new subject's information.
+Edit ``get_subj_conf`` within ``ns_aperture/config.py`` and add the new subject's information.
 
 For example::
 
     sXXXX = { "subj_id" : "sXXXX",
               "acq_date" : "YYYYMMDD",
-              "n_runs" : 4,
+              "n_runs" : 10,
               "n_fmaps" : 1,
               "comments" : "anything unusual or noteworthy",
-              "onsets_adjust" : ( 0, 0, 0, 0 ),
-              "run_st_mot_order" : ( 1, 2, 3, 0 )
+              "run_st_mot_order" : ( ( 7, "func" ),
+                                     ( 8, "func" ),
+                                     ( 9, "func" ),
+                                     ( 10, "func" ),
+                                     ( 1, "loc" ),
+                                     ( 2, "loc" ),
+                                     ( 1, "func" ),
+                                     ( 2, "func" ),
+                                     ( 3, "func" ),
+                                     ( 4, "func" ),
+                                     ( 5, "func" ),
+                                     ( 6, "func" )
+                                   )
             }
 
 Pre-processing
 --------------
 
-Most of the pre-processing is done with the command ``glass_coherence_preproc``.
+Most of the pre-processing is done with the command ``ns_aperture_preproc``.
 For help on using this script, run::
 
-    glass_coherence_preproc --help
+    ns_aperture_preproc --help
 
 Typical usage is::
 
-    glass_coherence_preproc sXXXX stage
+    ns_aperture_preproc sXXXX stage
 
 where ``sXXXX`` is the subject ID and ``stage`` is the preprocessing stage (see below).
 
@@ -81,34 +92,38 @@ Conversion
 
 Converts from the raw scanner format to a set of 4D NIFTI files::
 
-    glass_coherence_preproc sXXXX convert
+    ns_aperture_preproc sXXXX convert
+
+After execution, open up each NIFTI file and inspect for image quality.
 
 Correction
 ~~~~~~~~~~
 
 Applies a motion and slice-timing correction procedure::
 
-    glass_coherence_preproc sXXXX correct
+    ns_aperture_preproc sXXXX correct
 
 *N.B. This stage takes quite a while...*
+
+After execution, open up the session summary image that it creates and view in movie mode. This gives a good sense for how well the motion correction worked. You can also inspect the saved motion correction estimates to see how much movement there was.
 
 Fieldmaps
 ~~~~~~~~~
 
 Prepares the fieldmaps::
 
-    glass_coherence_preproc SXXXX fieldmaps
+    ns_aperture_config SXXXX fieldmaps
 
 Unwarping
 ~~~~~~~~~
 
-Before running, need to have made a symbolic link in each functional run directory to that run's fieldmap. For example::
+Before running, need to make a symbolic link in each functional run directory to that run's fieldmap. For example::
 
-    ln -s ../../fmap/f1/sXXXX_glass_coherence_fmap_1-fmap.nii sXXXX_glass_coherence_run_1-fmap.nii
+    ln -s ../../fmap/f1/sXXXX_ns_aperture_fmap_1-fmap.nii sXXXX_ns_aperture_run_1-fmap.nii
 
 Then, to use the fieldmaps to unwarp the functional images to remove the spatial distortion::
 
-    glass_coherence_preproc sXXXX undistort
+    ns_aperture_preproc sXXXX undistort
 
 To verify that the unwarping has worked correctly:
 
@@ -119,12 +134,16 @@ To verify that the unwarping has worked correctly:
 * Add the undistorted image as an overlay, and hide the uncorrected image.
 * Toggle the visibility of the undistorted image, and verify that the geometry now aligns well with that of the fieldmap's magnitude image.
 
+Also, look at the session summary image produced and make sure that all looks good across the session.
+
 ROI to images
 ~~~~~~~~~~~~~
 
 Converts the raw ROI files from mrLoadRet into NIFTI masks::
 
-    glass_coherence_preproc SXXXX roi-img
+    ns_aperture_preproc SXXXX roi-img
+
+To check this has worked correctly, load the subject's anatomical image and overlay the ROI images - they should lie within expected locations.
 
 Coregistration
 ~~~~~~~~~~~~~~
@@ -169,23 +188,19 @@ To check that the coregistration has performed well:
 ROI preparation
 ~~~~~~~~~~~~~~~
 
-Converts the ROI image masks to a set of coordinates::
+Converts the ROI image masks to a set of coordinates, save in numpy format::
 
-    glass_coherence_preproc sXXXX roi
+    ns_aperture_preproc sXXXX roi
 
 Voxel timecourse extraction
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Extracts voxel timecourses for each voxel in each ROI::
+Extracts voxel timecourses for each voxel in each ROI, for both the experiment and localiser runs::
 
-    glass_coherence_preproc sXXXX vtc
+    ns_aperture_preproc sXXXX vtc
 
-Voxel culling
-~~~~~~~~~~~~~
+The resulting timecourses have been trimmed and HRF corrected.
 
-Removes voxels that have high mean-normalised variance::
-
-    glass_coherence_preproc sXXXX vtc-cull
 
 Timecourse averaging
 ~~~~~~~~~~~~~~~~~~~~
@@ -238,14 +253,6 @@ Analysis datafiles
 
 The pre-processing / analysis pipeline produces the following files:
 
-design
-  ( 248 volumes, 4 conditions, 4 runs ) boolean array.
-  This shows the onset of events for each condition.
-  The matrix has been adjusted, where necessary, for delayed triggers.
-
-task_info
-  ( time, [ target, response, stim condition ], 4 runs ) integer array
-
 coords-ROI
   ( 3 axes, n voxels ) array of coordinate locations.
 
@@ -253,17 +260,19 @@ coords_sel-ROI
   ( 3 axes, n voxels ) array of coordinate locations, *after* voxel selection.
 
 vtc-ROI
-  ( 248 volumes, 4 runs, n voxels ) array of BOLD signals.
+  ( 128 volumes, 10 runs, n voxels ) array of BOLD signals. These are in scanner units, in a timeseries that has been trimmed and HRF corrected.
 
-vtc_sel-ROI
-  ( 248 volumes, 4 runs, n voxels ) array of BOLD signals.
-  This is as above but *after* voxel selection.
+loc_vtc-ROI
+  ( 128 volumes, 2 runs, n voxels ) array of BOLD signals. As above, but for the localiser data.
 
-vtc_avg-ROI
-  ( 248 volumes, 4 runs ) array of BOLD signals.
+loc_stat-ROI
+  ( n voxels, [ t statistic, p value ] ) array of statistics data. These report the results of a left side stimulation > right side stimulation localiser analysis.
 
-glm_beta-ROI
-  ( n hrf, 4 conds, 4 runs ) array of beta values, in percent signal change units.
+design
+  ( 128 volumes, 10 runs ) integer array.
+  Each cell is the index of the condition active in that volume acquisition.
 
-amp-ROI
-  ( 4 conds ) vector of estimated HRF amplitudes, in percent signal change units.
+loc_design
+  ( 128 volumes, 2 runs ) integer array.
+  As above, but for the localiser data.
+

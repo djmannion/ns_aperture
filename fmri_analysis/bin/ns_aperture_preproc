@@ -120,15 +120,13 @@ elif args.preproc_step == "roi-img":
 
 elif args.preproc_step == "roi":
 	ns_aperture.fmri_analysis.preproc.prepare_rois( subj_paths,
-	                                                conf[ "ana" ]
+	                                                conf
 	                                              )
 
 elif args.preproc_step == "vtc":
 	ns_aperture.fmri_analysis.preproc.form_vtcs( subj_paths,
-	                                             conf[ "ana" ],
-	                                             subj_conf,
-	                                             conf[ "exp" ],
-	                                             conf[ "acq" ]
+	                                             conf,
+	                                             subj_conf
 	                                           )
 
 elif args.preproc_step == "loc-stat":

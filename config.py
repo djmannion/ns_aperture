@@ -149,13 +149,18 @@ def _get_stim_conf():
 	return stim_conf
 
 
-def _get_exp_conf():
+def _get_exp_conf( tr_s = 2.0 ):
 	"""Gets the experiment configuration.
 
 	Specifies the experiment configuration and parameters for the natural scenes
 	aperture fMRI experiment.
 
 	This shouldn't be called directly.
+
+	Parameters
+	----------
+	tr_s : float
+		TR time, in seconds.
 
 	Returns
 	-------
@@ -175,6 +180,25 @@ def _get_exp_conf():
 		Length of each 'event' within a block, in seconds.
 	evt_stim_s : scalar float
 		Length of stimulus presentation within each event.
+	rej_start_blocks : scalar int
+		How many blocks to discard at the start of a run.
+	rej_end_blocks : scalar int
+		How many blocks to discard at the end of a run.
+	hrf_corr_vol : scalar int
+		Number of volumes to compensate for the HRF delay.
+	n_vols_per_blk : scalar int
+		Number of volumes per block.
+	n_vols_per_run : scalar int
+		Number of volumes per run.
+	run_range_st : scalar int
+		Starting index for desired run volume range.
+	run_range_end : scalar int
+		Ending index for desired run volume range.
+	run_range : numpy array of integers
+		Sequence of volume indices corresponding to valid run volumes.
+	run_range_hrf_corr : numpy array of integers
+		Sequence of volume indices corresponding to valid run volumes after HRF
+		compensation.
 
 	Notes
 	-----
@@ -185,27 +209,45 @@ def _get_exp_conf():
 	exp_conf = {}
 
 	exp_conf[ "n_runs" ] = 10
-
 	exp_conf[ "n_blocks" ] = 18
-
 	exp_conf[ "block_len_s" ] = 16.0
-
 	exp_conf[ "run_len_s" ] = exp_conf[ "n_blocks" ] * exp_conf[ "block_len_s" ]
 
 	exp_conf[ "n_evt_per_block" ] = 12
-
 	exp_conf[ "n_evt_per_run" ] = ( exp_conf[ "n_evt_per_block" ] *
 	                                exp_conf[ "n_blocks" ]
 	                              )
-
-	exp_conf[ "evt_len_s" ] = exp_conf[ "block_len_s" ] / exp_conf[ "n_evt_per_block" ]
-
+	exp_conf[ "evt_len_s" ] = ( exp_conf[ "block_len_s" ] /
+	                            exp_conf[ "n_evt_per_block" ]
+	                          )
 	exp_conf[ "evt_stim_s" ] = 1.0
 
 	exp_conf[ "rej_start_blocks" ] = 1
 	exp_conf[ "rej_end_blocks" ] = 1
 
 	exp_conf[ "hrf_corr_vol" ] = 2
+
+	exp_conf[ "n_vols_per_blk" ] = int( exp_conf[ "block_len_s" ] / tr_s )
+
+	exp_conf[ "n_vols_per_run" ] = int( exp_conf[ "n_blocks" ] *
+	                                    exp_conf[ "n_vols_per_blk" ]
+	                                  )
+
+	exp_conf[ "run_range_st" ] = int( exp_conf[ "rej_start_blocks" ] *
+	                                  exp_conf[ "n_vols_per_blk" ]
+	                                )
+	exp_conf[ "run_range_end" ] = int( exp_conf[ "n_vols_per_run" ] -
+	                                   exp_conf[ "rej_end_blocks" ] *
+	                                   exp_conf[ "n_vols_per_blk" ]
+	                                 )
+
+	exp_conf[ "run_range" ] = np.arange( exp_conf[ "run_range_st" ],
+	                                     exp_conf[ "run_range_end" ]
+	                                   )
+
+	exp_conf[ "run_range_hrf_corr" ] = ( exp_conf[ "run_range" ] +
+	                                     exp_conf[ "hrf_corr_vol" ]
+	                                   )
 
 	return exp_conf
 
@@ -257,6 +299,14 @@ def _get_acq_conf():
 		dwell time, in milliseconds.
 	slice_order : array of int
 		slice acqusition indices, where 0 is the first slice.
+	slice_axis : int
+		the axis in the functional data that represents the inplanes.
+	slice_acq_dir : { -1, +1 }
+		whether the slices were acquired in the same order as represented in
+		the array (1) or in descending order (-1).
+	phase_encode_dir : { "x+", "y+", "z+", "x-", "y-", "z-" }
+		FSLs unwarping code needs to know the phase encode direction (x|y|z) and
+		polarity (-|+).
 
 	Notes
 	-----
@@ -266,17 +316,18 @@ def _get_acq_conf():
 
 	acq_conf = {}
 
-	acq_conf[ "monitor_name" ] = "UMN_7T"
-
-	acq_conf[ "tr_s" ] = 2.0
-
-	acq_conf[ "delta_te_ms" ] = 1.02
-
-	acq_conf[ "dwell_ms" ] = 0.325
-
-	acq_conf[ "slice_order" ] = fmri_tools.utils.get_slice_order( 36 )
+	acq_conf = { "monitor_name" : "UMN_7T",
+	             "tr_s" : 2.0,
+	             "delta_te_ms" : 1.02,
+	             "dwell_ms" : 0.325,
+	             "slice_order" : fmri_tools.utils.get_slice_order( 36 ),
+	             "slice_axis" : 2,
+	             "slice_acq_dir" : 1,
+	             "ph_encode_dir" : "y-",
+	           }
 
 	return acq_conf
+
 
 def _get_preproc_conf():
 	"""Gets the preprocessing configuration.
@@ -286,20 +337,6 @@ def _get_preproc_conf():
 
 	Returns
 	-------
-	slice_axis : int
-		the axis in the functional data that represents the inplanes.
-	slice_acq_dir : { -1, +1 }
-		whether the slices were acquired in the same order as represented in
-		the array (1) or in descending order (-1).
-	phase_encode_dir : { "x+", "y+", "z+", "x-", "y-", "z-" }
-		FSLs unwarping code needs to know the phase encode direction (x|y|z) and
-		polarity (-|+).
-	roi_ax : tuple of ints
-		mapping from ROI axes to image axes. For example, ( 2, 1, 0 ) maps ROI
-		(x,y,z) to image (z,y,x).
-	roi_ax_order : tuple of { -1, +1 }
-		the order when we map from ROI to image coordinates. -1 flips the axis
-		order, while +1 preserves it.
 
 	Notes
 	-----
@@ -335,17 +372,16 @@ def _get_analysis_conf():
 	-------
 	rois : tuple of strings
 		Name of each ROI to be analysed.
-	hrf_len_vol : int, > 0
-		Length of the HRF to estimate, in volumes.
-	cull_prop : float, [0,1]
-		Proportion of voxels in a given ROI that are culled based on their sorted
-		mean-normalised variance.
+	roi_ax : tuple of ints
+		mapping from ROI axes to image axes. For example, ( 2, 1, 0 ) maps ROI
+		(x,y,z) to image (z,y,x).
+	roi_ax_order : tuple of { -1, +1 }
+		the order when we map from ROI to image coordinates. -1 flips the axis
+		order, while +1 preserves it.
+	loc_p_thresh : float
+		Probability threshold for the localiser analysis.
 	poly_ord : integer >= 1
 		Maximum Legendre polynomial order to use as nuisance regressors.
-	task_n_bins : integer >= 1
-		Number of time windows (bins) to evaluate task performance.
-	task_samp_rate_s : float
-		The width of each bin, in seconds, in evaluating task performance.
 
 	Notes
 	-----
@@ -353,23 +389,19 @@ def _get_analysis_conf():
 
 	"""
 
-	rois = ( "V1",
-	         "V2",
-	         "V3",
-	         "V3AB",
-	         "hV4"
-	       )
+	ana_conf = { "rois" : ( "V1",
+	                        "V2",
+	                        "V3",
+	                        "V3AB",
+	                        "hV4"
+	                      ),
+	             "roi_ax" : ( 2, 1, 0 ),
+	             "roi_ax_order" : ( 1, -1, -1 ),
+	             "loc_p_thresh" : 0.01,
+	             "poly_ord" : 4,
+	           }
 
-	loc_p_thresh = 0.01
-
-	poly_ord = 4
-
-	analysis_conf = { "rois" : rois,
-	                  "loc_p_thresh" : loc_p_thresh,
-	                  "poly_ord" : poly_ord,
-	                }
-
-	return analysis_conf
+	return ana_conf
 
 
 def get_subj_conf():
@@ -636,11 +668,17 @@ def get_subj_paths( subj_id ):
 		                               subj_conf[ "subj_id" ]
 		                             )
 
-		# path to a mean image of all functional images
-		func[ "summ" ] = os.path.join( func[ "dir" ],
-		                               "%s_ns_aperture-summ" %
-		                               subj_conf[ "subj_id" ]
-		                             )
+		# path to a mean image of all functional images, after motion correction
+		func[ "corr_summ" ] = os.path.join( func[ "dir" ],
+		                                    "%s_ns_aperture-corr-summ" %
+		                                    subj_conf[ "subj_id" ]
+		                                  )
+
+		# path to a mean image of all functional images, after unwarping
+		func[ "uw_summ" ] = os.path.join( func[ "dir" ],
+		                                  "%s_ns_aperture-uw-summ" %
+		                                  subj_conf[ "subj_id" ]
+		                                )
 
 		# path to numpy file containing the motion estimates from the correction
 		# procedure
@@ -960,7 +998,7 @@ def get_subj_paths( subj_id ):
 
 	paths[ "design" ] = get_design_paths( subj_conf, paths[ "subj" ][ "dir" ] )
 
-	paths[ "analysis" ] = get_analysis_paths( paths[ "subj" ][ "dir" ] )
+	paths[ "ana" ] = get_analysis_paths( paths[ "subj" ][ "dir" ] )
 
 	paths[ "task" ] = get_task_paths( subj_conf, paths[ "subj" ][ "dir" ] )
 

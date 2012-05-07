@@ -467,80 +467,79 @@ def localiser_analysis( paths, exp_conf, ana_conf, acq_conf ):
 
 
 
-def get_design( paths, acq_conf, subj_conf, exp_conf ):
+def get_design( paths, conf, subj_conf ):
 	"""Extracts and writes the design matrix from the session log.
 
 	Parameters
 	----------
 	paths : dict of strings
 		Subject path structure, as returned by 'get_subj_paths' in
-		'glass_coherence.config'.
-	acq_conf : dict
-		Acquisition configuration, as returned by 'get_acq_conf' in
-		'glass_coherence.config'.
+		'ns_aperture.config'.
+	conf : dict
+		Experiment configuration, as returned by 'get_conf' in
+		'ns_aperture.config'.
 	subj_conf : dict
 		Subject configuration, as returned by 'get_subj_conf' in
-		'glass_coherence.config', for this subject.
-	exp_conf : dict
-		Experiment configuration, as returned by 'get_exp_conf' in
-		'glass_coherence.config'.
+		'ns_aperture.config', for this subject.
 
 	"""
 
-	sess_log = scipy.io.loadmat( paths[ "design" ][ "log" ],
-	                             squeeze_me = True,
-	                             struct_as_record = False
-	                           )
-
-	# init the design matrix
-	design = np.zeros( ( exp_conf[ "n_vols_per_run" ],
-	                     exp_conf[ "n_cond" ],
-	                     subj_conf[ "n_runs" ]
+	design = np.empty( ( conf[ "exp" ][ "n_valid_blocks" ],
+	                     subj_conf[ "n_runs" ],
+	                     2
 	                   )
 	                 )
+	design.fill( np.NAN )
+
+	# carries the block indices (0-based) we care about
+	block_range = np.arange( conf[ "exp" ][ "rej_start_blocks" ],
+	                         conf[ "exp" ][ "n_blocks" ] -
+	                         conf[ "exp" ][ "rej_end_blocks" ]
+	                       )
 
 	for i_run in xrange( subj_conf[ "n_runs" ] ):
 
-		evt = sess_log[ "runData" ][ i_run ].exp
+		log_path = os.path.join( paths[ "design" ][ "log_dir" ],
+		                         "%s_ns_aperture_fmri_seq_%d.npy" % (
+		                         subj_conf[ "subj_id" ],
+		                         i_run + 1
+		                         )
+		                       )
 
-		evt_lut = evt.evtLut
+		log = np.load( log_path )
 
-		# minus one to convert from Matlab's 1-based to Python's 0-based indices
-		evt_i_cond = evt.iSeq - 1
-		evt_i_onset_s = evt.iOnset - 1
+		# iterate through only the block indices we care about
+		for ( i_block, block) in enumerate( block_range ):
 
-		# cull the zero-contrast events
-		valid_evt_lut = evt_lut[ evt_lut[ :, evt_i_cond ] > 1, : ]
+			# find the first event corresponding to this block indice
+			# because they're indices, need to add 1 to match the 1-based storage in
+			# the log
+			i_block_start_evt = np.where( log[ :, 1 ] == ( block + 1 ) )[ 0 ][ 0 ]
 
-		# extract the important info
-		evt_cond = valid_evt_lut[ :, evt_i_cond ]
-		evt_onset_s = valid_evt_lut[ :, evt_i_onset_s ]
+			# find the start volume for this block, discounting invalid blocks
+			block_start_vol = i_block * conf[ "exp" ][ "n_vols_per_blk" ]
 
-		# convert the onset time to volumes
-		evt_onset_vol = evt_onset_s / acq_conf[ "tr_s" ]
+			# pull out the condition type for the block
+			block_cond = log[ i_block_start_evt, 2 ]
 
-		# convert the condition to an index
-		# -1 to get from [ 2, 5 ] to [ 1, 4 ], -1 to get to [ 0, 4 ]
-		evt_cond = evt_cond - 1 - 1
+			# store
+			design[ i_block, i_run, 0 ] = block_start_vol
+			design[ i_block, i_run, 1 ] = block_cond
 
-		design[ evt_onset_vol.astype( 'int' ), evt_cond.astype( 'int' ), i_run ] = 1
+	# make sure there are equal numbers of each condition type, as expected
+	assert( np.all( np.sum( design[ :, :, 1 ] == 0 ) ==
+	                np.sum( design[ :, :, 1 ] == 1 )
+	              )
+	      )
 
-	# discard the unwanted volume info
-	design = design[ exp_conf[ "n_discard_vols" ]:, :, : ]
+	np.save( paths[ "design" ][ "design" ], design )
 
-	assert( design.shape[ 0 ] == exp_conf[ "n_valid_vols_per_run" ] )
+	# localiser follows the same main design, only for less runs
+	loc_design = design[ :, :subj_conf[ "n_loc_runs" ], : ]
 
-	for i_run in xrange( subj_conf[ "n_runs" ] ):
+	np.save( paths[ "design" ][ "loc_design" ], loc_design )
 
-		shift_amount = subj_conf[ "onsets_adjust" ][ i_run ]
-
-		design[ :, :, i_run ] = np.roll( design[ :, :, i_run ],
-		                                 shift_amount,
-		                                 axis = 0
-		                               )
-
-	# save the design matrix
-	np.save( paths[ "design" ][ "matrix" ], arr = design )
+	return design
 
 
 def get_task( paths, exp_conf, subj_conf, ana_conf, acq_conf ):

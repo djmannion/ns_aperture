@@ -199,6 +199,8 @@ def _get_exp_conf( tr_s = 2.0 ):
 	run_range_hrf_corr : numpy array of integers
 		Sequence of volume indices corresponding to valid run volumes after HRF
 		compensation.
+	n_valid_vols_per_run : scalar int
+		Number of volumes per run after trimming at the start and end.
 
 	Notes
 	-----
@@ -248,6 +250,13 @@ def _get_exp_conf( tr_s = 2.0 ):
 	exp_conf[ "run_range_hrf_corr" ] = ( exp_conf[ "run_range" ] +
 	                                     exp_conf[ "hrf_corr_vol" ]
 	                                   )
+
+	exp_conf[ "n_valid_vols_per_run" ] = len( exp_conf[ "run_range" ] )
+
+	exp_conf[ "n_valid_blocks" ] = ( exp_conf[ "n_blocks" ] -
+	                                 exp_conf[ "rej_start_blocks" ] -
+	                                 exp_conf[ "rej_end_blocks" ]
+	                               )
 
 	return exp_conf
 
@@ -868,13 +877,17 @@ def get_subj_paths( subj_id ):
 
 		design = {}
 
-		design[ "dir" ] = os.path.join( subj_dir, "log" )
+		design[ "log_dir" ] = os.path.join( subj_dir, "log" )
 
-		design[ "matrix" ] = os.path.join( subj_dir,
-		                                   "design_matrix.npy"
+		design[ "design" ] = os.path.join( subj_dir,
+		                                   "design.npy"
 		                                 )
 
-		design[ "log" ] = os.path.join( design[ "dir" ],
+		design[ "loc_design" ] = os.path.join( subj_dir,
+		                                       "loc_design.npy"
+		                                     )
+
+		design[ "logs" ] = os.path.join( design[ "log_dir" ],
 		                                "%s_ns_aperture.mat" %
 		                                subj_conf[ "subj_id" ]
 		                              )

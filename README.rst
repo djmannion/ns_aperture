@@ -9,7 +9,7 @@ Requirements
 - numpy
 - matplotlib
 - scipy
-- fmri_tools (`http://www.bitbucket.org/djmannion/fmri_tools <http://www.bitbucket.org/djmannion/fmri_tools/>`_ )
+- fmri_tools (`http://www.bitbucket.org/djmannion/fmri_tools <http://www.bitbucket.org/djmannion/fmri_tools/>`_)
 
 
 Processing stages
@@ -202,6 +202,16 @@ Extracts voxel timecourses for each voxel in each ROI, for both the experiment a
 The resulting timecourses have been trimmed and HRF corrected.
 
 
+Design
+~~~~~~
+
+Computes the experimental design from the logfiles::
+
+    ns_aperture_preproc sXXXX design
+
+The extracted design corresponds to the trimmed and HRF corrected voxel timecourses.
+
+
 Timecourse averaging
 ~~~~~~~~~~~~~~~~~~~~
 
@@ -269,10 +279,10 @@ loc_stat-ROI
   ( n voxels, [ t statistic, p value ] ) array of statistics data. These report the results of a left side stimulation > right side stimulation localiser analysis.
 
 design
-  ( 128 volumes, 10 runs ) integer array.
-  Each cell is the index of the condition active in that volume acquisition.
+  ( 16 blocks, 10 runs, [ i_vol, i_cond ) integer array.
+  ``i_vol`` is the volume index for the start of the block in a timecourse that has been trimmed and HRF corrected, and ``i_cond`` is the condition.
 
 loc_design
-  ( 128 volumes, 2 runs ) integer array.
+  ( 16 blocks, 2 runs, [ i_vol, i_cond ] ) integer array.
   As above, but for the localiser data.
 

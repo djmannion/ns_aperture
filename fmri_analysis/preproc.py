@@ -375,98 +375,6 @@ def form_vtcs( paths, conf, subj_conf ):
 		       )
 
 
-def avg_vtcs( paths, ana_conf ):
-	"""Averages the timecourses over all the (selected) voxels in a ROI.
-
-	Parameters
-	----------
-	paths : dict of strings
-		Subject path structure, as returned by 'get_subj_paths' in
-		'glass_coherence.config'.
-	ana_conf : dict
-		Analysis configuration, as returned by 'get_analysis_conf' in
-		'glass_coherence.config'.
-
-	"""
-
-	for roi_name in ana_conf[ "rois" ]:
-
-		# load the (post voxel selection) vtc
-		vtc = np.load( "".join( [ paths[ "analysis" ][ "vtc_sel" ],
-		                          "-", roi_name, ".npy"
-		                        ]
-		                      )
-		             )
-
-		# average over voxels
-		vtc = np.mean( vtc, axis = 2 )
-
-		# save
-		np.save( "".join( [ paths[ "analysis" ][ "vtc_avg" ],
-		                   "-", roi_name
-		                  ]
-		                ),
-		         arr = vtc
-		       )
-
-
-def localiser_analysis( paths, exp_conf, ana_conf, acq_conf ):
-	"""
-	"""
-
-	block_len_vol = int( exp_conf[ "block_len_s" ] / acq_conf[ "tr_s" ] )
-
-	for roi_name in ana_conf[ "rois" ]:
-
-		# load the (post voxel selection) vtc
-		loc_vtc = np.load( "%s-%s.npy" % ( paths[ "analysis" ][ "loc_vtc" ],
-		                                   roi_name
-		                                 )
-		                 )
-
-		( n_vol, n_runs, n_voxels ) = loc_vtc.shape
-
-		block_lut = np.empty( ( n_runs, int( n_vol / block_len_vol ), 2 ) )
-
-		block_lut[ 0, :, 0 ] = np.arange( 0, n_vol, block_len_vol )
-		block_lut[ 0, :, 1 ] = np.tile( [ 0, 1 ], int( n_vol / block_len_vol / 2 ) )
-
-		block_lut[ 1, :, 0 ] = block_lut[ 0, :, 0 ]
-		block_lut[ 1, :, 1 ] = np.tile( [ 1, 0 ], int( n_vol / block_len_vol / 2 ) )
-
-		stat = np.empty( ( n_voxels, 2 ) )
-
-		for i_voxel in xrange( n_voxels ):
-
-			vox_data = [ [], [] ]
-
-			for i_run in xrange( n_runs ):
-
-				run_vtc = loc_vtc[ :, i_run, i_voxel ]
-				run_vtc = fmri_tools.preproc.hp_filter( run_vtc, ana_conf[ "poly_ord" ] )[ 0 ]
-
-				for i_blk in xrange( block_lut.shape[ 1 ] ):
-
-					blk_range = np.arange( block_lut[ i_run, i_blk, 0 ],
-					                       block_lut[ i_run, i_blk, 0 ] + block_len_vol
-					                     ).astype( "int" )
-
-					blk_data = np.mean( run_vtc[ blk_range ] )
-
-					vox_data[ int( block_lut[ i_run, i_blk, 1 ] ) ].append( blk_data )
-
-			stat[ i_voxel, : ] = scipy.stats.ttest_ind( vox_data[ 0 ],
-			                                            vox_data[ 1 ]
-			                                          )
-
-		np.save( "%s-%s.npy" % ( paths[ "analysis" ][ "loc_stat" ],
-		                         roi_name
-		                       ),
-		         arr = stat
-		       )
-
-
-
 def get_design( paths, conf, subj_conf ):
 	"""Extracts and writes the design matrix from the session log.
 
@@ -542,120 +450,161 @@ def get_design( paths, conf, subj_conf ):
 	return design
 
 
-def get_task( paths, exp_conf, subj_conf, ana_conf, acq_conf ):
-	"""Extracts and writes the design matrix from the session log.
+def localiser_analysis( paths, conf ):
+	"""Performs statistical analysis of the localiser data.
+
+	Parameters
+	----------
+	paths : dict of strings
+		Subject path structure, as returned by 'get_subj_paths' in
+		'ns_aperture.config'.
+	conf : dict
+		Experiment configuration, as returned by 'get_conf' in
+		'ns_aperture.config'.
+
+	"""
+
+	# load the design info for the localiser
+	design = np.load( paths[ "design" ][ "loc_design" ] )
+
+	for roi_name in conf[ "ana" ][ "rois" ]:
+
+		# load the (trimmed and HRF corrected) vtc
+		loc_vtc = np.load( "%s-%s.npy" % ( paths[ "ana" ][ "loc_vtc" ],
+		                                   roi_name
+		                                 )
+		                 )
+
+		( _, n_runs, n_voxels ) = loc_vtc.shape
+
+		stat = np.empty( ( n_voxels, 2 ) )
+		stat.fill( np.NAN )
+
+		for i_voxel in xrange( n_voxels ):
+
+			vox_data = [ [], [] ]
+
+			for i_run in xrange( n_runs ):
+
+				run_vtc = loc_vtc[ :, i_run, i_voxel ]
+				run_vtc = fmri_tools.preproc.hp_filter( run_vtc,
+				                                        poly_ord = conf[ "ana" ][ "poly_ord" ]
+				                                      )[ 0 ]
+
+				run_design = design[ :, i_run, : ].astype( "int" )
+
+				for i_blk in xrange( run_design.shape[ 0 ] ):
+
+					blk_vol_range = np.arange( run_design[ i_blk, 0 ],
+					                           run_design[ i_blk, 0 ] +
+					                           conf[ "exp" ][ "n_vols_per_blk" ]
+					                         ).astype( "int" )
+
+					blk_data = np.mean( run_vtc[ blk_vol_range ] )
+
+					vox_data[ run_design[ i_blk, 1 ] ].append( blk_data )
+
+			stat[ i_voxel, : ] = scipy.stats.ttest_ind( vox_data[ 0 ],
+			                                            vox_data[ 1 ]
+			                                          )
+
+		np.save( "%s-%s.npy" % ( paths[ "ana" ][ "loc_stat" ],
+		                         roi_name
+		                       ),
+		         arr = stat
+		       )
+
+
+def voxel_selection( paths, conf ):
+	"""Finds the voxels in each ROI that are significantly activated by the
+	   localiser, and extracts their coordinates and contrains the vtcs.
+
+	Parameters
+	----------
+	paths : dict of strings
+		Subject path structure, as returned by 'get_subj_paths' in
+		'ns_aperture.config'.
+	conf : dict
+		Experiment configuration, as returned by 'get_conf' in
+		'ns_aperture.config'.
+
+	"""
+
+	for roi_name in conf[ "ana" ][ "rois" ]:
+
+		# all the voxels for this ROI
+		full_coords = np.load( "%s-%s.npy" % ( paths[ "ana" ][ "coords" ],
+		                                       roi_name
+		                                     )
+		                     )
+
+		# the localiser analysis
+		loc_stat = np.load( "%s-%s.npy" % ( paths[ "ana" ][ "loc_stat" ],
+		                                    roi_name
+		                                  )
+		                  )
+
+		# make sure they have the right number of voxels
+		assert( full_coords.shape[ 1 ] == loc_stat.shape[ 0 ] )
+
+		# activation probability for each voxel
+		p_val = loc_stat[ :, 1 ]
+
+		# perform the thresholding
+		i_valid = ( p_val < conf[ "ana" ][ "loc_p_thresh" ] )
+
+		# cull the coords not above threshold
+		sel_coords = full_coords[ :, i_valid ]
+
+		np.save( "%s-%s.npy" % ( paths[ "ana" ][ "coords_sel" ], roi_name ),
+		         sel_coords
+		       )
+
+		# apply culling to the vtcs
+		vtc = np.load( "%s-%s.npy" % ( paths[ "ana" ][ "vtc" ], roi_name ) )
+		vtc = vtc[ :, :, i_valid ]
+		np.save( "%s-%s.npy" % ( paths[ "ana" ][ "vtc_sel" ], roi_name ),
+		         vtc
+		       )
+
+		loc_vtc = np.load( "%s-%s.npy" % ( paths[ "ana" ][ "loc_vtc" ], roi_name ) )
+		loc_vtc = loc_vtc[ :, :, i_valid ]
+		np.save( "%s-%s.npy" % ( paths[ "ana" ][ "loc_vtc_sel" ], roi_name ),
+		         loc_vtc
+		       )
+
+
+def avg_vtcs( paths, ana_conf ):
+	"""Averages the timecourses over all the (selected) voxels in a ROI.
 
 	Parameters
 	----------
 	paths : dict of strings
 		Subject path structure, as returned by 'get_subj_paths' in
 		'glass_coherence.config'.
-	exp_conf : dict
-		Experiment configuration, as returned by 'get_exp_conf' in
+	ana_conf : dict
+		Analysis configuration, as returned by 'get_analysis_conf' in
 		'glass_coherence.config'.
-	subj_conf : dict
-		Subject configuration, as returned by 'get_subj_conf' in
-		'glass_coherence.config', for this subject.
-
-
-	!!UNFINISHED!!
 
 	"""
 
-	# calculate how many samples of task performance to take per run
-	n_per_run = ( exp_conf[ "n_vols_per_run" ] *
-	              acq_conf[ "tr_s" ] /
-	              ana_conf[ "task_samp_rate_s" ]
-	            )
+	for roi_name in ana_conf[ "rois" ]:
 
-	# initialise the task log
-	# -first dimension is time, indexed at the task sampling rate
-	# -second dimension is ( target present, response present, stimulus
-	# condition )
-	# -third dimension is acquistion run
-	task_log = np.zeros( ( n_per_run,
-	                       3,
-	                       subj_conf[ "n_runs" ]
-	                     )
-	                   )
+		# load the (post voxel selection) vtc
+		vtc = np.load( "".join( [ paths[ "analysis" ][ "vtc_sel" ],
+		                          "-", roi_name, ".npy"
+		                        ]
+		                      )
+		             )
 
-	# initialise the timer
-	run_time = np.linspace( 0,
-	                        exp_conf[ "n_vols_per_run" ] * acq_conf[ "tr_s" ],
-	                        num = n_per_run,
-	                        endpoint = False
-	                      )
+		# average over voxels
+		vtc = np.mean( vtc, axis = 2 )
 
-	# load the logfile for the acquisition session
-	sess_log = scipy.io.loadmat( paths[ "design" ][ "log" ],
-	                             squeeze_me = True,
-	                             struct_as_record = False
-	                           )
+		# save
+		np.save( "".join( [ paths[ "analysis" ][ "vtc_avg" ],
+		                   "-", roi_name
+		                  ]
+		                ),
+		         arr = vtc
+		       )
 
-	for i_run in xrange( subj_conf[ "n_runs" ] ):
-
-		# extract the log for this run
-		run_log = sess_log[ "runData" ][ i_run ]
-
-		# first, we want to build up our ingredients
-
-		# -- 1. the target onset times
-		# extract the task lut for this run
-		task_lut = run_log.task.rsvp.taskLut
-		# extract the time, in seconds, that the target events occurred
-		target_s = task_lut[ task_lut[ :, -1 ] > 0,  # last dim indicates targets
-		                     0  # first dim indicates time (s)
-		                   ]
-
-		# -- 2. the task response times
-		resp_lut = run_log.task.resp
-		# response vector was filled with NaNs to avoid 'growing' at runtime, so
-		# only grab actual responses
-		resp_s = resp_lut[ 1, ~np.isnan( resp_lut[ 0, : ] ) ]
-
-
-		# -- 3. the active stimulus condition at each time
-		stim_lut = run_log.exp.evtLut
-		# stimulus time
-		stim_s = stim_lut[ :, 1 ]
-		# stimulus condition at each time
-		stim_cond = stim_lut[ :, 0 ]
-
-		# righto, now we have our ingredients we can build the vectors
-
-		# iterate through the run at the desired task sample rate
-		for ( i_time, evt_time ) in enumerate( run_time ):
-
-			# time the event starts
-			evt_s = evt_time
-			# ... and ends
-			evt_e = evt_s + ana_conf[ "task_samp_rate_s" ]
-
-			# Q1 : was there a target on at this time?
-			target_on = np.any( np.logical_and( target_s >= evt_s,
-			                                    target_s < evt_e
-			                                  )
-			                  )
-
-			# Q2 : was there a response at this time?
-			resp_on = np.any( np.logical_and( resp_s >= evt_s,
-			                                  resp_s < evt_e
-			                                )
-			                )
-
-			# Q3 : what was the stimulus at this time?
-
-			# work out which was the closest presentation in time (preceding)
-			i_stim_evt = np.where( ( evt_s - stim_s ) >= 0 )[ 0 ][ -1 ]
-			# get the condition for this event (minus one due to one-indexing)
-			evt_cond = stim_cond[ i_stim_evt ] - 1
-
-			# now we can update our container
-			task_log[ i_time, :, i_run ] = [ target_on,
-			                                 resp_on,
-			                                 evt_cond
-			                               ]
-
-	np.save( paths[ "task" ][ "task_info" ],
-	         task_log.astype( 'int' )
-	       )

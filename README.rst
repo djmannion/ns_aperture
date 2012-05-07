@@ -212,6 +212,22 @@ Computes the experimental design from the logfiles::
 The extracted design corresponds to the trimmed and HRF corrected voxel timecourses.
 
 
+Localiser analysis
+~~~~~~~~~~~~~~~~~~
+
+Analyses the localiser runs to produce activation statistics::
+
+    ns_aperture_preproc sXXXX localiser
+
+
+Voxel selection
+~~~~~~~~~~~~~~~
+
+Uses the localiser analysis to adjust the ROI coordinates to only include stimulated voxels::
+
+    ns_aperture_preproc sXXXX vox-select
+
+
 Timecourse averaging
 ~~~~~~~~~~~~~~~~~~~~
 
@@ -267,10 +283,16 @@ coords-ROI
   ( 3 axes, n voxels ) array of coordinate locations.
 
 coords_sel-ROI
-  ( 3 axes, n voxels ) array of coordinate locations, *after* voxel selection.
+  ( 3 axes, n(s) voxels ) array of coordinate locations, *after* voxel selection based on the localiser analysis.
 
 vtc-ROI
   ( 128 volumes, 10 runs, n voxels ) array of BOLD signals. These are in scanner units, in a timeseries that has been trimmed and HRF corrected.
+
+vtc_sel-ROI
+  ( 128 volumes, 10 runs, n(s) voxels ) array of BOLD signals. As above, but only including selected voxels.
+
+vtc_avg-ROI
+  ( 128 volumes, 10 runs ) array of BOLD signals. ROI timecourses averaged across all *selected* voxels.
 
 loc_vtc-ROI
   ( 128 volumes, 2 runs, n voxels ) array of BOLD signals. As above, but for the localiser data.

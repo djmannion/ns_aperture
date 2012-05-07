@@ -582,6 +582,8 @@ def get_subj_paths( subj_id ):
 		analysis[ "vtc_sel" ] = os.path.join( analysis[ "dir" ], "vtc_sel" )
 		analysis[ "vtc_avg" ] = os.path.join( analysis[ "dir" ], "vtc_avg" )
 
+		analysis[ "loc_vtc_sel" ] = os.path.join( analysis[ "dir" ], "loc_vtc_sel" )
+
 		analysis[ "coords" ] = os.path.join( analysis[ "dir" ], "coords" )
 		analysis[ "coords_sel" ] = os.path.join( analysis[ "dir" ], "coords_sel" )
 

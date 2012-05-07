@@ -236,37 +236,29 @@ Averages over the voxels in each ROI::
     ns_aperture_preproc sXXXX vtc-avg
 
 
-
-
 Subject-level analysis
 ----------------------
 
-Most of the subject-level analysis is done with the command ``glass_coherence_subj_analysis``
+The subject-level analysis is done with the command ``ns_aperture_subj_analysis``
 For help on using this script, run::
 
-    glass_coherence_subj_analysis --help
+    ns_aperture_subj_analysis --help
 
 Typical usage is::
 
-    glass_coherence_subj_analysis sXXXX stage
+    ns_aperture_subj_analysis sXXXX stage
 
 where ``sXXXX`` is the subject ID and ``stage`` is the preprocessing stage (see below).
 
 The stages are as follows:
 
-GLM
-~~~
+Blocks
+~~~~~~
 
-Fits a GLM to each ROI's timecourse::
+Extracts the block responses for each condition and ROI::
 
-    glass_coherence_subj_analysis sXXXX glm
+    ns_aperture_subj_analysis sXXXX blocks
 
-Amplitude
-~~~~~~~~~
-
-This converts the GLM output to a single estimate per condition for a given subject::
-
-    glass_coherence_subj_analysis sXXXX amp
 
 
 Analysis datafiles
@@ -286,8 +278,11 @@ vtc-ROI
 vtc_sel-ROI
   ( 128 volumes, 10 runs, n(s) voxels ) array of BOLD signals. As above, but only including selected voxels.
 
+loc_vtc_sel-ROI
+  ( 128 volumes, 2 runs, n(s) voxels ) array of BOLD signals. As above, but for the localiser data.
+
 vtc_avg-ROI
-  ( 128 volumes, 10 runs ) array of BOLD signals. ROI timecourses averaged across all *selected* voxels.
+  ( 128 volumes, 10 runs ) array of BOLD signals. ROI timecourses averaged across all *selected* voxels, high-pass filtered, and covert to percent signal change.
 
 loc_vtc-ROI
   ( 128 volumes, 2 runs, n voxels ) array of BOLD signals. As above, but for the localiser data.
@@ -303,3 +298,5 @@ loc_design
   ( 16 blocks, 2 runs, [ i_vol, i_cond ] ) integer array.
   As above, but for the localiser data.
 
+block
+  ( 160 blocks, [ psc, cond, block in run, run ] ) array. Shows the percent signal change of each block, obtained by averaging all the timepoints corresponding to the block.

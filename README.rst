@@ -228,19 +228,14 @@ Uses the localiser analysis to adjust the ROI coordinates to only include stimul
     ns_aperture_preproc sXXXX vox-select
 
 
-Timecourse averaging
-~~~~~~~~~~~~~~~~~~~~
+Timecourse averaging and filtering
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Averages over the voxels in each ROI::
 
-    glass_coherence_preproc sXXXX vtc-avg
+    ns_aperture_preproc sXXXX vtc-avg
 
-Design matrix
-~~~~~~~~~~~~~
 
-Forms the session design matrix from the run sequence information::
-
-    glass_coherence_preproc sXXXX design
 
 
 Subject-level analysis

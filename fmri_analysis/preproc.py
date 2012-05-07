@@ -574,37 +574,45 @@ def voxel_selection( paths, conf ):
 		       )
 
 
-def avg_vtcs( paths, ana_conf ):
-	"""Averages the timecourses over all the (selected) voxels in a ROI.
+def avg_vtcs( paths, conf ):
+	"""Averages the timecourses over all the (selected) voxels in a ROI and
+	   performs high-pass filtering.
 
 	Parameters
 	----------
 	paths : dict of strings
 		Subject path structure, as returned by 'get_subj_paths' in
-		'glass_coherence.config'.
-	ana_conf : dict
-		Analysis configuration, as returned by 'get_analysis_conf' in
-		'glass_coherence.config'.
+		'ns_aperture.config'.
+	conf : dict
+		Experiment configuration, as returned by 'get_analysis_conf' in
+		'ns_aperture.config'.
 
 	"""
 
-	for roi_name in ana_conf[ "rois" ]:
+	p_ord = conf[ "ana" ][ "poly_ord" ]
+
+	for roi_name in conf[ "ana" ][ "rois" ]:
 
 		# load the (post voxel selection) vtc
-		vtc = np.load( "".join( [ paths[ "analysis" ][ "vtc_sel" ],
-		                          "-", roi_name, ".npy"
-		                        ]
-		                      )
+		vtc = np.load( "%s-%s.npy" % ( paths[ "ana" ][ "vtc_sel" ],
+		                               roi_name
+		                             )
 		             )
 
 		# average over voxels
 		vtc = np.mean( vtc, axis = 2 )
 
-		# save
-		np.save( "".join( [ paths[ "analysis" ][ "vtc_avg" ],
-		                   "-", roi_name
-		                  ]
-		                ),
-		         arr = vtc
-		       )
+		filt_vtc = np.empty( vtc.shape )
+		filt_vtc.fill( np.NAN )
 
+		for i_run in xrange( filt_vtc.shape[ 1 ] ):
+
+			filt_vtc[ :, i_run ] = fmri_tools.preproc.hp_filter( vtc[ :, i_run ],
+			                                                     poly_ord = p_ord
+			                                                   )[ 0 ]
+
+		assert( not np.any( np.isnan( filt_vtc ) ) )
+
+		np.save( "%s-%s.npy" % ( paths[ "ana" ][ "vtc_avg" ], roi_name ),
+		         filt_vtc
+		       )

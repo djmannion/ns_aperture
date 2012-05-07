@@ -65,11 +65,10 @@ preproc_steps = ( "convert",
                   "roi-img",
                   "roi",
                   "vtc",
-                  "loc-stat",
-                  "vox-select",
-                  "vtc-avg",
                   "design",
-                  "task"
+                  "localiser",
+                  "vox-select",
+                  "vtc-avg"
                 )
 
 parser.add_argument( "preproc_step",
@@ -135,7 +134,7 @@ elif args.preproc_step == "design":
 	                                              subj_conf,
 	                                            )
 
-elif args.preproc_step == "loc-stat":
+elif args.preproc_step == "localiser":
 	ns_aperture.fmri_analysis.preproc.localiser_analysis( subj_paths,
 	                                                      conf[ "exp" ],
 	                                                      conf[ "ana" ],
@@ -150,9 +149,9 @@ elif args.preproc_step == "vox-select":
 	                                                 )
 
 elif args.preproc_step == "vtc-avg":
-	ns_aperture.analysis.preproc.avg_vtcs( subj_paths,
-	                                           conf[ "ana" ]
-	                                         )
+	ns_aperture.fmri_analysis.preproc.avg_vtcs( subj_paths,
+	                                            conf
+	                                          )
 
 
 elif args.preproc_step == "task":

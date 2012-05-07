@@ -66,7 +66,7 @@ preproc_steps = ( "convert",
                   "roi",
                   "vtc",
                   "loc-stat",
-                  "vtc-cull",
+                  "vox-select",
                   "vtc-avg",
                   "design",
                   "task"
@@ -129,6 +129,12 @@ elif args.preproc_step == "vtc":
 	                                             subj_conf
 	                                           )
 
+elif args.preproc_step == "design":
+	ns_aperture.fmri_analysis.preproc.get_design( subj_paths,
+	                                              conf,
+	                                              subj_conf,
+	                                            )
+
 elif args.preproc_step == "loc-stat":
 	ns_aperture.fmri_analysis.preproc.localiser_analysis( subj_paths,
 	                                                      conf[ "exp" ],
@@ -137,22 +143,17 @@ elif args.preproc_step == "loc-stat":
 	                                                    )
 
 
-elif args.preproc_step == "vtc-cull":
-	ns_aperture.analysis.preproc.roi_vtc_cull( subj_paths,
-	                                               conf[ "ana" ]
-	                                             )
+elif args.preproc_step == "vox-select":
+	ns_aperture.fmri_analysis.preproc.voxel_selection( subj_paths,
+	                                                   conf,
+	                                                   subj_conf
+	                                                 )
 
 elif args.preproc_step == "vtc-avg":
 	ns_aperture.analysis.preproc.avg_vtcs( subj_paths,
 	                                           conf[ "ana" ]
 	                                         )
 
-elif args.preproc_step == "design":
-	ns_aperture.analysis.preproc.get_design( subj_paths,
-	                                             conf[ "acq" ],
-	                                             subj_conf,
-	                                             conf[ "exp" ]
-	                                           )
 
 elif args.preproc_step == "task":
 	ns_aperture.analysis.preproc.get_task( subj_paths,

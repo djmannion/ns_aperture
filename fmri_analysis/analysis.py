@@ -15,7 +15,20 @@ import fmri_tools.preproc, fmri_tools.utils
 
 
 def extract_blocks( paths, conf, subj_conf ):
-	"""
+	"""Parse the average VTC for each ROI into the individual blocks.
+
+	Parameters
+	-----------
+	paths : dict of strings
+		Subject path structure, as returned by 'get_subj_paths' in
+		'ns_aperture.config'.
+	conf : dict
+		Experiment configuration, as returned by 'get_conf' in
+		'ns_aperture.config'.
+	subj_conf : dict
+		Subject configuration, as returned by 'get_subj_conf' in
+		'ns_aperture.config', for this subject.
+
 	"""
 
 	design = np.load( paths[ "design" ][ "design" ] )

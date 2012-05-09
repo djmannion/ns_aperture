@@ -136,16 +136,13 @@ elif args.preproc_step == "design":
 
 elif args.preproc_step == "localiser":
 	ns_aperture.fmri_analysis.preproc.localiser_analysis( subj_paths,
-	                                                      conf[ "exp" ],
-	                                                      conf[ "ana" ],
-	                                                      conf[ "acq" ]
+	                                                      conf
 	                                                    )
 
 
 elif args.preproc_step == "vox-select":
 	ns_aperture.fmri_analysis.preproc.voxel_selection( subj_paths,
-	                                                   conf,
-	                                                   subj_conf
+	                                                   conf
 	                                                 )
 
 elif args.preproc_step == "vtc-avg":

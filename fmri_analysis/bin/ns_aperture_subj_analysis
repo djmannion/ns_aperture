@@ -1,0 +1,80 @@
+#! /usr/bin/env python
+
+"""Runs an analysis step for a subject in the Glass pattern coherence fMRI
+experiment"""
+
+import argparse
+import os
+
+import ns_aperture.config, ns_aperture.fmri_analysis.analysis
+
+desc = """Runs an analysis step for a subject in the Glass coherence fMRI
+experiment"""
+
+eg = """
+Example usage:
+  run block magnitude estimation on subject s1000:
+    ns_aperture_subj_analysis s1000 blocks
+
+Steps:
+  blocks : 
+  cond_diff : 
+
+---N.B.---
+
+* The script must be run from the ns_aperture/fmri_analysis/bin directory.
+
+"""
+
+target_dir = "ns_aperture/fmri_analysis/bin"
+
+current_dir = os.getcwd()
+
+if current_dir[ -len( target_dir ): ] != target_dir:
+	raise IOError( "".join( [ "Script needs to be launched from ",
+	                          target_dir
+	                        ]
+	                      )
+	             )
+
+# use this formatter so we can supply our own indentation
+fmt = argparse.RawDescriptionHelpFormatter
+
+parser = argparse.ArgumentParser( description = desc,
+                                  epilog = eg,
+                                  formatter_class = fmt,
+                                )
+
+parser.add_argument( "subj_id",
+                     help = "Subject identifier"
+                   )
+
+analysis_steps = ( "blocks",
+                   "cond_diff"
+                 )
+
+parser.add_argument( "analysis_step",
+                     choices = analysis_steps,
+                     help = "Analysis step"
+                   )
+
+args = parser.parse_args()
+
+# check the arguments are valid
+if len( args.subj_id ) != 5 or args.subj_id[ 0 ] != "s":
+	raise ValueError( "Subject ID needs to be in the format of sXXXX" )
+
+# load the experiment / subject info
+subj_conf = ns_aperture.config.get_subj_conf()[ args.subj_id ]
+subj_paths = ns_aperture.config.get_subj_paths( args.subj_id )
+
+conf = ns_aperture.config.get_conf()
+
+if args.analysis_step == "blocks":
+	ns_aperture.fmri_analysis.analysis.extract_blocks( subj_paths, conf )
+
+elif args.analysis_step == "cond_diff":
+	ns_aperture.fmri_analysis.analysis.boot_cond_diff( subj_paths, conf )
+
+else:
+	print "Not completed"

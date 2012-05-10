@@ -5,16 +5,10 @@ aperture fMRI experiment.
 
 from __future__ import division
 
-import os.path
-
-import nipy
 import numpy as np
-import scipy.io
-
-import fmri_tools.preproc, fmri_tools.utils
 
 
-def extract_blocks( paths, conf, subj_conf ):
+def extract_blocks( paths, conf ):
 	"""Parse the average VTC for each ROI into the individual blocks.
 
 	Parameters
@@ -25,9 +19,6 @@ def extract_blocks( paths, conf, subj_conf ):
 	conf : dict
 		Experiment configuration, as returned by 'get_conf' in
 		'ns_aperture.config'.
-	subj_conf : dict
-		Subject configuration, as returned by 'get_subj_conf' in
-		'ns_aperture.config', for this subject.
 
 	"""
 
@@ -63,4 +54,53 @@ def extract_blocks( paths, conf, subj_conf ):
 
 		np.save( "%s-%s" % ( paths[ "ana" ][ "block" ], roi_name ),
 		         data
+		       )
+
+
+def boot_cond_diff( paths, conf ):
+	"""Compute the average and bootstrapped difference between the experiment
+	   conditions.
+
+	Parameters
+	-----------
+	paths : dict of strings
+		Subject path structure, as returned by 'get_subj_paths' in
+		'ns_aperture.config'.
+	conf : dict
+		Experiment configuration, as returned by 'get_conf' in
+		'ns_aperture.config'.
+
+	"""
+
+	n_boot = 1000
+
+	for roi_name in conf[ "ana" ][ "rois" ]:
+
+		blk = np.load( "%s-%s.npy" % ( paths[ "ana" ][ "block" ], roi_name ) )
+
+		cond_a = blk[ blk[ :, 1 ] == 0, 0 ]
+		cond_b = blk[ blk[ :, 1 ] == 1, 0 ]
+
+		assert( len( cond_a ) == len( cond_b ) )
+
+		n_samp = len( cond_a )
+
+		diff_boot = np.zeros( ( n_boot ) )
+
+		diff = np.mean( cond_a ) - np.mean( cond_b )
+
+		for i_boot in xrange( n_boot ):
+
+			cond_a_boot = cond_a[ np.random.randint( 0, n_samp, n_samp ) ]
+			cond_b_boot = cond_b[ np.random.randint( 0, n_samp, n_samp ) ]
+
+			diff_boot[ i_boot ] = np.mean( cond_a_boot ) - np.mean( cond_b_boot )
+
+		cond_diff = np.hstack( ( diff,
+		                         np.percentile( diff_boot, ( 2.5, 97.5 ) )
+		                       )
+		                     )
+
+		np.save( "%s-%s.npy" % ( paths[ "ana" ][ "cond_diff" ], roi_name ),
+		         cond_diff
 		       )

@@ -67,6 +67,16 @@ def run( order ):
 	quit_key = 'q'
 	trigger_key = 't'
 
+	fix_text = psychopy.visual.TextStim( win = win,
+	                                     text = "Awaiting trigger ...",
+	                                     height = 16,
+	                                     units = "pix",
+	                                     bold = False,
+	                                     pos = ( 0, -40 )
+	                                   )
+
+	fix_text.draw()
+
 	# wait for the trigger
 	fixation.draw()
 

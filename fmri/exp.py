@@ -73,10 +73,21 @@ def run( subj_id, run_num, order ):
 	                                     height = 16,
 	                                     units = "pix"
 	                                   )
+	if np.mod( run_num, 4 ) > 1:
+		hand_instruct = "Same scene Left, different scene R"
+	else:
+		hand_instruct = "Same scene Right, different scene L"
+
+	hand_txt = psychopy.visual.TextStim( win = win,
+	                                     text = hand_instruct,
+	                                     height = 16,
+	                                     units = "pix",
+	                                     pos = ( 0, -40 )
+	                                   )
 
 	try:
 		fixation = init_fixation( conf, win )
-		stim = init_stim( conf, win, stat_txt )
+		stim = init_stim( conf, win, stat_txt, hand_txt )
 	except:
 		win.close()
 		raise
@@ -87,6 +98,8 @@ def run( subj_id, run_num, order ):
 	# set the keys
 	quit_key = 'q'
 	trigger_key = 't'
+
+	hand_txt.draw()
 
 	# wait for the trigger
 	fixation.draw()
@@ -208,7 +221,7 @@ def init_fixation( conf, win ):
 	return fixation
 
 
-def init_stim( conf, win, stat_txt ):
+def init_stim( conf, win, stat_txt, hand_txt ):
 	"""Initialises the stimuli for the experiment.
 
 	Parameters
@@ -266,6 +279,9 @@ def init_stim( conf, win, stat_txt ):
 
 		stat_txt.setText( "Loading stimuli (%d/%d)" % ( i_im + 1, n ) )
 		stat_txt.draw()
+
+		hand_txt.draw()
+
 		win.flip()
 
 		im_stim = []

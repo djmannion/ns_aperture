@@ -88,14 +88,20 @@ def run( order ):
 	# keep looping until the time has elapsed
 	while run_time < conf[ "exp" ][ "run_len_s" ]:
 
-		i_evt = np.where( run_time > seq[ :, seq_ind[ "time_s" ] ] )[ 0 ][ -1 ]
+		i_evt = np.where( run_time > seq[ :, seq_ind[ "time_s" ] ] )[ 0 ]
 
-		i_off = int( seq[ i_evt, seq_ind[ "block_type" ] ] )
-		i_phase = int( seq[ i_evt, seq_ind[ "i_phase" ] ] )
+		if len( i_evt ) > 0:
 
-		evt_stim = stim[ i_off ][ i_phase ]
+			i_evt = i_evt[ -1 ]
 
-		evt_stim.draw()
+			i_off = int( seq[ i_evt, seq_ind[ "block_type" ] ] ) - 1
+			i_phase = int( seq[ i_evt, seq_ind[ "i_phase" ] ] )
+
+			if i_off >= 0:
+
+				evt_stim = stim[ i_off ][ i_phase ]
+
+				evt_stim.draw()
 
 		# draw the fixation
 		fixation.draw()
@@ -253,6 +259,22 @@ def get_seq_ind():
 
 	return seq_ind
 
+def get_block_seq( order, n_blocks ):
+	"""
+	"""
+
+	if order == "AB":
+		mini_block = np.array( [ 1, 2, 0 ] )
+	elif order == "BA":
+		mini_block = np.array( [ 2, 1, 0 ] )
+
+	n_reps = int( ( n_blocks - 1 ) / len( mini_block ) )
+
+	# hard-coded number of blocks
+	blk_seq = np.concatenate( ( [ 0 ], np.tile( mini_block, n_reps ) ) )
+
+	return blk_seq
+
 
 def get_seq( conf, order ):
 	"""Get a sequence of events that consitute a run.
@@ -263,6 +285,8 @@ def get_seq( conf, order ):
 		Details for each event. The columns are given by ``get_seq_ind``
 
 	"""
+
+	block_seq = get_block_seq( order, conf[ "exp" ][ "loc_n_blocks" ] )
 
 	seq_ind = get_seq_ind()
 
@@ -281,35 +305,31 @@ def get_seq( conf, order ):
 
 		time_s = i_evt * ( 1.0 / conf[ "stim" ][ "loc_rev_rate_hz" ] )
 
-		block_num = np.floor( time_s / conf[ "exp" ][ "block_len_s" ] ) + 1
+		time_s += conf[ "exp" ][ "loc_pre_len_s" ]
 
-		# if the block is odd
-		if np.mod( block_num, 2 ) == 1:
+		i_block = np.floor( i_evt *
+		                    ( 1.0 / conf[ "stim" ][ "loc_rev_rate_hz" ] ) /
+		                    conf[ "exp" ][ "block_len_s" ]
+		                  )
 
-			if order == "AB":
-				block_type = 0
-			else:
-				block_type = 1
-
-		# if the block is even
-		else:
-
-			if order == "AB":
-				block_type = 1
-			else:
-				block_type = 0
+		block_type = block_seq[ i_block ]
 
 		if block_type == 0:
+			contrast_L = 0.0
+			contrast_R = 0.0
+
+		elif block_type == 1:
 			contrast_L = 1.0
 			contrast_R = 0.0
-		else:
+
+		elif block_type == 2:
 			contrast_L = 0.0
 			contrast_R = 1.0
 
 		i_phase = int( not( i_phase ) )
 
 		seq[ i_evt, seq_ind[ "time_s" ] ] = time_s
-		seq[ i_evt, seq_ind[ "block_num" ] ] = block_num
+		seq[ i_evt, seq_ind[ "block_num" ] ] = i_block + 1
 		seq[ i_evt, seq_ind[ "block_type" ] ] = block_type
 		seq[ i_evt, seq_ind[ "contrast_L" ] ] = contrast_L
 		seq[ i_evt, seq_ind[ "contrast_R" ] ] = contrast_R

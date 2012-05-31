@@ -215,6 +215,17 @@ def _get_exp_conf( tr_s = 2.0 ):
 	exp_conf[ "block_len_s" ] = 16.0
 	exp_conf[ "run_len_s" ] = exp_conf[ "n_blocks" ] * exp_conf[ "block_len_s" ]
 
+	exp_conf[ "loc_n_runs" ] = 2
+	exp_conf[ "loc_n_blocks" ] = 19
+	exp_conf[ "loc_run_len_s" ] = ( exp_conf[ "loc_n_blocks" ] *
+	                                exp_conf[ "block_len_s" ]
+	                              )
+	exp_conf[ "loc_pre_len_s" ] = 6
+
+	exp_conf[ "loc_run_full_len_s" ] = ( exp_conf[ "loc_run_len_s" ] +
+	                                     exp_conf[ "loc_pre_len_s" ]
+	                                   )
+
 	exp_conf[ "n_evt_per_block" ] = 12
 	exp_conf[ "n_evt_per_run" ] = ( exp_conf[ "n_evt_per_block" ] *
 	                                exp_conf[ "n_blocks" ]

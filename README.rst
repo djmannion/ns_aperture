@@ -20,7 +20,7 @@ Prepare the filesystem
 
 1. Make the subject's directory structure::
 
-    mkdir -p sXXXX/{anat,analysis,fmap/f1,func/run{01,02,03,04,05,06,07,08,09,10},loc,log,roi}
+    mkdir -p sXXXX/{anat,analysis,fmap/f1,func/run{01,02,03,04,05,06,07,08,09,10},loc/run{01,02},log,roi}
 
 2. Copy the subject's runtime logfiles to the ``log`` directory.
 

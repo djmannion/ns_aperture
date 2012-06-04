@@ -14,15 +14,7 @@ import scipy.io
 import fmri_tools.preproc, fmri_tools.utils
 
 def convert( paths ):
-	"""Converts the functionals and fieldmaps from dicom to nifti.
-
-	Parameters
-	----------
-	paths : dict of strings
-		Subject path structure, as returned by 'get_subj_paths' in
-		'ns_aperture.config'.
-
-	"""
+	"""Converts the functionals and fieldmaps from dicom to nifti"""
 
 	# aggregate the dicom directories
 	dcm_dirs = ( paths[ "func" ][ "dcm_dirs" ] +
@@ -59,30 +51,14 @@ def convert( paths ):
 
 	# generate the full paths (with assumed extension) of the newly-created nifti
 	# files
-	full_img_paths = [ "%s.nii" % img_path
-	                   for img_path in img_paths
-	                 ]
+	full_img_paths = [ "%s.nii" % img_path for img_path in img_paths ]
 
 	# check that they are all unique
 	assert( fmri_tools.utils.files_are_unique( full_img_paths ) )
 
 
 def st_motion_correct( paths, conf, subj_conf ):
-	"""Performs slice-timing and motion correction.
-
-	Parameters
-	----------
-	paths : dict of strings
-		Subject path structure, as returned by 'get_subj_paths' in
-		'ns_aperture.config'.
-	conf : dict
-		Experiment configuration, as returned by 'get_conf' in
-		'ns_aperture.config'.
-	subj_conf : dict
-		Subject configuration, as returned by 'get_subj_conf' in
-		'ns_aperture.config', for this subject.
-
-	"""
+	"""Performs slice-timing and motion correction"""
 
 	# get the order of runs to pass to the correction algorithm
 	# this is done because the algorithm realigns all to the first entry, which
@@ -127,21 +103,7 @@ def st_motion_correct( paths, conf, subj_conf ):
 
 
 def fieldmaps( paths, conf, subj_conf ):
-	"""Prepare the fieldmaps.
-
-	Parameters
-	----------
-	paths : dict of strings
-		Subject path structure, as returned by 'get_subj_paths' in
-		'ns_aperture.config'.
-	conf : dict
-		Experiment configuration, as returned by 'get_conf' in
-		'ns_aperture.config'.
-	subj_conf : dict
-		Subject configuration, as returned by 'get_subj_conf' in
-		'ns_aperture.config', for this subject.
-
-	"""
+	"""Prepare the fieldmaps"""
 
 	# duplicate the delta TE for each fieldmap acquired
 	delta_te_ms = ( [ conf[ "acq" ][ "delta_te_ms" ] ] *
@@ -159,16 +121,6 @@ def fieldmaps( paths, conf, subj_conf ):
 def unwarp( paths, conf ):
 	"""Uses the fieldmaps to unwarp the functional images and create a mean image
 	of all the unwarped functional images.
-
-	Parameters
-	----------
-	paths : dict of strings
-		Subject path structure, as returned by 'get_subj_paths' in
-		'ns_aperture.config'.
-	conf : dict
-		Experiment configuration, as returned by 'get_conf' in
-		'ns_aperture.config'.
-
 	"""
 
 	# combine the experiment and localiser functional info
@@ -203,16 +155,6 @@ def unwarp( paths, conf ):
 def make_roi_images( paths, conf ):
 	"""Converts the ROI matlab files to nifti images in register with the
 	subject's anatomical.
-
-	Parameters
-	----------
-	paths : dict of strings
-		Subject path structure, as returned by 'get_subj_paths' in
-		'ns_aperture.config'.
-	conf : dict
-		Experiment configuration, as returned by 'get_conf' in
-		'ns_aperture.config'.
-
 	"""
 
 	n_rois = len( conf[ "ana" ][ "rois" ] )
@@ -238,18 +180,7 @@ def make_roi_images( paths, conf ):
 
 
 def prepare_rois( paths, conf ):
-	"""Extracts and writes the coordinates of each ROI.
-
-	Parameters
-	----------
-	paths : dict of strings
-		Subject path structure, as returned by 'get_subj_paths' in
-		'ns_aperture.config'.
-	conf : dict
-		Experiment configuration, as returned by 'get_conf' in
-		'ns_aperture.config'.
-
-	"""
+	"""Extracts and writes the coordinates of each ROI"""
 
 	for ( i_roi, roi_name ) in enumerate( conf[ "ana" ][ "rois" ] ):
 
@@ -270,21 +201,7 @@ def prepare_rois( paths, conf ):
 
 
 def form_vtcs( paths, conf, subj_conf ):
-	"""Extracts the voxel time courses for each voxel in each ROI
-
-	Parameters
-	----------
-	paths : dict of strings
-		Subject path structure, as returned by 'get_subj_paths' in
-		'ns_aperture.config'.
-	conf : dict
-		Experiment configuration, as returned by 'get_conf' in
-		'ns_aperture.config'.
-	subj_conf : dict
-		Subject configuration, as returned by 'get_subj_conf' in
-		'ns_aperture.config', for this subject.
-
-	"""
+	"""Extracts the voxel time courses for each voxel in each ROI"""
 
 	for roi_name in conf[ "ana" ][ "rois" ]:
 
@@ -323,8 +240,8 @@ def form_vtcs( paths, conf, subj_conf ):
 				vtc[ :, i_run, i_voxel ] = vox_data
 
 
-		# discard the unwanted volumes and compensate for the HRF delay
-		vtc = vtc[ conf[ "exp" ][ "run_range_hrf_corr" ], :, : ]
+		# discard the unwanted volumes
+		vtc = vtc[ conf[ "exp" ][ "run_range" ], :, : ]
 
 		# check that it has been filled up correctly
 		assert( np.sum( np.isnan( vtc ) ) == 0 )
@@ -364,7 +281,7 @@ def form_vtcs( paths, conf, subj_conf ):
 				loc_vtc[ :, i_run, i_voxel ] = vox_data
 
 		# discard the unwanted volumes and compensate for the HRF delay
-		loc_vtc = loc_vtc[ conf[ "exp" ][ "run_range_hrf_corr" ], :, : ]
+		loc_vtc = loc_vtc[ conf[ "exp" ][ "run_range" ], :, : ]
 
 		# check that it has been filled up correctly
 		assert( np.sum( np.isnan( loc_vtc ) ) == 0 )

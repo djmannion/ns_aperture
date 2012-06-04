@@ -96,7 +96,7 @@ def run( order ):
 	run_time = run_clock.getTime()
 
 	# keep looping until the time has elapsed
-	while run_time < conf[ "exp" ][ "run_len_s" ]:
+	while run_time < conf[ "exp" ][ "loc_run_full_len_s" ]:
 
 		i_evt = np.where( run_time > seq[ :, seq_ind[ "time_s" ] ] )[ 0 ]
 

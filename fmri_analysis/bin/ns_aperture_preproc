@@ -93,28 +93,24 @@ if args.preproc_step == "convert":
 
 elif args.preproc_step == "correct":
 	ns_aperture.fmri_analysis.preproc.st_motion_correct( subj_paths,
-	                                                     conf[ "acq" ],
-	                                                     conf[ "preproc" ],
+	                                                     conf,
 	                                                     subj_conf
 	                                                   )
 
 elif args.preproc_step == "fieldmaps":
 	ns_aperture.fmri_analysis.preproc.fieldmaps( subj_paths,
-	                                             conf[ "acq" ],
+	                                             conf,
 	                                             subj_conf
 	                                           )
 
 elif args.preproc_step == "undistort":
 	ns_aperture.fmri_analysis.preproc.unwarp( subj_paths,
-	                                          conf[ "acq" ],
-	                                          conf[ "preproc" ],
-	                                          subj_conf
+	                                          conf
 	                                        )
 
 elif args.preproc_step == "roi-img":
 	ns_aperture.fmri_analysis.preproc.make_roi_images( subj_paths,
-	                                                   conf[ "ana" ],
-	                                                   conf[ "preproc" ]
+	                                                   conf
 	                                                 )
 
 elif args.preproc_step == "roi":

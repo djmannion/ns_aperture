@@ -465,7 +465,7 @@ def get_subj_conf( subj_id = None ):
 
 	if subj_id is None:
 		return subj_conf
-	else
+	else:
 		return subj_conf[ subj_id ]
 
 

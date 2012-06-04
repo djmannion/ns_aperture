@@ -17,24 +17,24 @@ def convert( paths ):
 	"""Converts the functionals and fieldmaps from dicom to nifti"""
 
 	# aggregate the dicom directories
-	dcm_dirs = ( paths[ "func" ][ "dcm_dirs" ] +
-	             paths[ "loc" ][ "dcm_dirs" ] +
-	             paths[ "fmap" ][ "dcm_mag_dirs" ] +
-	             paths[ "fmap" ][ "dcm_ph_dirs" ]
+	raw_dirs = ( paths[ "func" ][ "raw_dirs" ] +
+	             paths[ "loc" ][ "raw_dirs" ] +
+	             paths[ "fmap" ][ "raw_mag_dirs" ] +
+	             paths[ "fmap" ][ "raw_ph_dirs" ]
 	           )
 
 	# aggregate the output directories
-	nii_dirs = ( paths[ "func" ][ "dirs" ] +
-	             paths[ "loc" ][ "dirs" ] +
-	             paths[ "fmap" ][ "dirs" ] +
-	             paths[ "fmap" ][ "dirs" ]
+	nii_dirs = ( paths[ "func" ][ "run_dirs" ] +
+	             paths[ "loc" ][ "run_dirs" ] +
+	             paths[ "fmap" ][ "fmap_dirs" ] +
+	             paths[ "fmap" ][ "fmap_dirs" ]
 	           )
 
 	# aggregate the images paths
-	img_paths = ( paths[ "func" ][ "orig" ] +
-	              paths[ "loc" ][ "orig" ] +
-	              paths[ "fmap" ][ "mag" ] +
-	              paths[ "fmap" ][ "ph" ]
+	img_paths = ( paths[ "func" ][ "orig_files" ] +
+	              paths[ "loc" ][ "orig_files" ] +
+	              paths[ "fmap" ][ "mag_files" ] +
+	              paths[ "fmap" ][ "ph_files" ]
 	            )
 
 	# pull out the filenames
@@ -44,7 +44,7 @@ def convert( paths ):
 
 	# do the DCM -> NII conversion
 	map( fmri_tools.preproc.dcm_to_nii,
-	     dcm_dirs,
+	     raw_dirs,
 	     nii_dirs,
 	     img_names
 	   )
@@ -55,6 +55,16 @@ def convert( paths ):
 
 	# check that they are all unique
 	assert( fmri_tools.utils.files_are_unique( full_img_paths ) )
+
+	# files to go into the summary
+	summ_paths = ( paths[ "func" ][ "orig_files" ] +
+	               paths[ "loc" ][ "orig_files" ]
+	             )
+
+	# make a summary image from the corrected files
+	fmri_tools.preproc.gen_sess_summ_img( summ_paths,
+	                                      paths[ "summ" ][ "orig_summ_file" ]
+	                                    )
 
 
 def st_motion_correct( paths, conf, subj_conf ):
@@ -69,12 +79,12 @@ def st_motion_correct( paths, conf, subj_conf ):
 	# reorder the paths
 	# (the -1 is because the runs are specified in subj_conf in a one-based
 	# index; ie. run 1 is the first run)
-	orig_paths = [ paths[ im_type ][ "orig" ][ i_run - 1 ]
+	orig_paths = [ paths[ im_type ][ "orig_files" ][ i_run - 1 ]
 	               for i_run, im_type in run_order
 	             ]
-	corr_paths = [ paths[ im_type ][ "corr" ][ i_run - 1 ]
-	               for i_run, im_type in run_order
-	             ]
+	xform_paths = [ paths[ im_type ][ "xform_dirs" ][ i_run - 1 ]
+	                for i_run, im_type in run_order
+	              ]
 
 	# pull out the important information from the config
 	slice_order = conf[ "acq" ][ "slice_order" ]
@@ -82,24 +92,23 @@ def st_motion_correct( paths, conf, subj_conf ):
 	slice_info = ( conf[ "acq" ][ "slice_axis" ],
 	               conf[ "acq" ][ "slice_acq_dir" ]
 	             )
+	st_correct = conf[ "preproc" ][ "st_correct" ]
 
 	# run the motion correction algorithm (slow)
 	motion_est = fmri_tools.preproc.correct_st_motion( orig_paths,
-	                                                   corr_paths,
+	                                                   xform_paths,
 	                                                   slice_order,
 	                                                   tr_s,
 	                                                   slice_info,
+	                                                   st_correct = st_correct,
+	                                                   corr_mat = True,
 	                                                 )
 
 	# save the estimated motion parameters
-	np.save( paths[ "func" ][ "motion_estimates" ],
+	np.save( paths[ "summ" ][ "mot_est_file" ],
 	         arr = motion_est
 	       )
 
-	# make a summary image from the corrected files
-	fmri_tools.preproc.gen_sess_summ_img( corr_paths,
-	                                      paths[ "func" ][ "corr_summ" ]
-	                                    )
 
 
 def fieldmaps( paths, conf, subj_conf ):

@@ -4,11 +4,10 @@
 from __future__ import division
 
 import os
-import string
 
 import numpy as np
 
-import fmri_tools.utils
+import fmri_tools.utils, fmri_tools.paths
 
 
 def get_conf():
@@ -21,6 +20,8 @@ def get_conf():
 		stim : stimulus configuration
 		task : behavioural task configuration
 		acq : acquisition configuration
+		ana : analysis configuration
+		preproc : preprocessing configuration
 
 	"""
 
@@ -59,6 +60,8 @@ def _get_stim_conf():
 	patch_rect : 2-item list of 2-item list of 2-item list
 		Coordinates of each patch, in the original image dimensions. Arranged as
 		( patch 1, patch 2 ) -> ( top left, bottom right ) -> ( i_row, i_col )
+	scale_mode : string, { "none", "cd", "norm", "mean" }
+		How to scale the images.
 	img_ids : numpy vector of ints
 		Identifiers (one-based) for the set of candidate images.
 	fix_rad_deg : float
@@ -69,6 +72,8 @@ def _get_stim_conf():
 		Colour of inner fixation circle when task is active.
 	loc_sf_cpd : float
 		Spatial frequency of the localiser stimulus, in cycles per degree
+	loc_rev_rate_hz : float
+		Reversal rate of the localiser stimulus, in hertz.
 
 	Notes
 	-----
@@ -210,7 +215,7 @@ def _get_exp_conf( tr_s = 2.0 ):
 
 	exp_conf = {}
 
-	exp_conf[ "exp_id" ] = "ns_aperture"
+	exp_conf[ "id" ] = "ns_aperture"
 
 	exp_conf[ "n_runs" ] = 10
 	exp_conf[ "n_blocks" ] = 18
@@ -364,6 +369,8 @@ def _get_preproc_conf():
 
 	slice_acq_dir = 1
 
+	st_correct = False
+
 	phase_encode_dir = "y-"
 
 	roi_ax = ( 2, 1, 0 )
@@ -375,7 +382,8 @@ def _get_preproc_conf():
 	                 "slice_acq_dir" : slice_acq_dir,
 	                 "phase_encode_dir" : phase_encode_dir,
 	                 "roi_ax" : roi_ax,
-	                 "roi_ax_order" : roi_ax_order
+	                 "roi_ax_order" : roi_ax_order,
+	                 "st_correct" : st_correct
 	               }
 
 	return preproc_conf
@@ -470,8 +478,7 @@ def get_subj_conf( subj_id = None ):
 
 
 def get_study_paths():
-	"""
-	"""
+	"""Get the path structure for the study"""
 
 	base_dir = "/labs/olmanlab/Data7T/NatSceneAperture/"
 
@@ -481,52 +488,73 @@ def get_study_paths():
 
 
 def get_subj_paths( subj_id ):
-	"""
-	"""
+	"""Get the path structure for a given subject"""
 
 	study_paths = get_study_paths()
 
 	subj_conf = get_subj_conf( subj_id )
 
-	study_conf = get_study_conf()
+	study_conf = get_conf()
 
-	func_paths = fmri_tools.paths.get_func_paths( study_paths[ "subj_dir" ],
+	subj_dir = os.path.join( study_paths[ "subj_dir" ], subj_id )
+
+	# FUNCTIONALS
+	func_dir = os.path.join( subj_dir, "func" )
+
+	#   - experiment functionals
+	func_exp_dir = os.path.join( func_dir, "exp" )
+
+	func_paths = fmri_tools.paths.get_func_paths( func_exp_dir,
 	                                              subj_id,
 	                                              subj_conf[ "n_runs" ],
 	                                              study_conf[ "exp" ][ "id" ],
-	                                              "func/exp"
+	                                              sep_corr = False,
+	                                              inc_xform_dirs = True
 	                                            )
 
+	#   - localiser functionals
 	loc_id = "%s_loc" % study_conf[ "exp" ][ "id" ]
+	func_loc_dir = os.path.join( func_dir, "loc" )
 
-	loc_paths = fmri_tools.paths.get_func_paths( study_paths[ "subj_dir" ],
+	loc_paths = fmri_tools.paths.get_func_paths( func_loc_dir,
 	                                             subj_id,
 	                                             subj_conf[ "n_loc_runs" ],
 	                                             loc_id,
-	                                             "func/loc"
+	                                             sep_corr = False,
+	                                             inc_xform_dirs = True
 	                                           )
 
-	summ_paths = fmri_tools.paths.get_func_summ_paths( study_paths[ "subj_dir" ],
+	# SUMMARIES
+	summ_paths = fmri_tools.paths.get_func_summ_paths( func_dir,
 	                                                   subj_id,
-	                                                   study_conf[ "exp" ][ "id" ]
+	                                                   study_conf[ "exp" ][ "id" ],
+	                                                   sep_corr = False
 	                                                 )
 
-	fmap_paths = fmri_tools.paths.get_fmap_paths( study_paths[ "subj_dir" ],
+	# FIELDMAPS
+	fmap_dir = os.path.join( subj_dir, "fmap" )
+
+	fmap_paths = fmri_tools.paths.get_fmap_paths( fmap_dir,
 	                                              subj_id,
-	                                              subj_conf[ "n_fmaps" ],
+	                                              study_conf[ "exp" ][ "id" ],
+	                                              subj_conf[ "n_fmaps" ]
+	                                            )
+
+	# ANATOMICALS
+	anat_dir = os.path.join( subj_dir, "anat" )
+
+	anat_paths = fmri_tools.paths.get_anat_paths( anat_dir,
+	                                              subj_id,
 	                                              study_conf[ "exp" ][ "id" ]
 	                                            )
 
-	anat_paths = fmri_tools.paths.get_anat_paths( study_paths[ "subj_dir" ],
-	                                              subj_id,
-	                                              study_conf[ "exp" ][ "id" ]
-	                                            )
-
-	roi_paths = fmri_tools.paths.get_roi_paths( study_paths[ "subj_dir" ],
+	# ROIS
+	roi_dir = os.path.join( subj_dir, "roi" )
+	roi_paths = fmri_tools.paths.get_roi_paths( roi_dir,
 	                                            study_conf[ "ana" ][ "rois" ]
 	                                          )
 
-	subj_paths - { "func" : func_paths,
+	subj_paths = { "func" : func_paths,
 	               "loc" : loc_paths,
 	               "summ" : summ_paths,
 	               "fmap" : fmap_paths,

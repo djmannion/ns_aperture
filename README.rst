@@ -20,11 +20,11 @@ Prepare the filesystem
 
 1. Make the subject's directory structure::
 
-    mkdir -p sXXXX/{anat,analysis,fmap/f1,func/run{01,02,03,04,05,06,07,08,09,10},loc/run{01,02},log,roi}
+    mkdir -p sXXXX/{anat,analysis,fmap/f01,func/exp/run{01,02,03,04,05,06,07,08,09,10}/mc_xform,func/loc/run{01,02}/mc_xform,log,roi}
 
 2. Copy the subject's runtime logfiles to the ``log`` directory.
 
-3. Make symlinks named ``raw`` in each functional run directory that link to the location of its associated raw DICOM directory::
+3. Make symlinks named ``raw`` in each functional run directory (exp and loc) that link to the location of its associated raw DICOM directory::
 
     ln -s /labs/olmanlab/DICOM/YYYYMMDD/sXXXX/MR-such_and_such raw
 
@@ -35,7 +35,7 @@ Prepare the filesystem
 
 5. Copy (not symlink) the subject's main high-res anatomical (skull stripped) from the main repository to the ``anat`` directorym using FSL::
 
-    fslmaths /labs/olmanlab/Anatomy/sXXXX/sXXXX_stripped sXXXX_anat
+    fslmaths /labs/olmanlab/Anatomy/sXXXX/sXXXX_stripped sXXXX_ns_aperture_anat
 
   N.B. We want to use single NIFTI files, so before running the above you may need to run::
 
@@ -87,6 +87,7 @@ where ``sXXXX`` is the subject ID and ``stage`` is the preprocessing stage (see 
 
 The stages are as follows:
 
+
 Conversion
 ~~~~~~~~~~
 
@@ -94,18 +95,19 @@ Converts from the raw scanner format to a set of 4D NIFTI files::
 
     ns_aperture_preproc sXXXX convert
 
-After execution, open up each NIFTI file and inspect for image quality.
+After execution, open up each NIFTI file and inspect for image quality and look at the summary image to see how much movement there was.
+
 
 Correction
 ~~~~~~~~~~
 
-Applies a motion and slice-timing correction procedure::
+Applies a motion correction procedure::
 
     ns_aperture_preproc sXXXX correct
 
 *N.B. This stage takes quite a while...*
 
-After execution, open up the session summary image that it creates and view in movie mode. This gives a good sense for how well the motion correction worked. You can also inspect the saved motion correction estimates to see how much movement there was.
+This doesn't do any resampling, just saves the tranformation matrices. You can also inspect the saved motion correction estimates to see how much movement there was.
 
 Fieldmaps
 ~~~~~~~~~

@@ -20,7 +20,7 @@ Prepare the filesystem
 
 1. Make the subject's directory structure::
 
-    mkdir -p sXXXX/{anat,analysis,fmap/f01,func/exp/run{01,02,03,04,05,06,07,08,09,10}/mc_xform,func/loc/run{01,02}/mc_xform,log,roi}
+    mkdir -p sXXXX/{anat,analysis,fmap/f01,func/exp/run{01,02,03,04,05,06,07,08,09,10},func/loc/run{01,02},log,roi}
 
 2. Copy the subject's runtime logfiles to the ``log`` directory.
 
@@ -105,9 +105,8 @@ Applies a motion correction procedure::
 
     ns_aperture_preproc sXXXX correct
 
-*N.B. This stage takes quite a while...*
+After execution, open up the summary NIFTI file to check that most of the motion has been removed. You can also inspect the saved motion correction estimates to see how much movement there was.
 
-This doesn't do any resampling, just saves the tranformation matrices. You can also inspect the saved motion correction estimates to see how much movement there was.
 
 Fieldmaps
 ~~~~~~~~~
@@ -116,12 +115,13 @@ Prepares the fieldmaps::
 
     ns_aperture_config SXXXX fieldmaps
 
+
 Unwarping
 ~~~~~~~~~
 
 Before running, need to make a symbolic link in each functional run directory to that run's fieldmap. For example::
 
-    ln -s ../../fmap/f1/sXXXX_ns_aperture_fmap_1-fmap.nii sXXXX_ns_aperture_run_1-fmap.nii
+    ln -s ../../fmap/f01/sXXXX_ns_aperture_fmap_01-fmap.nii sXXXX_ns_aperture_run_01-fmap.nii
 
 Then, to use the fieldmaps to unwarp the functional images to remove the spatial distortion::
 
@@ -138,6 +138,7 @@ To verify that the unwarping has worked correctly:
 
 Also, look at the session summary image produced and make sure that all looks good across the session.
 
+
 ROI to images
 ~~~~~~~~~~~~~
 
@@ -146,6 +147,7 @@ Converts the raw ROI files from mrLoadRet into NIFTI masks::
     ns_aperture_preproc SXXXX roi-img
 
 To check this has worked correctly, load the subject's anatomical image and overlay the ROI images - they should lie within expected locations.
+
 
 Coregistration
 ~~~~~~~~~~~~~~

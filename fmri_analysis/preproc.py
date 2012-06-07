@@ -61,7 +61,7 @@ def convert( paths ):
 	               paths[ "loc" ][ "orig_files" ]
 	             )
 
-	# make a summary image from the corrected files
+	# make a summary image from the files
 	fmri_tools.preproc.gen_sess_summ_img( summ_paths,
 	                                      paths[ "summ" ][ "orig_summ_file" ]
 	                                    )
@@ -82,9 +82,9 @@ def st_motion_correct( paths, conf, subj_conf ):
 	orig_paths = [ paths[ im_type ][ "orig_files" ][ i_run - 1 ]
 	               for i_run, im_type in run_order
 	             ]
-	xform_paths = [ paths[ im_type ][ "xform_dirs" ][ i_run - 1 ]
-	                for i_run, im_type in run_order
-	              ]
+	corr_paths = [ paths[ im_type ][ "corr_files" ][ i_run - 1 ]
+	               for i_run, im_type in run_order
+	             ]
 
 	# pull out the important information from the config
 	slice_order = conf[ "acq" ][ "slice_order" ]
@@ -96,12 +96,11 @@ def st_motion_correct( paths, conf, subj_conf ):
 
 	# run the motion correction algorithm (slow)
 	motion_est = fmri_tools.preproc.correct_st_motion( orig_paths,
-	                                                   xform_paths,
+	                                                   corr_paths,
 	                                                   slice_order,
 	                                                   tr_s,
 	                                                   slice_info,
-	                                                   st_correct = st_correct,
-	                                                   corr_mat = True,
+	                                                   st_correct = st_correct
 	                                                 )
 
 	# save the estimated motion parameters
@@ -109,6 +108,10 @@ def st_motion_correct( paths, conf, subj_conf ):
 	         arr = motion_est
 	       )
 
+	# make a summary image from the corrected files
+	fmri_tools.preproc.gen_sess_summ_img( corr_paths,
+	                                      paths[ "summ" ][ "corr_summ_file" ]
+	                                    )
 
 
 def fieldmaps( paths, conf, subj_conf ):
@@ -120,9 +123,9 @@ def fieldmaps( paths, conf, subj_conf ):
 	              )
 
 	map( fmri_tools.preproc.make_fieldmap,
-	     paths[ "fmap" ][ "mag" ],
-	     paths[ "fmap" ][ "ph" ],
-	     paths[ "fmap" ][ "fmap" ],
+	     paths[ "fmap" ][ "mag_files" ],
+	     paths[ "fmap" ][ "ph_files" ],
+	     paths[ "fmap" ][ "fmap_files" ],
 	     delta_te_ms
 	   )
 
@@ -133,13 +136,17 @@ def unwarp( paths, conf ):
 	"""
 
 	# combine the experiment and localiser functional info
-	func_corr = paths[ "func" ][ "corr" ] + paths[ "loc" ][ "corr" ]
-	func_fmap = paths[ "func" ][ "fmap" ] + paths[ "loc" ][ "fmap" ]
-	func_uw = paths[ "func" ][ "uw" ] + paths[ "loc" ][ "uw" ]
+	func_orig = paths[ "func" ][ "orig_files" ] + paths[ "loc" ][ "orig_files" ]
+	func_fmap = paths[ "func" ][ "fmap_files" ] + paths[ "loc" ][ "fmap_files" ]
+	func_corr = paths[ "func" ][ "corr_files" ] + paths[ "loc" ][ "corr_files" ]
+	func_uw = paths[ "func" ][ "uw_files" ] + paths[ "loc" ][ "uw_files" ]
+
 
 	# duplicate the dwell time and phase encode direction for each image
 	dwell_ms = [ conf[ "acq" ][ "dwell_ms" ] ] * len( func_corr )
 	ph_encode_dir = [ conf[ "acq" ][ "ph_encode_dir" ] ] * len( func_corr )
+
+	interp = [ "spline" ] * len( func_corr )
 
 	# perform the unwarping
 	map( fmri_tools.preproc.unwarp,
@@ -147,17 +154,18 @@ def unwarp( paths, conf ):
 	     func_fmap,
 	     func_uw,
 	     dwell_ms,
-	     ph_encode_dir
+	     ph_encode_dir,
+	     interp
 	   )
 
 	# create a mean image of the unwarped data
 	fmri_tools.preproc.mean_image( func_uw,
-	                               paths[ "func" ][ "mean" ]
+	                               paths[ "summ" ][ "mean_file" ]
 	                             )
 
 	# produce a summary image
-	fmri_tools.preproc.gen_sess_summ_img( func_uw,
-	                                      paths[ "func" ][ "uw_summ" ]
+	fmri_tools.preproc.gen_sess_summ_img( func_corr,
+	                                      paths[ "summ" ][ "uw_summ_file" ]
 	                                    )
 
 
@@ -169,10 +177,10 @@ def make_roi_images( paths, conf ):
 	n_rois = len( conf[ "ana" ][ "rois" ] )
 
 	# python nifti loader needs the extension
-	anat_path = [ "%s.nii" % paths[ "anat" ][ "anat" ] ] * n_rois
+	anat_path = [ "%s.nii" % paths[ "anat" ][ "anat_file" ] ] * n_rois
 
 	roi_paths = [ "%s.nii" % roi_path
-	              for roi_path in paths[ "roi" ][ "orig" ]
+	              for roi_path in paths[ "roi" ][ "orig_files" ]
 	            ]
 
 	roi_ax = [ conf[ "ana" ][ "roi_ax" ] ] * n_rois
@@ -180,7 +188,7 @@ def make_roi_images( paths, conf ):
 
 	# convert the ROI mat files to nifti images
 	map( fmri_tools.preproc.roi_to_nii,
-	     paths[ "roi" ][ "mat" ],
+	     paths[ "roi" ][ "mat_files" ],
 	     anat_path,
 	     roi_paths,
 	     roi_ax,

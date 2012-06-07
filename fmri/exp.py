@@ -73,7 +73,11 @@ def run( subj_id, run_num, order ):
 	                                     height = 16,
 	                                     units = "pix"
 	                                   )
-	if np.mod( run_num, 4 ) > 1:
+
+	# using random_integers because it is [ 0, 1 ] rather than [ 0, 1 )
+	task_hand = np.random.random_integers( 0, 1, 1 )[ 0 ]
+
+	if task_hand == 0:
 		hand_instruct = "Same scene Left, different scene R"
 	else:
 		hand_instruct = "Same scene Right, different scene L"
@@ -169,7 +173,7 @@ def run( subj_id, run_num, order ):
 				trig_count += 1
 
 			else:
-				task_resp.extend( [ ( key, timestamp ) ] )
+				task_resp.extend( [ ( key, timestamp, task_hand ) ] )
 
 		run_time = run_clock.getTime()
 
@@ -182,7 +186,10 @@ def run( subj_id, run_num, order ):
 
 	# convert the response list into an np array for saving
 	task_resp_np = np.array( task_resp,
-	                         dtype = [ ( "key", "S10" ), ( "time", float ) ]
+	                         dtype = [ ( "key", "S10" ),
+	                                   ( "time", float )
+	                                   ( "hand", int )
+	                                 ]
 	                       )
 	# and save
 	np.save( task_path, task_resp_np )

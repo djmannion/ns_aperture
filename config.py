@@ -507,9 +507,7 @@ def get_subj_paths( subj_id ):
 	func_paths = fmri_tools.paths.get_func_paths( func_exp_dir,
 	                                              subj_id,
 	                                              subj_conf[ "n_runs" ],
-	                                              study_conf[ "exp" ][ "id" ],
-	                                              sep_corr = False,
-	                                              inc_xform_dirs = True
+	                                              study_conf[ "exp" ][ "id" ]
 	                                            )
 
 	#   - localiser functionals
@@ -519,16 +517,13 @@ def get_subj_paths( subj_id ):
 	loc_paths = fmri_tools.paths.get_func_paths( func_loc_dir,
 	                                             subj_id,
 	                                             subj_conf[ "n_loc_runs" ],
-	                                             loc_id,
-	                                             sep_corr = False,
-	                                             inc_xform_dirs = True
+	                                             loc_id
 	                                           )
 
 	# SUMMARIES
 	summ_paths = fmri_tools.paths.get_func_summ_paths( func_dir,
 	                                                   subj_id,
-	                                                   study_conf[ "exp" ][ "id" ],
-	                                                   sep_corr = False
+	                                                   study_conf[ "exp" ][ "id" ]
 	                                                 )
 
 	# FIELDMAPS

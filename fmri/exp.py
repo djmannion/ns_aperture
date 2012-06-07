@@ -187,7 +187,7 @@ def run( subj_id, run_num, order ):
 	# convert the response list into an np array for saving
 	task_resp_np = np.array( task_resp,
 	                         dtype = [ ( "key", "S10" ),
-	                                   ( "time", float )
+	                                   ( "time", float ),
 	                                   ( "hand", int )
 	                                 ]
 	                       )

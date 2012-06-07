@@ -95,6 +95,8 @@ def run( order ):
 
 	run_time = run_clock.getTime()
 
+	start_time = run_time.copy()
+
 	# keep looping until the time has elapsed
 	while run_time < conf[ "exp" ][ "loc_run_full_len_s" ]:
 
@@ -130,6 +132,8 @@ def run( order ):
 				return 1
 
 		run_time = run_clock.getTime()
+
+	print run_clock.getTime() - start_time
 
 	# all done, time for cleanup
 	# first, close the window
@@ -280,8 +284,9 @@ def get_block_seq( order, n_blocks ):
 
 	n_reps = int( ( n_blocks - 1 ) / len( mini_block ) )
 
-	# hard-coded number of blocks
 	blk_seq = np.concatenate( ( [ 0 ], np.tile( mini_block, n_reps ) ) )
+
+	assert( len( blk_seq ) == n_blocks )
 
 	return blk_seq
 

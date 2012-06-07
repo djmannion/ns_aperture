@@ -95,8 +95,6 @@ def run( order ):
 
 	run_time = run_clock.getTime()
 
-	start_time = run_time.copy()
-
 	# keep looping until the time has elapsed
 	while run_time < conf[ "exp" ][ "loc_run_full_len_s" ]:
 
@@ -132,8 +130,6 @@ def run( order ):
 				return 1
 
 		run_time = run_clock.getTime()
-
-	print run_clock.getTime() - start_time
 
 	# all done, time for cleanup
 	# first, close the window
@@ -305,7 +301,11 @@ def get_seq( conf, order ):
 
 	seq_ind = get_seq_ind()
 
-	n_evt = conf[ "stim" ][ "loc_rev_rate_hz" ] * conf[ "exp" ][ "run_len_s" ]
+	n_evt = ( conf[ "stim" ][ "loc_rev_rate_hz" ] *
+	          ( conf[ "exp" ][ "loc_run_full_len_s" ] -
+	            conf[ "exp" ][ "loc_pre_len_s" ]
+	          )
+	        )
 
 	# init the empty sequence
 	seq = np.empty( ( n_evt,

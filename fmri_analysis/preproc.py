@@ -202,7 +202,7 @@ def prepare_rois( paths, conf ):
 	for ( i_roi, roi_name ) in enumerate( conf[ "ana" ][ "rois" ] ):
 
 		# load the ROI image
-		roi = nipy.load_image( "%s.nii" % paths[ "roi" ][ "rs" ][ i_roi ]
+		roi = nipy.load_image( "%s.nii" % paths[ "roi" ][ "rs_files" ][ i_roi ]
 		                     ).get_data()
 
 		# get rid of any NaNs
@@ -212,7 +212,7 @@ def prepare_rois( paths, conf ):
 		coords = np.nonzero( roi )
 
 		# and save
-		np.save( "%s-%s.npy" % ( paths[ "ana" ][ "coords" ], roi_name ),
+		np.save( paths[ "roi" ][ "coord_files" ][ i_roi ],
 		         arr = coords
 		       )
 
@@ -220,15 +220,15 @@ def prepare_rois( paths, conf ):
 def form_vtcs( paths, conf, subj_conf ):
 	"""Extracts the voxel time courses for each voxel in each ROI"""
 
-	for roi_name in conf[ "ana" ][ "rois" ]:
+	for ( i_roi, roi_name ) in enumerate( conf[ "ana" ][ "rois" ] ):
 
 		# load the coordinates for the roi
-		coords = np.load( "%s-%s.npy" % ( paths[ "ana" ][ "coords" ], roi_name ) )
+		coords = np.load( paths[ "roi" ][ "coord_files" ][ i_roi ] )
 
 		n_voxels = coords.shape[ 1 ]
 
 		# initialise the vtc
-		vtc = np.empty( ( conf[ "exp" ][ "n_vols_per_run" ],
+		vtc = np.empty( ( conf[ "exp" ][ "n_valid_vols_per_run" ],
 		                  subj_conf[ "n_runs" ],
 		                  n_voxels
 		                )
@@ -238,38 +238,29 @@ def form_vtcs( paths, conf, subj_conf ):
 		vtc.fill( np.NAN )
 
 		# loop through each unwarped image (run) file
-		for ( i_run, run_path ) in enumerate( paths[ "func" ][ "uw" ] ):
+		for ( i_run, run_path ) in enumerate( paths[ "func" ][ "uw_files" ] ):
 
-			# load the run file
+			# load the run data from the image file file
 			run_img = nipy.load_image( "%s.nii" % run_path ).get_data()
 
-			# iterate through each voxel in the roi
 			for i_voxel in xrange( n_voxels ):
 
-				# extract the voxel data (timecourse) at the voxel coordinate
-				vox_data = run_img[ coords[ 0, i_voxel ],
-				                    coords[ 1, i_voxel ],
-				                    coords[ 2, i_voxel ],
-				                    :
-				                  ]
-
-				# store the voxel data
-				vtc[ :, i_run, i_voxel ] = vox_data
-
-
-		# discard the unwanted volumes
-		vtc = vtc[ conf[ "exp" ][ "run_range" ], :, : ]
+				vtc[ :, i_run, i_voxel ] = run_img[ coords[ 0, i_voxel ],
+				                                    coords[ 1, i_voxel ],
+				                                    coords[ 2, i_voxel ],
+				                                    conf[ "exp" ][ "run_range" ]
+				                                  ]
 
 		# check that it has been filled up correctly
 		assert( np.sum( np.isnan( vtc ) ) == 0 )
 
 		# save the vtc
-		np.save( "%s-%s.npy" % ( paths[ "ana" ][ "vtc" ], roi_name ),
+		np.save( "%s-%s.npy" % ( paths[ "ana_exp" ][ "vtc_file" ], roi_name ),
 		         arr = vtc
 		       )
 
 		# initialise the localiser vtc
-		loc_vtc = np.empty( ( conf[ "exp" ][ "n_vols_per_run" ],
+		loc_vtc = np.empty( ( conf[ "exp" ][ "loc_n_valid_vols_per_run" ],
 		                      subj_conf[ "n_loc_runs" ],
 		                      n_voxels
 		                    )
@@ -279,32 +270,24 @@ def form_vtcs( paths, conf, subj_conf ):
 		loc_vtc.fill( np.NAN )
 
 		# loop through each unwarped image (run) file
-		for ( i_run, run_path ) in enumerate( paths[ "loc" ][ "uw" ] ):
+		for ( i_run, run_path ) in enumerate( paths[ "loc" ][ "uw_files" ] ):
 
-			# load the run file
+			# load the run data from the image file file
 			run_img = nipy.load_image( "%s.nii" % run_path ).get_data()
 
-			# iterate through each voxel in the roi
 			for i_voxel in xrange( n_voxels ):
 
-				# extract the voxel data (timecourse) at the voxel coordinate
-				vox_data = run_img[ coords[ 0, i_voxel ],
-				                    coords[ 1, i_voxel ],
-				                    coords[ 2, i_voxel ],
-				                    :
-				                  ]
-
-				# store the voxel data
-				loc_vtc[ :, i_run, i_voxel ] = vox_data
-
-		# discard the unwanted volumes and compensate for the HRF delay
-		loc_vtc = loc_vtc[ conf[ "exp" ][ "run_range" ], :, : ]
+				loc_vtc[ :, i_run, i_voxel ] = run_img[ coords[ 0, i_voxel ],
+				                                        coords[ 1, i_voxel ],
+				                                        coords[ 2, i_voxel ],
+				                                        conf[ "exp" ][ "loc_run_range" ]
+				                                      ]
 
 		# check that it has been filled up correctly
 		assert( np.sum( np.isnan( loc_vtc ) ) == 0 )
 
 		# save the localiser vtc
-		np.save( "%s-%s.npy" % ( paths[ "ana" ][ "loc_vtc" ], roi_name ),
+		np.save( "%s-%s.npy" % ( paths[ "ana_loc" ][ "vtc_file" ], roi_name ),
 		         arr = loc_vtc
 		       )
 

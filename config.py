@@ -10,8 +10,14 @@ import numpy as np
 import fmri_tools.utils, fmri_tools.paths
 
 
-def get_conf():
+def get_conf( subj_id = None ):
 	"""Overall experiment configuration.
+
+	Parameters
+	----------
+	subj_id : string, optional
+		If passed, checks for subject-specific modifications to the configuration
+		and applies them.
 
 	Returns
 	-------
@@ -32,6 +38,9 @@ def get_conf():
 	         "ana" : _get_analysis_conf(),
 	         "preproc" : _get_preproc_conf()
 	       }
+
+	if subj_id is not None:
+		conf = apply_subj_specific_fixes( conf, subj_id )
 
 	return conf
 
@@ -222,16 +231,6 @@ def _get_exp_conf( tr_s = 2.0 ):
 	exp_conf[ "block_len_s" ] = 16.0
 	exp_conf[ "run_len_s" ] = exp_conf[ "n_blocks" ] * exp_conf[ "block_len_s" ]
 
-	exp_conf[ "loc_n_runs" ] = 2
-	exp_conf[ "loc_n_blocks" ] = 19
-	exp_conf[ "loc_run_len_s" ] = ( exp_conf[ "loc_n_blocks" ] *
-	                                exp_conf[ "block_len_s" ]
-	                              )
-	exp_conf[ "loc_pre_len_s" ] = 6
-
-	exp_conf[ "loc_run_full_len_s" ] = ( exp_conf[ "loc_run_len_s" ] +
-	                                     exp_conf[ "loc_pre_len_s" ]
-	                                   )
 
 	exp_conf[ "n_evt_per_block" ] = 12
 	exp_conf[ "n_evt_per_run" ] = ( exp_conf[ "n_evt_per_block" ] *
@@ -269,6 +268,27 @@ def _get_exp_conf( tr_s = 2.0 ):
 	                                 exp_conf[ "rej_start_blocks" ] -
 	                                 exp_conf[ "rej_end_blocks" ]
 	                               )
+
+	# localiser info
+	exp_conf[ "loc_n_runs" ] = 2
+	exp_conf[ "loc_n_blocks" ] = 19
+	exp_conf[ "loc_run_len_s" ] = ( exp_conf[ "loc_n_blocks" ] *
+	                                exp_conf[ "block_len_s" ]
+	                              )
+	exp_conf[ "loc_pre_len_s" ] = 6
+
+	exp_conf[ "loc_run_full_len_s" ] = ( exp_conf[ "loc_run_len_s" ] +
+	                                     exp_conf[ "loc_pre_len_s" ]
+	                                   )
+
+	exp_conf[ "loc_run_range_st" ] = int( exp_conf[ "loc_pre_len_s" ] / tr_s )
+	exp_conf[ "loc_run_range_end" ] = int( exp_conf[ "loc_run_full_len_s" ] / tr_s )
+
+	exp_conf[ "loc_run_range" ] = np.arange( exp_conf[ "loc_run_range_st" ],
+	                                         exp_conf[ "loc_run_range_end" ]
+	                                       )
+
+	exp_conf[ "loc_n_valid_vols_per_run" ] = len( exp_conf[ "loc_run_range" ] )
 
 	return exp_conf
 
@@ -476,6 +496,39 @@ def get_subj_conf( subj_id = None ):
 	else:
 		return subj_conf[ subj_id ]
 
+def apply_subj_specific_fixes( conf, subj_id ):
+	"""Modify the experiment configuration for unexpected variations for
+	particular subjects (hopefully these are rare"""
+
+
+	if subj_id == "s1000":
+
+		# for this subject (the first), the localiser run length didn't work
+		# properly - it was ending at ``run_len_s`` rather than the
+		# ``loc_run_full_len_s``, so we need to change the localiser duration
+		# info.
+
+		conf[ "exp" ][ "loc_n_blocks" ] = 16
+		conf[ "exp" ][ "loc_run_len_s" ] = ( conf[ "exp" ][ "loc_n_blocks" ] *
+		                                     conf[ "exp" ][ "block_len_s" ]
+		                                   )
+
+		conf[ "exp" ][ "loc_run_full_len_s" ] = ( conf[ "exp" ][ "loc_run_len_s" ] +
+		                                          conf[ "exp" ][ "loc_pre_len_s" ]
+		                                        )
+
+		conf[ "exp" ][ "loc_run_range_end" ] = int( conf[ "exp" ][ "loc_run_full_len_s" ] /
+		                                            conf[ "acq" ][ "tr_s" ]
+		                                          )
+
+		conf[ "exp" ][ "loc_run_range" ] = np.arange( conf[ "exp" ][ "loc_run_range_st" ],
+		                                              conf[ "exp" ][ "loc_run_range_end" ]
+		                                            )
+
+		conf[ "exp" ][ "loc_n_valid_vols_per_run" ] = len( conf[ "exp" ][ "loc_run_range" ] )
+
+	return conf
+
 
 def get_study_paths():
 	"""Get the path structure for the study"""
@@ -494,7 +547,7 @@ def get_subj_paths( subj_id ):
 
 	subj_conf = get_subj_conf( subj_id )
 
-	study_conf = get_conf()
+	study_conf = get_conf( subj_id )
 
 	subj_dir = os.path.join( study_paths[ "subj_dir" ], subj_id )
 
@@ -549,12 +602,23 @@ def get_subj_paths( subj_id ):
 	                                            study_conf[ "ana" ][ "rois" ]
 	                                          )
 
+	# ANALYSIS
+	#     - experiment analysis
+	ana_exp_dir = os.path.join( subj_dir, "analysis", "exp" )
+	ana_exp_paths = fmri_tools.paths.get_ana_paths( ana_exp_dir )
+
+	#     - localiser analysis
+	ana_loc_dir = os.path.join( subj_dir, "analysis", "loc" )
+	ana_loc_paths = fmri_tools.paths.get_ana_paths( ana_loc_dir )
+
 	subj_paths = { "func" : func_paths,
 	               "loc" : loc_paths,
 	               "summ" : summ_paths,
 	               "fmap" : fmap_paths,
 	               "anat" : anat_paths,
-	               "roi" : roi_paths
+	               "roi" : roi_paths,
+	               "ana_exp" : ana_exp_paths,
+	               "ana_loc" : ana_loc_paths
 	             }
 
 	return subj_paths

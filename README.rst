@@ -189,12 +189,14 @@ To check that the coregistration has performed well:
 #. Select the mean functional image first, and then the (unresliced) anatomical image.
 #. Click around some prominent landmarks and check that the two images are in register.
 
+
 ROI preparation
 ~~~~~~~~~~~~~~~
 
 Converts the ROI image masks to a set of coordinates, save in numpy format::
 
     ns_aperture_preproc sXXXX roi
+
 
 Voxel timecourse extraction
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -203,7 +205,7 @@ Extracts voxel timecourses for each voxel in each ROI, for both the experiment a
 
     ns_aperture_preproc sXXXX vtc
 
-The resulting timecourses have been trimmed and HRF corrected.
+The resulting timecourses have been trimmed but not HRF corrected.
 
 
 Design

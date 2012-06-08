@@ -82,7 +82,7 @@ if len( args.subj_id ) != 5 or args.subj_id[ 0 ] != "s":
 subj_conf = ns_aperture.config.get_subj_conf( args.subj_id )
 subj_paths = ns_aperture.config.get_subj_paths( args.subj_id )
 
-conf = ns_aperture.config.get_conf()
+conf = ns_aperture.config.get_conf( args.subj_id )
 
 if args.preproc_step == "convert":
 	ns_aperture.fmri_analysis.preproc.convert( subj_paths )

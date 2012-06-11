@@ -197,99 +197,134 @@ def make_roi_images( paths, conf ):
 
 
 def prepare_rois( paths, conf ):
-	"""Extracts and writes the coordinates of each ROI"""
+	"""Extracts and writes the coordinates of the gray matter and each ROI"""
+
+	# load the gray matter mask
+	gray_img = nipy.load_image( "%s.nii" % paths[ "anat" ][ "gray_rs_file" ]
+	                          ).get_data()
+
+	# get the coordinates, as 3 x N
+	gray_coords = np.array( np.nonzero( gray_img ) )
+
+	# and save
+	np.save( paths[ "roi" ][ "gray_coord_file" ],
+	         arr = gray_coords
+	       )
+
+	n_gray_voxels = gray_coords.shape[ 1 ]
+
+	# this image will hold the index, in gray_coords, of each gray matter voxel
+	# over the volume - this will be used as a lookup table for the ROIs
+	i_gray_img = np.empty( gray_img.shape )
+	i_gray_img.fill( np.NAN )
+
+	for i_coord in xrange( n_gray_voxels ):
+
+		i_gray_img[ gray_coords[ 0, i_coord ],
+		            gray_coords[ 1, i_coord ],
+		            gray_coords[ 2, i_coord ]
+		          ] = i_coord
+
 
 	for ( i_roi, roi_name ) in enumerate( conf[ "ana" ][ "rois" ] ):
 
-		# load the ROI image
 		roi = nipy.load_image( "%s.nii" % paths[ "roi" ][ "rs_files" ][ i_roi ]
 		                     ).get_data()
 
-		# get rid of any NaNs
-		roi[ np.isnan( roi) ] = 0
+		roi_coords = np.array( np.nonzero( roi ) )
 
-		# extract the coordinate list
-		coords = np.nonzero( roi )
+		n_roi_coords = roi_coords.shape[ 1 ]
+
+		roi_gray_coords = np.empty( ( n_roi_coords ) )
+		roi_gray_coords.fill( np.NAN )
+
+		for i_coord in xrange( n_roi_coords ):
+
+			# find the gray coordinate index for this ROI voxel
+			roi_gray_coords[ i_coord ] = i_gray_img[ roi_coords[ 0, i_coord ],
+			                                         roi_coords[ 1, i_coord ],
+			                                         roi_coords[ 2, i_coord ]
+			                                       ]
+
+		i_not_in_gray = np.where( np.isnan( roi_gray_coords ) )[ 0 ]
+
+		roi_gray_coords = np.delete( roi_gray_coords, i_not_in_gray )
+
+		missing = len( i_not_in_gray ) / n_roi_coords
+
+		if missing > 0.01:
+			print "Warning: more than 1% of ROI coords not within gray matter mask"
 
 		# and save
 		np.save( paths[ "roi" ][ "coord_files" ][ i_roi ],
-		         arr = coords
+		         arr = roi_gray_coords.astype( "int" )
 		       )
 
 
 def form_vtcs( paths, conf, subj_conf ):
-	"""Extracts the voxel time courses for each voxel in each ROI"""
+	"""Extracts the voxel time courses for each voxel in the gray matter"""
 
-	for ( i_roi, roi_name ) in enumerate( conf[ "ana" ][ "rois" ] ):
+	gray_coords = np.load( paths[ "roi" ][ "gray_coord_file" ] )
 
-		# load the coordinates for the roi
-		coords = np.load( paths[ "roi" ][ "coord_files" ][ i_roi ] )
+	vtc = np.empty( ( conf[ "exp" ][ "n_vols_per_run" ],
+	                  subj_conf[ "n_runs" ],
+	                  gray_coords.shape[ 1 ]
+	                )
+	              )
+	vtc.fill( np.NAN )
 
-		n_voxels = coords.shape[ 1 ]
+	# loop through each unwarped image (run) file
+	for ( i_run, run_path ) in enumerate( paths[ "func" ][ "uw_files" ] ):
 
-		# initialise the vtc
-		vtc = np.empty( ( conf[ "exp" ][ "n_valid_vols_per_run" ],
-		                  subj_conf[ "n_runs" ],
-		                  n_voxels
-		                )
-		              )
+		# load the run data from the image file file
+		run_img = nipy.load_image( "%s.nii" % run_path ).get_data()
 
-		# fill with NaNs, to be safe
-		vtc.fill( np.NAN )
+		for i_coord in xrange( gray_coords.shape[ 1 ] ):
 
-		# loop through each unwarped image (run) file
-		for ( i_run, run_path ) in enumerate( paths[ "func" ][ "uw_files" ] ):
+			vtc[ :, i_run, i_coord ] = run_img[ gray_coords[ 0, i_coord ],
+			                                    gray_coords[ 1, i_coord ],
+			                                    gray_coords[ 2, i_coord ],
+			                                    :
+			                                  ]
 
-			# load the run data from the image file file
-			run_img = nipy.load_image( "%s.nii" % run_path ).get_data()
+	# check that it has been filled up correctly
+	assert( np.sum( np.isnan( vtc ) ) == 0 )
 
-			for i_voxel in xrange( n_voxels ):
+	# save the vtc
+	np.save( "%s-gray.npy" % paths[ "ana_exp" ][ "vtc_file" ],
+	         arr = vtc
+	       )
 
-				vtc[ :, i_run, i_voxel ] = run_img[ coords[ 0, i_voxel ],
-				                                    coords[ 1, i_voxel ],
-				                                    coords[ 2, i_voxel ],
-				                                    conf[ "exp" ][ "run_range" ]
-				                                  ]
+	# LOCALISERS
+	loc_vtc = np.empty( ( conf[ "exp" ][ "loc_n_vols_per_run" ],
+	                      subj_conf[ "n_loc_runs" ],
+	                      gray_coords.shape[ 1 ]
+	                    )
+	                  )
+	loc_vtc.fill( np.NAN )
 
-		# check that it has been filled up correctly
-		assert( np.sum( np.isnan( vtc ) ) == 0 )
+	# loop through each unwarped image (run) file
+	for ( i_run, run_path ) in enumerate( paths[ "loc" ][ "uw_files" ] ):
 
-		# save the vtc
-		np.save( "%s-%s.npy" % ( paths[ "ana_exp" ][ "vtc_file" ], roi_name ),
-		         arr = vtc
-		       )
+		# load the run data from the image file file
+		run_img = nipy.load_image( "%s.nii" % run_path ).get_data()
 
-		# initialise the localiser vtc
-		loc_vtc = np.empty( ( conf[ "exp" ][ "loc_n_valid_vols_per_run" ],
-		                      subj_conf[ "n_loc_runs" ],
-		                      n_voxels
-		                    )
-		                  )
+		for i_coord in xrange( gray_coords.shape[ 1 ] ):
 
-		# fill with NaNs, to be safe
-		loc_vtc.fill( np.NAN )
+			loc_vtc[ :, i_run, i_coord ] = run_img[ gray_coords[ 0, i_coord ],
+			                                        gray_coords[ 1, i_coord ],
+			                                        gray_coords[ 2, i_coord ],
+			                                        :
+			                                      ]
 
-		# loop through each unwarped image (run) file
-		for ( i_run, run_path ) in enumerate( paths[ "loc" ][ "uw_files" ] ):
+	# check that it has been filled up correctly
+	assert( np.sum( np.isnan( loc_vtc ) ) == 0 )
 
-			# load the run data from the image file file
-			run_img = nipy.load_image( "%s.nii" % run_path ).get_data()
+	# save the vtc
+	np.save( "%s-gray.npy" % paths[ "ana_loc" ][ "vtc_file" ],
+	         arr = loc_vtc
+	       )
 
-			for i_voxel in xrange( n_voxels ):
-
-				loc_vtc[ :, i_run, i_voxel ] = run_img[ coords[ 0, i_voxel ],
-				                                        coords[ 1, i_voxel ],
-				                                        coords[ 2, i_voxel ],
-				                                        conf[ "exp" ][ "loc_run_range" ]
-				                                      ]
-
-		# check that it has been filled up correctly
-		assert( np.sum( np.isnan( loc_vtc ) ) == 0 )
-
-		# save the localiser vtc
-		np.save( "%s-%s.npy" % ( paths[ "ana_loc" ][ "vtc_file" ], roi_name ),
-		         arr = loc_vtc
-		       )
 
 
 def get_design( paths, conf, subj_conf ):

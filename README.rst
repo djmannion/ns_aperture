@@ -33,7 +33,7 @@ Prepare the filesystem
     ln -s /labs/olmanlab/DICOM/YYYYMMDD/sXXXX/MR-SEyada mag-raw
     ln -s /labs/olmanlab/DICOM/YYYYMMDD/sXXXX/PH-SEyada ph-raw
 
-5. Copy (not symlink) the subject's main high-res anatomical (skull stripped) from the main repository to the ``anat`` directorym using FSL::
+5. Copy (not symlink) the subject's main high-res anatomical (skull stripped) from the main repository to the ``anat`` directory using FSL::
 
     fslmaths /labs/olmanlab/Anatomy/sXXXX/sXXXX_stripped sXXXX_ns_aperture_anat
 
@@ -41,7 +41,11 @@ Prepare the filesystem
 
       setenv FSLOUTPUTTYPE NIFTI
 
-6. Copy the relevant ROI MAT files from the visual localisers repository (the Gray view) to the ``roi`` directory.
+6. Make a gray matter mask from the subject's anatomical data using FSL::
+
+    fslmaths /labs/olmanlab/Anatomy/sXXXX/sXXXX_left_dist -bin -mul 2 -add /labs/olmanlab/Anatomy/sXXXX/sXXXX_right_dist -bin -kernel sphere 2 -dilM sXXXX_ns_aperture_gray
+
+7. Copy the relevant ROI MAT files from the visual localisers repository (the Gray view) to the ``roi`` directory.
 
 
 Update the experiment information file
@@ -167,7 +171,7 @@ The coregistration algorithm is helped enormously if the images are in rough wor
 #. Place the crosshairs over the same landmark as was used in the functionals, and again note the 3 values in the ``mm`` box.
 #. Subtract (element-wise) the anatomical ``mm`` values from the functional ``mm`` values, and use the output to populate the ``right``, ``forward``, and ``up`` fields.
 #. To check your calculations, change the ``mm`` field to match what it was for the functional and the crosshairs should move to the same landmark.
-#. Click ''Reorient images'' and select the anatomical **and the ROI images**.
+#. Click ''Reorient images'' and select the anatomical **and the ROI and gray matter mask images**.
 
 Coregistration
 ^^^^^^^^^^^^^^
@@ -175,7 +179,7 @@ Coregistration
 #. In SPM, click ``Coregister (Estimate & Reslice)``.
 #. As the ``Reference image``, select the mean functional image.
 #. As the ``Images to reslice``, select the anatomical image.
-#. As the ``Other images``, select all the ROI images.
+#. As the ``Other images``, select all the ROI and gray matter mask images.
 #. Under ``Reslice options``, change ``Interpolation`` to ``Nearest neighbour`` and ``Filename prefix`` to ``rs``.
 #. Under ``File``, click ``Save batch`` and call it ``coreg.mat`` under the ``anat`` directory.
 #. Click on the play icon to set it running.
@@ -205,7 +209,6 @@ Extracts voxel timecourses for each voxel in each ROI, for both the experiment a
 
     ns_aperture_preproc sXXXX vtc
 
-The resulting timecourses have been trimmed but not HRF corrected.
 
 
 Design

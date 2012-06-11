@@ -277,6 +277,11 @@ def _get_exp_conf( tr_s = 2.0 ):
 	                              )
 	exp_conf[ "loc_pre_len_s" ] = 6
 
+	exp_conf[ "loc_n_vols_per_run" ] = int( exp_conf[ "loc_n_blocks" ] *
+	                                        exp_conf[ "n_vols_per_blk" ] +
+	                                        exp_conf[ "loc_pre_len_s" ] / tr_s
+	                                      )
+
 	exp_conf[ "loc_run_full_len_s" ] = ( exp_conf[ "loc_run_len_s" ] +
 	                                     exp_conf[ "loc_pre_len_s" ]
 	                                   )
@@ -488,7 +493,74 @@ def get_subj_conf( subj_id = None ):
 	          "comments" : ""
 	        }
 
+	s1021 = { "subj_id" : "s1021",
+	          "acq_date" : "20120608",
+	          "n_runs" : 10,
+	          "n_loc_runs" : 2,
+	          "n_fmaps" : 1,
+	          "run_st_mot_order" : ( ( 7, "func" ),
+	                                 ( 8, "func" ),
+	                                 ( 9, "func" ),
+	                                 ( 10, "func" ),
+	                                 ( 1, "loc" ),
+	                                 ( 2, "loc" ),
+	                                 ( 1, "func" ),
+	                                 ( 2, "func" ),
+	                                 ( 3, "func" ),
+	                                 ( 4, "func" ),
+	                                 ( 5, "func" ),
+	                                 ( 6, "func" )
+	                               ),
+	          "comments" : ""
+	        }
+
+	s1011 = { "subj_id" : "s1011",
+	          "acq_date" : "20120608",
+	          "n_runs" : 10,
+	          "n_loc_runs" : 2,
+	          "n_fmaps" : 1,
+	          "run_st_mot_order" : ( ( 7, "func" ),
+	                                 ( 8, "func" ),
+	                                 ( 9, "func" ),
+	                                 ( 10, "func" ),
+	                                 ( 1, "loc" ),
+	                                 ( 2, "loc" ),
+	                                 ( 1, "func" ),
+	                                 ( 2, "func" ),
+	                                 ( 3, "func" ),
+	                                 ( 4, "func" ),
+	                                 ( 5, "func" ),
+	                                 ( 6, "func" )
+	                               ),
+	          "comments" : """Fifth run, might be switched (couldnt remember
+	                       which). Tenth run, started with three buttons"""
+	        }
+
+	s1032 = { "subj_id" : "s1032",
+	          "acq_date" : "20120608",
+	          "n_runs" : 10,
+	          "n_loc_runs" : 2,
+	          "n_fmaps" : 1,
+	          "run_st_mot_order" : ( ( 7, "func" ),
+	                                 ( 8, "func" ),
+	                                 ( 9, "func" ),
+	                                 ( 10, "func" ),
+	                                 ( 1, "loc" ),
+	                                 ( 2, "loc" ),
+	                                 ( 1, "func" ),
+	                                 ( 2, "func" ),
+	                                 ( 3, "func" ),
+	                                 ( 4, "func" ),
+	                                 ( 5, "func" ),
+	                                 ( 6, "func" )
+	                               ),
+	          "comments" : "Visible motion on acquisition in last run (loc)."
+	        }
+
 	subj_conf = { "s1000" : s1000,
+	              "s1021" : s1021,
+	              "s1011" : s1011,
+	              "s1032" : s1032
 	            }
 
 	if subj_id is None:

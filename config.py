@@ -277,6 +277,8 @@ def _get_exp_conf( tr_s = 2.0 ):
 	                              )
 	exp_conf[ "loc_pre_len_s" ] = 6
 
+	exp_conf[ "loc_n_valid_blocks" ] = exp_conf[ "loc_n_blocks" ] - 1
+
 	exp_conf[ "loc_n_vols_per_run" ] = int( exp_conf[ "loc_n_blocks" ] *
 	                                        exp_conf[ "n_vols_per_blk" ] +
 	                                        exp_conf[ "loc_pre_len_s" ] / tr_s
@@ -448,6 +450,7 @@ def _get_analysis_conf():
 	             "roi_ax_order" : ( 1, -1, -1 ),
 	             "loc_p_thresh" : 0.01,
 	             "poly_ord" : 4,
+	             "hrf_corr_vols" : 2
 	           }
 
 	return ana_conf
@@ -585,6 +588,8 @@ def apply_subj_specific_fixes( conf, subj_id ):
 		                                     conf[ "exp" ][ "block_len_s" ]
 		                                   )
 
+		conf[ "exp" ][ "loc_n_valid_blocks" ] = conf[ "exp" ][ "loc_n_blocks" ] - 1
+
 		conf[ "exp" ][ "loc_run_full_len_s" ] = ( conf[ "exp" ][ "loc_run_len_s" ] +
 		                                          conf[ "exp" ][ "loc_pre_len_s" ]
 		                                        )
@@ -612,6 +617,38 @@ def get_study_paths():
 	return study_paths
 
 
+def get_log_paths( log_dir, subj_id, file_id ):
+	""""""
+
+	log = {}
+
+	log[ "base_dir" ] = log_dir
+
+	log[ "design" ] = os.path.join( log_dir, "design.npy" )
+
+	log[ "loc_design" ] = os.path.join( log_dir, "loc_design.npy" )
+
+	log[ "seq_base" ] = os.path.join( log_dir,
+	                                  "%s_%s_seq_" % ( subj_id, file_id )
+	                                )
+
+	log[ "task_base" ] = os.path.join( log_dir,
+	                                   "%s_%s_task_" % ( subj_id, file_id )
+	                                 )
+
+	return log
+
+
+def cust_ana_paths( ana_paths, file_prefix = "" ):
+	"""Add custom analysis paths"""
+
+	ana_paths[ "block_psc_file" ] = os.path.join( ana_paths[ "base_dir" ],
+	                                              "%sblock_psc.npy" % file_prefix
+	                                            )
+
+	return ana_paths
+
+
 def get_subj_paths( subj_id ):
 	"""Get the path structure for a given subject"""
 
@@ -623,7 +660,7 @@ def get_subj_paths( subj_id ):
 
 	subj_dir = os.path.join( study_paths[ "subj_dir" ], subj_id )
 
-	# FUNCTIONALS
+	# functionals
 	func_dir = os.path.join( subj_dir, "func" )
 
 	#   - experiment functionals
@@ -645,13 +682,13 @@ def get_subj_paths( subj_id ):
 	                                             loc_id
 	                                           )
 
-	# SUMMARIES
+	# summaries
 	summ_paths = fmri_tools.paths.get_func_summ_paths( func_dir,
 	                                                   subj_id,
 	                                                   study_conf[ "exp" ][ "id" ]
 	                                                 )
 
-	# FIELDMAPS
+	# fieldmaps
 	fmap_dir = os.path.join( subj_dir, "fmap" )
 
 	fmap_paths = fmri_tools.paths.get_fmap_paths( fmap_dir,
@@ -660,7 +697,7 @@ def get_subj_paths( subj_id ):
 	                                              subj_conf[ "n_fmaps" ]
 	                                            )
 
-	# ANATOMICALS
+	# anatomicals
 	anat_dir = os.path.join( subj_dir, "anat" )
 
 	anat_paths = fmri_tools.paths.get_anat_paths( anat_dir,
@@ -668,20 +705,26 @@ def get_subj_paths( subj_id ):
 	                                              study_conf[ "exp" ][ "id" ]
 	                                            )
 
-	# ROIS
+	# rois
 	roi_dir = os.path.join( subj_dir, "roi" )
 	roi_paths = fmri_tools.paths.get_roi_paths( roi_dir,
 	                                            study_conf[ "ana" ][ "rois" ]
 	                                          )
 
-	# ANALYSIS
+	# logs
+	log_dir = os.path.join( subj_dir, "log" )
+	log_paths = get_log_paths( log_dir, subj_id, "ns_aperture_fmri" )
+
+	# analysis
 	#     - experiment analysis
 	ana_exp_dir = os.path.join( subj_dir, "analysis", "exp" )
 	ana_exp_paths = fmri_tools.paths.get_ana_paths( ana_exp_dir )
+	ana_exp_paths = cust_ana_paths( ana_exp_paths )
 
 	#     - localiser analysis
 	ana_loc_dir = os.path.join( subj_dir, "analysis", "loc" )
-	ana_loc_paths = fmri_tools.paths.get_ana_paths( ana_loc_dir )
+	ana_loc_paths = fmri_tools.paths.get_ana_paths( ana_loc_dir, "loc_" )
+	ana_loc_paths = cust_ana_paths( ana_loc_paths, "loc_" )
 
 	subj_paths = { "func" : func_paths,
 	               "loc" : loc_paths,
@@ -689,6 +732,7 @@ def get_subj_paths( subj_id ):
 	               "fmap" : fmap_paths,
 	               "anat" : anat_paths,
 	               "roi" : roi_paths,
+	               "log" : log_paths,
 	               "ana_exp" : ana_exp_paths,
 	               "ana_loc" : ana_loc_paths
 	             }

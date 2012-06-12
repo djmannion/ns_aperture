@@ -26,7 +26,6 @@ Steps:
   roi : converts ROI masks to coordinates.
   vtc : extracts voxel timecourses for each voxel in each ROI.
   vtc-cull : culls voxels in each ROI based on their mean-normed variance.
-  vtc-avg : averages over (selected) voxels in each ROI.
   design : extracts the session design matrix.
 
 ---N.B.---
@@ -62,9 +61,7 @@ preproc_steps = ( "convert",
                   "roi",
                   "vtc",
                   "design",
-                  "localiser",
-                  "vox-select",
-                  "vtc-avg"
+                  "vox-cull"
                 )
 
 parser.add_argument( "preproc_step",
@@ -132,10 +129,11 @@ elif args.preproc_step == "localiser":
 	                                                    )
 
 
-elif args.preproc_step == "vox-select":
-	ns_aperture.fmri_analysis.preproc.voxel_selection( subj_paths,
-	                                                   conf
-	                                                 )
+elif args.preproc_step == "vox-cull":
+	ns_aperture.fmri_analysis.preproc.cull_voxels( subj_paths,
+	                                               conf,
+	                                               subj_conf
+	                                             )
 
 elif args.preproc_step == "vtc-avg":
 	ns_aperture.fmri_analysis.preproc.avg_vtcs( subj_paths,

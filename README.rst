@@ -205,11 +205,18 @@ Converts the ROI image masks to a set of coordinates, save in numpy format::
 Voxel timecourse extraction
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Extracts voxel timecourses for each voxel in each ROI, for both the experiment and localiser runs::
+Extracts voxel timecourses for each voxel in each ROI, for both the experiment and localiser runs, and performs high-pass filtering (DC remains)::
 
     ns_aperture_preproc sXXXX vtc
 
+This takes a fair while because of the filtering.
 
+Voxel culling
+~~~~~~~~~~~~~
+
+Removes voxels from the timecourses and ROI coordinates that have signals below zero::
+
+    ns_aperture_preproc sXXXX vox-cull
 
 Design
 ~~~~~~
@@ -218,31 +225,7 @@ Computes the experimental design from the logfiles::
 
     ns_aperture_preproc sXXXX design
 
-The extracted design corresponds to the trimmed and HRF corrected voxel timecourses.
-
-
-Localiser analysis
-~~~~~~~~~~~~~~~~~~
-
-Analyses the localiser runs to produce activation statistics::
-
-    ns_aperture_preproc sXXXX localiser
-
-
-Voxel selection
-~~~~~~~~~~~~~~~
-
-Uses the localiser analysis to adjust the ROI coordinates to only include stimulated voxels::
-
-    ns_aperture_preproc sXXXX vox-select
-
-
-Timecourse averaging and filtering
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Averages over the voxels in each ROI::
-
-    ns_aperture_preproc sXXXX vtc-avg
+The extracted design is trimmed to the volumes we want but is NOT hrf corrected.
 
 
 Subject-level analysis
@@ -270,42 +253,28 @@ Extracts the block responses for each condition and ROI::
 
 
 
-Analysis datafiles
-==================
+Datafile list
+=============
 
-The pre-processing / analysis pipeline produces the following files:
+Pre-processing
+--------------
+
+coords-gray
+  ( 3 axes, n gray voxels ) array of image coordinate locations.
 
 coords-ROI
-  ( 3 axes, n voxels ) array of coordinate locations.
+  ( n roi voxels ) vector of indices into ``coords-gray``.
 
-coords_sel-ROI
-  ( 3 axes, n(s) voxels ) array of coordinate locations, *after* voxel selection based on the localiser analysis.
+design, loc_design
+  ( blocks, runs, [ start volume index, condition index ] ) integer array.
 
-vtc-ROI
-  ( 128 volumes, 10 runs, n voxels ) array of BOLD signals. These are in scanner units, in a timeseries that has been trimmed and HRF corrected.
+vtc-gray, loc_vtc-gray
+  ( volumes, runs, gray voxels ) array of BOLD signals. These are in scanner units, in an untrimmed timeseries that has been high-pass filtered but DC preserved. Any voxels with signals going below zero are set to NaN.
 
-vtc_sel-ROI
-  ( 128 volumes, 10 runs, n(s) voxels ) array of BOLD signals. As above, but only including selected voxels.
 
-loc_vtc_sel-ROI
-  ( 128 volumes, 2 runs, n(s) voxels ) array of BOLD signals. As above, but for the localiser data.
+Subject-level analysis
+----------------------
 
-vtc_avg-ROI
-  ( 128 volumes, 10 runs ) array of BOLD signals. ROI timecourses averaged across all *selected* voxels, high-pass filtered, and covert to percent signal change.
 
-loc_vtc-ROI
-  ( 128 volumes, 2 runs, n voxels ) array of BOLD signals. As above, but for the localiser data.
-
-loc_stat-ROI
-  ( n voxels, [ t statistic, p value ] ) array of statistics data. These report the results of a left side stimulation > right side stimulation localiser analysis.
-
-design
-  ( 16 blocks, 10 runs, [ i_vol, i_cond ) integer array.
-  ``i_vol`` is the volume index for the start of the block in a timecourse that has been trimmed and HRF corrected, and ``i_cond`` is the condition.
-
-loc_design
-  ( 16 blocks, 2 runs, [ i_vol, i_cond ] ) integer array.
-  As above, but for the localiser data.
-
-block
-  ( 160 blocks, [ psc, cond, block in run, run ] ) array. Shows the percent signal change of each block, obtained by averaging all the timepoints corresponding to the block.
+Group-level analysis
+--------------------

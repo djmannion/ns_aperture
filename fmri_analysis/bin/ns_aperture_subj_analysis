@@ -49,7 +49,7 @@ parser.add_argument( "subj_id",
                      help = "Subject identifier"
                    )
 
-analysis_steps = ( "blocks",
+analysis_steps = ( "block_psc",
                    "cond_diff"
                  )
 
@@ -65,13 +65,13 @@ if len( args.subj_id ) != 5 or args.subj_id[ 0 ] != "s":
 	raise ValueError( "Subject ID needs to be in the format of sXXXX" )
 
 # load the experiment / subject info
-subj_conf = ns_aperture.config.get_subj_conf()[ args.subj_id ]
+subj_conf = ns_aperture.config.get_subj_conf( args.subj_id )
 subj_paths = ns_aperture.config.get_subj_paths( args.subj_id )
 
 conf = ns_aperture.config.get_conf()
 
-if args.analysis_step == "blocks":
-	ns_aperture.fmri_analysis.analysis.extract_blocks( subj_paths, conf )
+if args.analysis_step == "block_psc":
+	ns_aperture.fmri_analysis.analysis.loc_extract_blocks( subj_paths, conf, subj_conf )
 
 elif args.analysis_step == "cond_diff":
 	ns_aperture.fmri_analysis.analysis.boot_cond_diff( subj_paths, conf )

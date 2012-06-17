@@ -17,8 +17,8 @@ Example usage:
     ns_aperture_subj_analysis s1000 blocks
 
 Steps:
-  blocks : 
-  cond_diff : 
+  loc_block : 
+  loc_boot : 
 
 ---N.B.---
 
@@ -31,11 +31,7 @@ target_dir = "ns_aperture/fmri_analysis/bin"
 current_dir = os.getcwd()
 
 if current_dir[ -len( target_dir ): ] != target_dir:
-	raise IOError( "".join( [ "Script needs to be launched from ",
-	                          target_dir
-	                        ]
-	                      )
-	             )
+	raise IOError( "Script needs to be launched from %s" % target_dir )
 
 # use this formatter so we can supply our own indentation
 fmt = argparse.RawDescriptionHelpFormatter
@@ -49,8 +45,8 @@ parser.add_argument( "subj_id",
                      help = "Subject identifier"
                    )
 
-analysis_steps = ( "block_psc",
-                   "cond_diff"
+analysis_steps = ( "loc_block",
+                   "loc_boot"
                  )
 
 parser.add_argument( "analysis_step",
@@ -70,11 +66,11 @@ subj_paths = ns_aperture.config.get_subj_paths( args.subj_id )
 
 conf = ns_aperture.config.get_conf()
 
-if args.analysis_step == "block_psc":
+if args.analysis_step == "loc_block":
 	ns_aperture.fmri_analysis.analysis.loc_extract_blocks( subj_paths, conf, subj_conf )
 
-elif args.analysis_step == "cond_diff":
-	ns_aperture.fmri_analysis.analysis.boot_cond_diff( subj_paths, conf )
+elif args.analysis_step == "loc_boot":
+	ns_aperture.fmri_analysis.analysis.loc_boot( subj_paths, conf, subj_conf )
 
 else:
 	print "Not completed"

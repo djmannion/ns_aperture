@@ -448,9 +448,9 @@ def _get_analysis_conf():
 	                      ),
 	             "roi_ax" : ( 2, 1, 0 ),
 	             "roi_ax_order" : ( 1, -1, -1 ),
-	             "loc_p_thresh" : 0.01,
-	             "poly_ord" : 4,
-	             "hrf_corr_vols" : 2
+	             "loc_p_thresh" : 0.001,
+	             "hrf_corr_vols" : 2,
+	             "n_boot" : 5000
 	           }
 
 	return ana_conf
@@ -639,12 +639,34 @@ def get_log_paths( log_dir, subj_id, file_id ):
 	return log
 
 
-def cust_ana_paths( ana_paths, file_prefix = "" ):
+def cust_ana_loc_paths( ana_paths ):
 	"""Add custom analysis paths"""
 
 	ana_paths[ "block_psc_file" ] = os.path.join( ana_paths[ "base_dir" ],
-	                                              "%sblock_psc.npy" % file_prefix
+	                                              "loc_block_psc.npy"
 	                                            )
+
+	ana_paths[ "block_boot_file" ] = os.path.join( ana_paths[ "base_dir" ],
+	                                               "loc_block_boot.npy"
+	                                             )
+
+	ana_paths[ "l_gt_r_img" ] = os.path.join( ana_paths[ "base_dir" ],
+	                                          "loc_l_gt_r.nii"
+	                                        )
+
+	ana_paths[ "l_gt_z_img" ] = os.path.join( ana_paths[ "base_dir" ],
+	                                          "loc_l_gt_z.nii"
+	                                        )
+
+	ana_paths[ "r_gt_z_img" ] = os.path.join( ana_paths[ "base_dir" ],
+	                                          "loc_r_gt_z.nii"
+	                                        )
+
+	ana_paths[ "comb_img" ] = os.path.join( ana_paths[ "base_dir" ],
+	                                        "loc_comb.nii"
+	                                      )
+
+
 
 	return ana_paths
 
@@ -719,12 +741,12 @@ def get_subj_paths( subj_id ):
 	#     - experiment analysis
 	ana_exp_dir = os.path.join( subj_dir, "analysis", "exp" )
 	ana_exp_paths = fmri_tools.paths.get_ana_paths( ana_exp_dir )
-	ana_exp_paths = cust_ana_paths( ana_exp_paths )
+#	ana_exp_paths = cust_ana_paths( ana_exp_paths )
 
 	#     - localiser analysis
 	ana_loc_dir = os.path.join( subj_dir, "analysis", "loc" )
 	ana_loc_paths = fmri_tools.paths.get_ana_paths( ana_loc_dir, "loc_" )
-	ana_loc_paths = cust_ana_paths( ana_loc_paths, "loc_" )
+	ana_loc_paths = cust_ana_loc_paths( ana_loc_paths )
 
 	subj_paths = { "func" : func_paths,
 	               "loc" : loc_paths,

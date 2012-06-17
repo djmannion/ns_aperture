@@ -244,12 +244,29 @@ where ``sXXXX`` is the subject ID and ``stage`` is the preprocessing stage (see 
 
 The stages are as follows:
 
-Blocks
-~~~~~~
 
-Extracts the block responses for each condition and ROI::
+Localiser blocks
+~~~~~~~~~~~~~~~~
 
-    ns_aperture_subj_analysis sXXXX blocks
+Extracts the block responses for each condition and ROI for the localiser data::
+
+    ns_aperture_subj_analysis sXXXX loc_blocks
+
+
+Localiser bootstrap
+~~~~~~~~~~~~~~~~~~~
+
+Bootstraps the condition differences for the localiser data::
+
+    ns_aperture_subj_analysis sXXXX loc_boot
+
+
+Localiser mask
+~~~~~~~~~~~~~~
+
+Produces voxel selection masks from the localiser data::
+
+    ns_aperture_subj_analysis sXXXX loc_mask
 
 
 
@@ -274,6 +291,12 @@ vtc-gray, loc_vtc-gray
 
 Subject-level analysis
 ----------------------
+
+block_psc
+  ( datapoints, conditions, voxels ) array of BOLD signals. These are in units of percent signal change, relative to a blank baseline for localiser data and non-scene baseline for natural scenes.
+
+block_boot
+  ( comparisons, voxels, [ orig, boot ] ) array of BOLD signals. These represent bootstrapped distributions of each condition comparison.
 
 
 Group-level analysis

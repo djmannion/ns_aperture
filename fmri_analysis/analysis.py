@@ -9,6 +9,76 @@ import multiprocessing
 
 import numpy as np
 
+import nipy
+
+
+def loc_boot_analysis( paths, conf, subj_conf ):
+	""""""
+
+	# load the gray coords
+	gray_coords = np.load( paths[ "roi" ][ "gray_coord_file" ] )
+
+	boot_data = np.load( paths[ "ana_loc" ][ "block_boot_file" ] )
+
+	p_val = conf[ "ana" ][ "loc_p_thresh" ] * 100 / 2.0
+
+	p_thresh = [ p_val, 100 - p_val ]
+
+	# don't include the first index, which is the original data
+	ci = np.array( np.percentile( boot_data[ :, :, 1: ], p_thresh, axis = 2 ) )
+
+	# test if ci includes zero
+	sig = np.empty( ( 3, gray_coords.shape[ 1 ] ) )
+	sig.fill( np.NAN )
+
+	# L > R is agnostic about sign
+	sig[ 0, : ] = np.logical_not( np.logical_and( ci[ 0, 0, : ] < 0, 0 < ci[ 1, 0, : ] ) )
+	# gt 0 comparisons are signed
+	sig[ 1:, : ] = ( ci[ 0, 1:, : ] > 0 )
+
+	# load the base image
+	base_img = nipy.load_image( "%s.nii" % paths[ "summ" ][ "mean_file" ] )
+
+	# initalise the volumes
+	l_gt_r = np.zeros( ( base_img.shape ) )
+	l_gt_z = l_gt_r.copy()
+	r_gt_z = l_gt_r.copy()
+
+	for i_voxel in xrange( gray_coords.shape[ 1 ] ):
+
+		if sig[ 0, i_voxel ] == 1:
+			l_gt_r[ gray_coords[ 0, i_voxel ],
+			        gray_coords[ 1, i_voxel ],
+			        gray_coords[ 2, i_voxel ]
+			      ] = boot_data[ 0, i_voxel, 0 ]
+
+		if sig[ 1, i_voxel ] == 1:
+			l_gt_z[ gray_coords[ 0, i_voxel ],
+			        gray_coords[ 1, i_voxel ],
+			        gray_coords[ 2, i_voxel ]
+			      ] = boot_data[ 1, i_voxel, 0 ]
+
+		if sig[ 2, i_voxel ] == 1:
+			r_gt_z[ gray_coords[ 0, i_voxel ],
+			        gray_coords[ 1, i_voxel ],
+			        gray_coords[ 2, i_voxel ]
+			      ] = boot_data[ 2, i_voxel, 0 ]
+
+	comb = np.logical_or( l_gt_z > 0, r_gt_z > 0 ).astype( "float" )
+
+	l_gt_r_img = nipy.core.api.Image( l_gt_r, base_img.coordmap )
+	nipy.save_image( l_gt_r_img, paths[ "ana_loc" ][ "l_gt_r_img" ] )
+
+	l_gt_z_img = nipy.core.api.Image( l_gt_z, base_img.coordmap )
+	nipy.save_image( l_gt_z_img, paths[ "ana_loc" ][ "l_gt_z_img" ] )
+
+	r_gt_z_img = nipy.core.api.Image( r_gt_z, base_img.coordmap )
+	nipy.save_image( r_gt_z_img, paths[ "ana_loc" ][ "r_gt_z_img" ] )
+
+	comb_img = nipy.core.api.Image( comb, base_img.coordmap )
+	nipy.save_image( comb_img, paths[ "ana_loc" ][ "comb_img" ] )
+
+
 
 def loc_extract_blocks( paths, conf, subj_conf ):
 	"""Parse the average VTC for each ROI into the individual blocks."""
@@ -79,21 +149,22 @@ def loc_extract_blocks( paths, conf, subj_conf ):
 	np.save( paths[ "ana_loc" ][ "block_psc_file" ], psc_data )
 
 
-def loc_boot_analysis( paths, conf, subj_conf ):
-	""""""
+def loc_boot( paths, conf, subj_conf ):
+	"""Run bootstrapping of the localiser data"""
 
 	# datapoints x conditions x voxels
 	data = np.load( paths[ "ana_loc" ][ "block_psc_file" ] )
 
-	n_boot = 100
+	( n_samp, _, n_voxels ) = data.shape
 
-	boot_data = np.empty( ( 3, data.shape[ -1 ], n_boot + 1 ) )
+	n_boot = conf[ "ana" ][ "n_boot" ]
 
-	n_samp = data.shape[ 0 ]
+	boot_data = np.empty( ( 3, n_voxels, n_boot + 1 ) )
 
 	cond_a = np.mean( data[ :, 0, : ], axis = 0 )
 	cond_b = np.mean( data[ :, 1, : ], axis = 0 )
 
+	# initial, unbootstrapped data goes in slot 0
 	boot_data[ 0, :, 0 ] = cond_a - cond_b
 	boot_data[ 1, :, 0 ] = cond_a
 	boot_data[ 2, :, 0 ] = cond_b
@@ -102,12 +173,21 @@ def loc_boot_analysis( paths, conf, subj_conf ):
 
 	for i_boot in xrange( n_boot ):
 
+		# generate a set of random indices for each condition and voxel
+		i_rand = np.random.randint( 0,
+		                            n_samp,
+		                            ( n_samp, 2, n_voxels )
+		                          )
+
 		# open up our multiprocessor pool
 		p = multiprocessing.Pool( processes = n_processors )
 
+		# distribute the voxels over processors
 		b_data = p.map( _loc_bootstrap,
-		                ( data[ :, :, i_voxel ]
-		                  for i_voxel in xrange( data.shape[ -1 ] )
+		                ( ( data[ :, :, i_voxel ],
+		                    i_rand[ :, :, i_voxel ]
+		                  )
+		                  for i_voxel in xrange( n_voxels )
 		                )
 		              )
 
@@ -115,66 +195,15 @@ def loc_boot_analysis( paths, conf, subj_conf ):
 
 		p.close()
 
-	return boot_data
+	np.save( paths[ "ana_loc" ][ "block_boot_file" ], boot_data )
 
 
-def _loc_bootstrap( data ):
+def _loc_bootstrap( args ):
+	"""Helper function for localiser bootstrapping analysis."""
 
-	np.random.seed()
-
-	# data is samples x conditions
-	i_rand = np.random.randint( 0, data.shape[ 0 ], ( data.shape[ 0 ], 2 ) )
+	( data, i_rand ) = args
 
 	cond_a = np.mean( data[ i_rand[ :, 0 ], 0 ] )
 	cond_b = np.mean( data[ i_rand[ :, 1 ], 1 ] )
 
 	return np.array( ( cond_a - cond_b, cond_a, cond_b ) )
-
-
-def boot_cond_diff( paths, conf ):
-	"""Compute the average and bootstrapped difference between the experiment
-	   conditions.
-
-	Parameters
-	-----------
-	paths : dict of strings
-		Subject path structure, as returned by 'get_subj_paths' in
-		'ns_aperture.config'.
-	conf : dict
-		Experiment configuration, as returned by 'get_conf' in
-		'ns_aperture.config'.
-
-	"""
-
-	n_boot = 1000
-
-	for roi_name in conf[ "ana" ][ "rois" ]:
-
-		blk = np.load( "%s-%s.npy" % ( paths[ "ana" ][ "block" ], roi_name ) )
-
-		cond_a = blk[ blk[ :, 1 ] == 0, 0 ]
-		cond_b = blk[ blk[ :, 1 ] == 1, 0 ]
-
-		assert( len( cond_a ) == len( cond_b ) )
-
-		n_samp = len( cond_a )
-
-		diff_boot = np.zeros( ( n_boot ) )
-
-		diff = np.mean( cond_a ) - np.mean( cond_b )
-
-		for i_boot in xrange( n_boot ):
-
-			cond_a_boot = cond_a[ np.random.randint( 0, n_samp, n_samp ) ]
-			cond_b_boot = cond_b[ np.random.randint( 0, n_samp, n_samp ) ]
-
-			diff_boot[ i_boot ] = np.mean( cond_a_boot ) - np.mean( cond_b_boot )
-
-		cond_diff = np.hstack( ( diff,
-		                         np.percentile( diff_boot, ( 2.5, 97.5 ) )
-		                       )
-		                     )
-
-		np.save( "%s-%s.npy" % ( paths[ "ana" ][ "cond_diff" ], roi_name ),
-		         cond_diff
-		       )

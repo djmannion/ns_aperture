@@ -203,7 +203,11 @@ def prepare_rois( paths, conf ):
 	                          ).get_data()
 
 	# get the coordinates, as 3 x N
-	gray_coords = np.array( np.nonzero( gray_img ) )
+	gray_c = np.logical_and( gray_img > 0,
+	                         np.logical_not( np.isnan( gray_img ) )
+	                       )
+
+	gray_coords = np.array( np.nonzero( gray_c ) )
 
 	# and save
 	np.save( paths[ "roi" ][ "gray_coord_file" ],
@@ -230,7 +234,9 @@ def prepare_rois( paths, conf ):
 		roi = nipy.load_image( "%s.nii" % paths[ "roi" ][ "rs_files" ][ i_roi ]
 		                     ).get_data()
 
-		roi_coords = np.array( np.nonzero( roi ) )
+		roi_c = np.logical_and( roi > 0, np.logical_not( np.isnan( roi ) ) )
+
+		roi_coords = np.array( np.nonzero( roi_c ) )
 
 		n_roi_coords = roi_coords.shape[ 1 ]
 
@@ -252,6 +258,7 @@ def prepare_rois( paths, conf ):
 		missing = len( i_not_in_gray ) / n_roi_coords
 
 		if missing > 0.01:
+			print missing
 			print "Warning: more than 1% of ROI coords not within gray matter mask"
 
 		# and save

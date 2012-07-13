@@ -18,6 +18,8 @@ def loc_boot_analysis( paths, conf, subj_conf ):
 	# load the gray coords
 	gray_coords = np.load( paths[ "roi" ][ "gray_coord_file" ] )
 
+	n_voxels = gray_coords.shape[ 1 ]
+
 	boot_data = np.load( paths[ "ana_loc" ][ "block_boot_file" ] )
 
 	p_val = conf[ "ana" ][ "loc_p_thresh" ] * 100 / 2.0
@@ -25,16 +27,36 @@ def loc_boot_analysis( paths, conf, subj_conf ):
 	p_thresh = [ p_val, 100 - p_val ]
 
 	# don't include the first index, which is the original data
-	ci = np.array( np.percentile( boot_data[ :, :, 1: ], p_thresh, axis = 2 ) )
+	ci = np.array( np.percentile( boot_data[ :, :, 1: ],
+	                              p_thresh,
+	                              axis = 2
+	                            )
+	             )
 
-	# test if ci includes zero
-	sig = np.empty( ( 3, gray_coords.shape[ 1 ] ) )
+	# ( L <> R, L > 0, R > 0, [ L | R ] > 0 )
+	sig = np.empty( ( 4, n_voxels ) )
 	sig.fill( np.NAN )
 
-	# L > R is agnostic about sign
-	sig[ 0, : ] = np.logical_not( np.logical_and( ci[ 0, 0, : ] < 0, 0 < ci[ 1, 0, : ] ) )
-	# gt 0 comparisons are signed
-	sig[ 1:, : ] = ( ci[ 0, 1:, : ] > 0 )
+	# L <> R
+	#  first test if the difference interval includes zero, then apply a NOT
+	#  operation to return those outside the zero interval
+	sig[ 0, : ] = np.logical_not( np.logical_and( ci[ 0, 0, : ] < 0,
+	                                              0 < ci[ 1, 0, : ]
+	                                            )
+	                            )
+
+	# gt 0 comparisons are signed, so can just check the lower bound to see if it
+	# is greater than zero
+	sig[ 1:3, : ] = ( ci[ 0, 1:, : ] > 0 )
+
+	# combined is whether either L or R is greater than zero
+	sig[ 3, : ] = np.logical_or( sig[ 1, : ], sig[ 2, : ] )
+
+	np.save( paths[ "ana_loc" ][ "sig" ], sig )
+
+
+def loc_write_img( paths, conf, subj_conf ):
+	""""""
 
 	# load the base image
 	base_img = nipy.load_image( "%s.nii" % paths[ "summ" ][ "mean_file" ] )
@@ -81,7 +103,7 @@ def loc_boot_analysis( paths, conf, subj_conf ):
 
 
 def loc_extract_blocks( paths, conf, subj_conf ):
-	"""Parse the average VTC for each ROI into the individual blocks."""
+	"""Parse the VTC for each voxel into the individual blocks."""
 
 	# volumes x runs x voxels
 	vtc = np.load( "%s-gray.npy" % paths[ "ana_loc" ][ "vtc_file" ] )
@@ -171,13 +193,15 @@ def loc_boot( paths, conf, subj_conf ):
 
 	n_processors = 16
 
-	for i_boot in xrange( n_boot ):
+	np.random.seed( subj_conf[ "boot_seed" ][ 1 ] )
 
-		# generate a set of random indices for each condition and voxel
-		i_rand = np.random.randint( 0,
-		                            n_samp,
-		                            ( n_samp, 2, n_voxels )
-		                          )
+	# generate a set of random indices for each condition and voxel
+	i_rand = np.random.randint( 0,
+	                            n_samp,
+	                            ( n_boot, n_samp, 2, n_voxels )
+	                          )
+
+	for i_boot in xrange( n_boot ):
 
 		# open up our multiprocessor pool
 		p = multiprocessing.Pool( processes = n_processors )
@@ -185,7 +209,7 @@ def loc_boot( paths, conf, subj_conf ):
 		# distribute the voxels over processors
 		b_data = p.map( _loc_bootstrap,
 		                ( ( data[ :, :, i_voxel ],
-		                    i_rand[ :, :, i_voxel ]
+		                    i_rand[ i_boot, :, :, i_voxel ]
 		                  )
 		                  for i_voxel in xrange( n_voxels )
 		                )
@@ -197,6 +221,8 @@ def loc_boot( paths, conf, subj_conf ):
 
 	np.save( paths[ "ana_loc" ][ "block_boot_file" ], boot_data )
 
+	np.random.seed()
+
 
 def _loc_bootstrap( args ):
 	"""Helper function for localiser bootstrapping analysis."""
@@ -207,3 +233,127 @@ def _loc_bootstrap( args ):
 	cond_b = np.mean( data[ i_rand[ :, 1 ], 1 ] )
 
 	return np.array( ( cond_a - cond_b, cond_a, cond_b ) )
+
+
+def exp_extract_blocks( paths, conf, subj_conf ):
+	"""Parse the VTC for each voxel into the individual blocks."""
+
+	# volumes x runs x voxels
+	vtc = np.load( "%s-gray.npy" % paths[ "ana_exp" ][ "vtc_file" ] )
+
+	# blocks x runs x [ start, cond ]
+	exp_design = np.load( paths[ "log" ][ "design" ] )
+
+	blk_data = np.empty( ( conf[ "exp" ][ "n_valid_blocks" ] / 2,
+	                       subj_conf[ "n_runs" ],
+	                       2,  # conditions
+	                       vtc.shape[ 2 ]  # voxels
+	                     )
+	                   )
+	blk_data.fill( np.NAN )
+
+	block_cond_count = np.zeros( ( subj_conf[ "n_runs" ], 2 ) )
+
+	for i_run in xrange( blk_data.shape[ 1 ] ):
+
+		run_vtc = vtc[ :, i_run, : ]
+
+		# convert to psc
+		run_baseline = np.mean( run_vtc, axis = 0 )
+
+		run_vtc = ( run_vtc - run_baseline ) / run_baseline * 100.0
+
+		run_design = exp_design[ :, i_run, : ]
+
+		for i_blk in xrange( exp_design.shape[ 0 ] ):
+
+			blk_cond = run_design[ i_blk, 1 ]
+			i_blk_cond = block_cond_count[ i_run, blk_cond ]
+
+			i_start = run_design[ i_blk, 0 ]
+			i_end = i_start + conf[ "exp" ][ "n_vols_per_blk" ]
+
+			blk_range = np.arange( i_start, i_end ).astype( "int" )
+
+			blk_range += conf[ "ana" ][ "hrf_corr_vols" ]
+
+			blk_mean = np.mean( run_vtc[ blk_range, : ], axis = 0 )
+
+			blk_data[ i_blk_cond, i_run, blk_cond, : ] = blk_mean
+
+			block_cond_count[ i_run, blk_cond ] += 1
+
+	# collapse over runs (column-major order)
+	blk_data = np.reshape( blk_data,
+	                       ( blk_data.shape[ 0 ] * blk_data.shape[ 1 ],
+	                         blk_data.shape[ 2 ], blk_data.shape[ 3 ]
+	                       ),
+	                       order = "F"
+	                     )
+
+	np.save( paths[ "ana_exp" ][ "block_psc_file" ], blk_data )
+
+
+def exp_boot( paths, conf, subj_conf ):
+	"""Run bootstrapping of the experiment data"""
+
+	# datapoints x conditions x voxels
+	data = np.load( paths[ "ana_exp" ][ "block_psc_file" ] )
+
+	( n_samp, _, n_voxels ) = data.shape
+
+	n_boot = conf[ "ana" ][ "n_boot" ]
+
+	boot_data = np.empty( ( n_voxels, n_boot + 1 ) )
+
+	cond_a = np.mean( data[ :, 0, : ], axis = 0 )
+	cond_b = np.mean( data[ :, 1, : ], axis = 0 )
+
+	# initial, unbootstrapped data goes in slot 0
+	boot_data[ :, 0 ] = cond_a - cond_b
+
+	n_processors = 16
+
+	np.random.seed( subj_conf[ "boot_seed" ][ 0 ] )
+
+	# generate a set of random indices for each condition and voxel
+	i_rand = np.random.randint( 0,
+	                            n_samp,
+	                            ( n_boot, n_samp, 2, n_voxels )
+	                          )
+
+	for i_boot in xrange( n_boot ):
+
+
+		# open up our multiprocessor pool
+		p = multiprocessing.Pool( processes = n_processors )
+
+		# distribute the voxels over processors
+		b_data = p.map( _exp_bootstrap,
+		                ( ( data[ :, :, i_voxel ],
+		                    i_rand[ i_boot, :, :, i_voxel ]
+		                  )
+		                  for i_voxel in xrange( n_voxels )
+		                )
+		              )
+
+		boot_data[ :, i_boot + 1 ] = np.array( b_data )
+
+		p.close()
+
+	np.save( paths[ "ana_exp" ][ "block_boot_file" ], boot_data )
+
+	np.random.seed()
+
+
+def _exp_bootstrap( args ):
+	"""Helper function for exp bootstrapping analysis."""
+
+	( data, i_rand ) = args
+
+	cond_a = np.mean( data[ i_rand[ :, 0 ], 0 ] )
+	cond_b = np.mean( data[ i_rand[ :, 1 ], 1 ] )
+
+	return ( cond_a - cond_b )
+
+

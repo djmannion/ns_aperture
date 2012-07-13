@@ -448,7 +448,7 @@ def _get_analysis_conf():
 	                      ),
 	             "roi_ax" : ( 2, 1, 0 ),
 	             "roi_ax_order" : ( 1, -1, -1 ),
-	             "loc_p_thresh" : 0.001,
+	             "loc_p_thresh" : 0.01,
 	             "hrf_corr_vols" : 2,
 	             "n_boot" : 5000
 	           }
@@ -493,6 +493,7 @@ def get_subj_conf( subj_id = None ):
 	                                 ( 5, "func" ),
 	                                 ( 6, "func" )
 	                               ),
+	          "boot_seed" : ( 41428, 34425 ),
 	          "comments" : ""
 	        }
 
@@ -514,6 +515,7 @@ def get_subj_conf( subj_id = None ):
 	                                 ( 5, "func" ),
 	                                 ( 6, "func" )
 	                               ),
+	          "boot_seed" : ( 565, 11014 ),
 	          "comments" : ""
 	        }
 
@@ -535,6 +537,7 @@ def get_subj_conf( subj_id = None ):
 	                                 ( 5, "func" ),
 	                                 ( 6, "func" )
 	                               ),
+	          "boot_seed" : ( 57277, 19356 ),
 	          "comments" : """Fifth run, might be switched (couldnt remember
 	                       which). Tenth run, started with three buttons"""
 	        }
@@ -557,19 +560,44 @@ def get_subj_conf( subj_id = None ):
 	                                 ( 5, "func" ),
 	                                 ( 6, "func" )
 	                               ),
+	          "boot_seed" : ( 41922, 56386 ),
 	          "comments" : "Visible motion on acquisition in last run (loc)."
+	        }
+
+	s1008 = { "subj_id" : "s1008",
+	          "acq_date" : "20120619",
+	          "n_runs" : 10,
+	          "n_loc_runs" : 2,
+	          "n_fmaps" : 1,
+	          "run_st_mot_order" : ( ( 7, "func" ),
+	                                 ( 8, "func" ),
+	                                 ( 9, "func" ),
+	                                 ( 10, "func" ),
+	                                 ( 1, "loc" ),
+	                                 ( 2, "loc" ),
+	                                 ( 1, "func" ),
+	                                 ( 2, "func" ),
+	                                 ( 3, "func" ),
+	                                 ( 4, "func" ),
+	                                 ( 5, "func" ),
+	                                 ( 6, "func" )
+	                               ),
+	          "boot_seed" : ( 19611, 9387 ),
+	          "comments" : ""
 	        }
 
 	subj_conf = { "s1000" : s1000,
 	              "s1021" : s1021,
 	              "s1011" : s1011,
-	              "s1032" : s1032
+	              "s1032" : s1032,
+	              "s1008" : s1008
 	            }
 
 	if subj_id is None:
 		return subj_conf
 	else:
 		return subj_conf[ subj_id ]
+
 
 def apply_subj_specific_fixes( conf, subj_id ):
 	"""Modify the experiment configuration for unexpected variations for
@@ -638,6 +666,19 @@ def get_log_paths( log_dir, subj_id, file_id ):
 
 	return log
 
+def cust_ana_exp_paths( ana_paths ):
+	"""Add custom analysis paths"""
+
+	ana_paths[ "block_psc_file" ] = os.path.join( ana_paths[ "base_dir" ],
+	                                              "exp_block_psc.npy"
+	                                            )
+
+	ana_paths[ "block_boot_file" ] = os.path.join( ana_paths[ "base_dir" ],
+	                                               "exp_block_boot.npy"
+	                                             )
+
+	return ana_paths
+
 
 def cust_ana_loc_paths( ana_paths ):
 	"""Add custom analysis paths"""
@@ -650,21 +691,25 @@ def cust_ana_loc_paths( ana_paths ):
 	                                               "loc_block_boot.npy"
 	                                             )
 
-	ana_paths[ "l_gt_r_img" ] = os.path.join( ana_paths[ "base_dir" ],
-	                                          "loc_l_gt_r.nii"
-	                                        )
+	ana_paths[ "sig" ] = os.path.join( ana_paths[ "base_dir" ],
+	                                              "loc_sig.npy"
+	                                 )
 
-	ana_paths[ "l_gt_z_img" ] = os.path.join( ana_paths[ "base_dir" ],
-	                                          "loc_l_gt_z.nii"
-	                                        )
+	ana_paths[ "l_gt_r" ] = os.path.join( ana_paths[ "base_dir" ],
+	                                      "loc_l_gt_r"
+	                                    )
 
-	ana_paths[ "r_gt_z_img" ] = os.path.join( ana_paths[ "base_dir" ],
-	                                          "loc_r_gt_z.nii"
-	                                        )
+	ana_paths[ "l_gt_z" ] = os.path.join( ana_paths[ "base_dir" ],
+	                                      "loc_l_gt_z"
+	                                    )
 
-	ana_paths[ "comb_img" ] = os.path.join( ana_paths[ "base_dir" ],
-	                                        "loc_comb.nii"
-	                                      )
+	ana_paths[ "r_gt_z" ] = os.path.join( ana_paths[ "base_dir" ],
+	                                      "loc_r_gt_z"
+	                                    )
+
+	ana_paths[ "comb" ] = os.path.join( ana_paths[ "base_dir" ],
+	                                    "loc_comb"
+	                                  )
 
 
 
@@ -741,7 +786,7 @@ def get_subj_paths( subj_id ):
 	#     - experiment analysis
 	ana_exp_dir = os.path.join( subj_dir, "analysis", "exp" )
 	ana_exp_paths = fmri_tools.paths.get_ana_paths( ana_exp_dir )
-#	ana_exp_paths = cust_ana_paths( ana_exp_paths )
+	ana_exp_paths = cust_ana_exp_paths( ana_exp_paths )
 
 	#     - localiser analysis
 	ana_loc_dir = os.path.join( subj_dir, "analysis", "loc" )

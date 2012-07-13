@@ -20,7 +20,7 @@ Prepare the filesystem
 
 1. Make the subject's directory structure::
 
-    mkdir -p sXXXX/{anat,analysis,fmap/f01,func/exp/run{01,02,03,04,05,06,07,08,09,10},func/loc/run{01,02},log,roi}
+    mkdir -p sXXXX/{anat,analysis/{exp,loc},fmap/f01,func/exp/run{01,02,03,04,05,06,07,08,09,10},func/loc/run{01,02},log,roi}
 
 2. Copy the subject's runtime logfiles to the ``log`` directory.
 
@@ -248,7 +248,7 @@ The stages are as follows:
 Localiser blocks
 ~~~~~~~~~~~~~~~~
 
-Extracts the block responses for each condition and ROI for the localiser data::
+Extracts the block responses for each condition for the localiser data::
 
     ns_aperture_subj_analysis sXXXX loc_blocks
 
@@ -261,13 +261,12 @@ Bootstraps the condition differences for the localiser data::
     ns_aperture_subj_analysis sXXXX loc_boot
 
 
-Localiser mask
-~~~~~~~~~~~~~~
+Experiment blocks
+~~~~~~~~~~~~~~~~~
 
-Produces voxel selection masks from the localiser data::
+Extracts the block responses for each condition for the experiment data::
 
-    ns_aperture_subj_analysis sXXXX loc_mask
-
+    ns_aperture_subj_analysis sXXXX exp_blocks
 
 
 Datafile list
@@ -293,10 +292,16 @@ Subject-level analysis
 ----------------------
 
 block_psc
-  ( datapoints, conditions, voxels ) array of BOLD signals. These are in units of percent signal change, relative to a blank baseline for localiser data and non-scene baseline for natural scenes.
+  ( datapoints, conditions, voxels ) array of BOLD signals. These are in units of percent signal change, relative to a blank baseline for localiser data and run mean baseline for natural scenes.
 
 block_boot
   ( comparisons, voxels, [ orig, boot ] ) array of BOLD signals. These represent bootstrapped distributions of each condition comparison.
+
+block_sig
+  ( L and R are sig diff, L sig > 0, R sig > 0, either L or R is sig > 0, voxels ) array of booleans representing the outcome of the relevant significance test.
+
+exp_boot
+  ( voxels, [ orig, boot ] ) array of differences between scenes and non-scenes.
 
 
 Group-level analysis

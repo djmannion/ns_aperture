@@ -11,93 +11,43 @@ import fmri_tools.utils, fmri_tools.paths
 
 
 def get_conf( subj_id = None ):
-	"""Overall experiment configuration.
-
-	Parameters
-	----------
-	subj_id : string, optional
-		If passed, checks for subject-specific modifications to the configuration
-		and applies them.
-
-	Returns
-	-------
-	conf : dict, with items:
-		exp : holds overall experiment configurations
-		stim : stimulus configuration
-		task : behavioural task configuration
-		acq : acquisition configuration
-		ana : analysis configuration
-		preproc : preprocessing configuration
-
-	"""
+	"""Overall experiment configuration"""
 
 	conf = { "exp" : _get_exp_conf(),
 	         "stim" : _get_stim_conf(),
 	         "task" : _get_task_conf(),
 	         "acq" : _get_acq_conf(),
 	         "ana" : _get_analysis_conf(),
-	         "preproc" : _get_preproc_conf()
+	         "all_subj" : _get_subj_conf()
 	       }
 
 	if subj_id is not None:
+
 		conf = apply_subj_specific_fixes( conf, subj_id )
+		conf[ "subj" ] = _get_subj_conf( subj_id )
 
 	return conf
 
 
 def _get_stim_conf():
-	"""Get the stimulus configuration.
-
-	Specifies the stimulus configuration and parameters for the natural scenes
-	aperture fMRI experiment.
-
-	This shouldn't be called directly.
-
-	Returns
-	-------------
-	db_path : string
-		Path to the image database (the image files)
-	im_dim : 2-item list
-		( n_rows, n_cols ) dimensions of each (full) image
-	im_deg_pp : scalar float
-		Degrees per pixel in the images as acquired (ie native)
-	patch_diam_deg : scalar float
-		Diameter, in degrees visual angle, of each extracted image patch
-	patch_ecc_deg : scalar float
-		Eccenticity, in degrees visual angle, where each extracted patch will be
-		shown
-	patch_rect : 2-item list of 2-item list of 2-item list
-		Coordinates of each patch, in the original image dimensions. Arranged as
-		( patch 1, patch 2 ) -> ( top left, bottom right ) -> ( i_row, i_col )
-	scale_mode : string, { "none", "cd", "norm", "mean" }
-		How to scale the images.
-	img_ids : numpy vector of ints
-		Identifiers (one-based) for the set of candidate images.
-	fix_rad_deg : float
-		Radius of the fixation circle, in degrees visual angle.
-	fix_col_inact : three-item tuple of floats
-		Colour of inner fixation circle when task is inactive.
-	fix_col_act : three-item tuple of floats
-		Colour of inner fixation circle when task is active.
-	loc_sf_cpd : float
-		Spatial frequency of the localiser stimulus, in cycles per degree
-	loc_rev_rate_hz : float
-		Reversal rate of the localiser stimulus, in hertz.
-
-	Notes
-	-----
-	* Returns are contained within a dictionary.
-
-	"""
+	"""Get the stimulus configuration"""
 
 	stim_conf = {}
 
+	# path to the image database (the image files)
 	stim_conf[ "db_path" ] = "../im_db"
 
+	# ( n_rows, n_cols ) dimensions of each (full) image
 	stim_conf[ "im_dim" ] = ( 1024, 1536 )
+
+	# degrees per pixel in the images as acquired (ie native)
 	stim_conf[ "im_deg_pp" ] = 1.0 / 60.0
 
+	# diameter, in degrees visual angle, of each extracted image patch
 	stim_conf[ "patch_diam_deg" ] = 4.0
+
+	# eccenticity, in degrees visual angle, where each extracted patch will be
+	# shown
 	stim_conf[ "patch_ecc_deg" ] = 3.0
 
 	patch_diam_pix = np.round( stim_conf[ "patch_diam_deg" ] *
@@ -118,6 +68,8 @@ def _get_stim_conf():
 	                     for offset in ( -1, +1 )
 	                   ]
 
+	# coordinates of each patch, in the original image dimensions. Arranged as
+	# ( patch 1, patch 2 ) -> ( top left, bottom right ) -> ( i_row, i_col )
 	stim_conf[ "patch_rect" ] = [ ( ( c_pix[ 0 ] - patch_r_pix, # top
 	                                  c_pix[ 1 ] - patch_r_pix  # left
 	                                ),
@@ -128,6 +80,7 @@ def _get_stim_conf():
 	                              for c_pix in patch_centre_pix
 	                            ]
 
+	# how to scale the images.
 	stim_conf[ "scale_mode" ] = "mean"
 
 	# hardcode the desired image ids
@@ -153,79 +106,32 @@ def _get_stim_conf():
 	                                )
 
 
+	# radius of the fixation circle, in degrees visual angle.
 	stim_conf[ "fix_rad_deg" ] = 0.075
+
+	# colour of inner fixation circle when task is inactive.
 	stim_conf[ "fix_col_inact" ] = ( -1, -1, -1 )
+
+	# colour of inner fixation circle when task is active.
 	stim_conf[ "fix_col_act" ] = ( -1, 1, -1 )
 
+	# spatial frequency of the localiser stimulus, in cycles per degree
 	stim_conf[ "loc_sf_cpd" ] = 2.0
+
+	# reversal rate of the localiser stimulus, in hertz.
 	stim_conf[ "loc_rev_rate_hz" ] = 2
 
 	return stim_conf
 
 
-def _get_exp_conf( tr_s = 2.0 ):
-	"""Gets the experiment configuration.
-
-	Specifies the experiment configuration and parameters for the natural scenes
-	aperture fMRI experiment.
-
-	This shouldn't be called directly.
-
-	Parameters
-	----------
-	tr_s : float
-		TR time, in seconds.
-
-	Returns
-	-------
-	n_runs : scalar integer
-		Number of experiment runs per session.
-	n_blocks : scalar integer
-		Number of blocks per run.
-	block_len_s : scalar float
-		Length of each block, in seconds.
-	run_dur_s : scalar float
-		Length of each run, in seconds.
-	n_evt_per_block : scalar integer
-		Number of events per block.
-	n_evt_per_run : scalar integer
-		Number of events per run.
-	evt_len_s : scalar float
-		Length of each 'event' within a block, in seconds.
-	evt_stim_s : scalar float
-		Length of stimulus presentation within each event.
-	rej_start_blocks : scalar int
-		How many blocks to discard at the start of a run.
-	rej_end_blocks : scalar int
-		How many blocks to discard at the end of a run.
-	hrf_corr_vol : scalar int
-		Number of volumes to compensate for the HRF delay.
-	n_vols_per_blk : scalar int
-		Number of volumes per block.
-	n_vols_per_run : scalar int
-		Number of volumes per run.
-	run_range_st : scalar int
-		Starting index for desired run volume range.
-	run_range_end : scalar int
-		Ending index for desired run volume range.
-	run_range : numpy array of integers
-		Sequence of volume indices corresponding to valid run volumes.
-	run_range_hrf_corr : numpy array of integers
-		Sequence of volume indices corresponding to valid run volumes after HRF
-		compensation.
-	n_valid_vols_per_run : scalar int
-		Number of volumes per run after trimming at the start and end.
-
-	Notes
-	-----
-	* Returns are contained within a dictionary.
-
-	"""
+def _get_exp_conf():
+	"""Gets the experiment configuration"""
 
 	exp_conf = {}
 
 	exp_conf[ "id" ] = "ns_aperture"
 
+	# main experiment info
 	exp_conf[ "n_runs" ] = 10
 	exp_conf[ "n_blocks" ] = 18
 	exp_conf[ "block_len_s" ] = 16.0
@@ -241,34 +147,6 @@ def _get_exp_conf( tr_s = 2.0 ):
 	                          )
 	exp_conf[ "evt_stim_s" ] = 1.0
 
-	exp_conf[ "rej_start_blocks" ] = 1
-	exp_conf[ "rej_end_blocks" ] = 1
-
-	exp_conf[ "n_vols_per_blk" ] = int( exp_conf[ "block_len_s" ] / tr_s )
-
-	exp_conf[ "n_vols_per_run" ] = int( exp_conf[ "n_blocks" ] *
-	                                    exp_conf[ "n_vols_per_blk" ]
-	                                  )
-
-	exp_conf[ "run_range_st" ] = int( exp_conf[ "rej_start_blocks" ] *
-	                                  exp_conf[ "n_vols_per_blk" ]
-	                                )
-	exp_conf[ "run_range_end" ] = int( exp_conf[ "n_vols_per_run" ] -
-	                                   exp_conf[ "rej_end_blocks" ] *
-	                                   exp_conf[ "n_vols_per_blk" ]
-	                                 )
-
-	exp_conf[ "run_range" ] = np.arange( exp_conf[ "run_range_st" ],
-	                                     exp_conf[ "run_range_end" ]
-	                                   )
-
-	exp_conf[ "n_valid_vols_per_run" ] = len( exp_conf[ "run_range" ] )
-
-	exp_conf[ "n_valid_blocks" ] = ( exp_conf[ "n_blocks" ] -
-	                                 exp_conf[ "rej_start_blocks" ] -
-	                                 exp_conf[ "rej_end_blocks" ]
-	                               )
-
 	# localiser info
 	exp_conf[ "loc_n_runs" ] = 2
 	exp_conf[ "loc_n_blocks" ] = 19
@@ -279,45 +157,15 @@ def _get_exp_conf( tr_s = 2.0 ):
 
 	exp_conf[ "loc_n_valid_blocks" ] = exp_conf[ "loc_n_blocks" ] - 1
 
-	exp_conf[ "loc_n_vols_per_run" ] = int( exp_conf[ "loc_n_blocks" ] *
-	                                        exp_conf[ "n_vols_per_blk" ] +
-	                                        exp_conf[ "loc_pre_len_s" ] / tr_s
-	                                      )
-
 	exp_conf[ "loc_run_full_len_s" ] = ( exp_conf[ "loc_run_len_s" ] +
 	                                     exp_conf[ "loc_pre_len_s" ]
 	                                   )
-
-	exp_conf[ "loc_run_range_st" ] = int( exp_conf[ "loc_pre_len_s" ] / tr_s )
-	exp_conf[ "loc_run_range_end" ] = int( exp_conf[ "loc_run_full_len_s" ] / tr_s )
-
-	exp_conf[ "loc_run_range" ] = np.arange( exp_conf[ "loc_run_range_st" ],
-	                                         exp_conf[ "loc_run_range_end" ]
-	                                       )
-
-	exp_conf[ "loc_n_valid_vols_per_run" ] = len( exp_conf[ "loc_run_range" ] )
 
 	return exp_conf
 
 
 def _get_task_conf():
-	"""Gets the task configuration.
-
-	Specifies the configuration for the behavioural task in the natural scenes
-	aperture fMRI experiment.
-
-	This shouldn't be called directly.
-
-	Returns
-	-------
-	p : scalar float
-		Probability that a given event will be a task trial.
-
-	Notes
-	-----
-	* Returns are contained within a dictionary.
-
-	"""
+	"""Gets the task configuration"""
 
 	task_conf = {}
 
@@ -330,150 +178,68 @@ def _get_task_conf():
 
 
 def _get_acq_conf():
-	"""Get the acquisition configuration.
+	"""Get the acquisition configuration"""
 
-	Specifies the acquisition configuration and parameters for the
-	natural scenes aperture fMRI experiment.
+	monitor_name = "UMN_7T"
 
-	Returns
-	-------
-	monitor_name : string
-		monitor configuration name.
-	tr_s : float
-		time-to-repetition (TR), in seconds.
-	delta_te_ms : float
-		echo time differences for the fieldmaps, in milliseconds.
-	dwell_ms : float
-		dwell time, in milliseconds.
-	slice_order : array of int
-		slice acqusition indices, where 0 is the first slice.
-	slice_axis : int
-		the axis in the functional data that represents the inplanes.
-	slice_acq_dir : { -1, +1 }
-		whether the slices were acquired in the same order as represented in
-		the array (1) or in descending order (-1).
-	phase_encode_dir : { "x+", "y+", "z+", "x-", "y-", "z-" }
-		FSLs unwarping code needs to know the phase encode direction (x|y|z) and
-		polarity (-|+).
+	tr_s = 2.0
 
-	Notes
-	-----
-	* Returns are contained within a dictionary.
+	# how to reshape the data to be in +RAS convention
+	# subsequent commands are relative to the data AFTER this operation
+	# see docs for how to determine these
+	ras = ( "-x", "-z", "-y" )
 
-	"""
+	# phase encode direction, according to the data's internal axes
+	ph_encode_dir = "z"
 
-	acq_conf = {}
+	# axis index that corresponds to the inplanes
+	# this is zero-based; 0 = LR, 1 = PA, 2 = IS (assuming reshape_to_RAS has been
+	# set correctly)
+	slice_axis = 1
 
-	acq_conf = { "monitor_name" : "UMN_7T",
-	             "tr_s" : 2.0,
-	             "delta_te_ms" : 1.02,
-	             "dwell_ms" : 0.325,
-	             "slice_order" : fmri_tools.utils.get_slice_order( 36 ),
-	             "slice_axis" : 2,
-	             "slice_acq_dir" : 1,
-	             "ph_encode_dir" : "y-",
-	           }
+	# direction in which slices were acquired along the axis
+	slice_acq_dir = "+1"
+
+	# number of slices acquired
+	n_slices = 36
+
+	slice_acq = "interleaved"
+
+	# order of slice acquisition
+	slice_order = fmri_tools.utils.get_slice_order( n_slices, slice_acq )
+
+	# TE difference in the fieldmaps
+	delta_te_ms = 1.02
+
+	# corresponds to the echo spacing
+	dwell_ms = 0.65 / 2.0
+
+	acq_conf = { "monitor_name" : monitor_name,
+	             "tr_s" : tr_s,
+	             "ras" : ras,
+	             "ph_encode_dir" : ph_encode_dir,
+	             "slice_axis" : slice_axis,
+	             "slice_acq_dir" : slice_acq_dir,
+	             "n_slices" : n_slices,
+	             "slice_acq" : slice_acq,
+	             "slice_order" : slice_order,
+	             "delta_te_ms" : delta_te_ms,
+	             "dwell_ms" : dwell_ms
+	          }
 
 	return acq_conf
 
 
-def _get_preproc_conf():
-	"""Gets the preprocessing configuration.
-
-	Specifies the configuration for pre-processing the Glass pattern coherence
-	fMRI data.
-
-	Returns
-	-------
-
-	Notes
-	-----
-	* Return values are contained within a dictionary
-
-"""
-
-	slice_axis = 2
-
-	slice_acq_dir = 1
-
-	st_correct = False
-
-	phase_encode_dir = "y-"
-
-	roi_ax = ( 2, 1, 0 )
-
-	roi_ax_order = ( 1, -1, -1 )
-
-	# assemble the dictionary
-	preproc_conf = { "slice_axis" : slice_axis,
-	                 "slice_acq_dir" : slice_acq_dir,
-	                 "phase_encode_dir" : phase_encode_dir,
-	                 "roi_ax" : roi_ax,
-	                 "roi_ax_order" : roi_ax_order,
-	                 "st_correct" : st_correct
-	               }
-
-	return preproc_conf
-
-
 def _get_analysis_conf():
-	"""Gets the parameters for the fMRI analysis.
+	"""Gets the parameters for the fMRI analysis"""
 
-	Returns
-	-------
-	rois : tuple of strings
-		Name of each ROI to be analysed.
-	roi_ax : tuple of ints
-		mapping from ROI axes to image axes. For example, ( 2, 1, 0 ) maps ROI
-		(x,y,z) to image (z,y,x).
-	roi_ax_order : tuple of { -1, +1 }
-		the order when we map from ROI to image coordinates. -1 flips the axis
-		order, while +1 preserves it.
-	loc_p_thresh : float
-		Probability threshold for the localiser analysis.
-	poly_ord : integer >= 1
-		Maximum Legendre polynomial order to use as nuisance regressors.
-
-	Notes
-	-----
-	* Return values are within a dictionary.
-
-	"""
-
-	ana_conf = { "rois" : ( "V1",
-	                        "V2",
-	                        "V3",
-	                        "V3AB",
-	                        "hV4"
-	                      ),
-	             "roi_ax" : ( 2, 1, 0 ),
-	             "roi_ax_order" : ( 1, -1, -1 ),
-	             "loc_p_thresh" : 0.01,
-	             "hrf_corr_vols" : 2,
-	             "n_boot" : 5000
-	           }
+	ana_conf = {}
 
 	return ana_conf
 
 
-def get_subj_conf( subj_id = None ):
-	"""Gets the configuration info for each subject.
-
-	Returns
-	-------
-	subj_id : string
-		Subject ID, in the Olman lab system.
-	acq_date : string
-		Acquisition date, in YYYYMMDD format.
-	comments : string
-		Any comments about the scanning session.
-
-	Notes
-	-----
-	* Return values are within a dictionary, which is itself within a dictionary
-	  indexed by subject ID.
-
-	"""
+def _get_subj_conf( subj_id = None ):
+	"""Gets the configuration info for subjects"""
 
 	s1000 = { "subj_id" : "s1000",
 	          "acq_date" : "20120601",
@@ -493,7 +259,6 @@ def get_subj_conf( subj_id = None ):
 	                                 ( 5, "func" ),
 	                                 ( 6, "func" )
 	                               ),
-	          "boot_seed" : ( 41428, 34425 ),
 	          "comments" : ""
 	        }
 
@@ -515,7 +280,6 @@ def get_subj_conf( subj_id = None ):
 	                                 ( 5, "func" ),
 	                                 ( 6, "func" )
 	                               ),
-	          "boot_seed" : ( 565, 11014 ),
 	          "comments" : ""
 	        }
 
@@ -537,7 +301,6 @@ def get_subj_conf( subj_id = None ):
 	                                 ( 5, "func" ),
 	                                 ( 6, "func" )
 	                               ),
-	          "boot_seed" : ( 57277, 19356 ),
 	          "comments" : """Fifth run, might be switched (couldnt remember
 	                       which). Tenth run, started with three buttons"""
 	        }
@@ -560,7 +323,6 @@ def get_subj_conf( subj_id = None ):
 	                                 ( 5, "func" ),
 	                                 ( 6, "func" )
 	                               ),
-	          "boot_seed" : ( 41922, 56386 ),
 	          "comments" : "Visible motion on acquisition in last run (loc)."
 	        }
 
@@ -616,192 +378,8 @@ def apply_subj_specific_fixes( conf, subj_id ):
 		                                     conf[ "exp" ][ "block_len_s" ]
 		                                   )
 
-		conf[ "exp" ][ "loc_n_valid_blocks" ] = conf[ "exp" ][ "loc_n_blocks" ] - 1
-
 		conf[ "exp" ][ "loc_run_full_len_s" ] = ( conf[ "exp" ][ "loc_run_len_s" ] +
 		                                          conf[ "exp" ][ "loc_pre_len_s" ]
 		                                        )
 
-		conf[ "exp" ][ "loc_run_range_end" ] = int( conf[ "exp" ][ "loc_run_full_len_s" ] /
-		                                            conf[ "acq" ][ "tr_s" ]
-		                                          )
-
-		conf[ "exp" ][ "loc_run_range" ] = np.arange( conf[ "exp" ][ "loc_run_range_st" ],
-		                                              conf[ "exp" ][ "loc_run_range_end" ]
-		                                            )
-
-		conf[ "exp" ][ "loc_n_valid_vols_per_run" ] = len( conf[ "exp" ][ "loc_run_range" ] )
-
 	return conf
-
-
-def get_study_paths():
-	"""Get the path structure for the study"""
-
-	base_dir = "/labs/olmanlab/Data7T/NatSceneAperture/"
-
-	study_paths = fmri_tools.paths.get_study_paths( base_dir )
-
-	return study_paths
-
-
-def get_log_paths( log_dir, subj_id, file_id ):
-	""""""
-
-	log = {}
-
-	log[ "base_dir" ] = log_dir
-
-	log[ "design" ] = os.path.join( log_dir, "design.npy" )
-
-	log[ "loc_design" ] = os.path.join( log_dir, "loc_design.npy" )
-
-	log[ "seq_base" ] = os.path.join( log_dir,
-	                                  "%s_%s_seq_" % ( subj_id, file_id )
-	                                )
-
-	log[ "task_base" ] = os.path.join( log_dir,
-	                                   "%s_%s_task_" % ( subj_id, file_id )
-	                                 )
-
-	return log
-
-def cust_ana_exp_paths( ana_paths ):
-	"""Add custom analysis paths"""
-
-	ana_paths[ "block_psc_file" ] = os.path.join( ana_paths[ "base_dir" ],
-	                                              "exp_block_psc.npy"
-	                                            )
-
-	ana_paths[ "block_boot_file" ] = os.path.join( ana_paths[ "base_dir" ],
-	                                               "exp_block_boot.npy"
-	                                             )
-
-	return ana_paths
-
-
-def cust_ana_loc_paths( ana_paths ):
-	"""Add custom analysis paths"""
-
-	ana_paths[ "block_psc_file" ] = os.path.join( ana_paths[ "base_dir" ],
-	                                              "loc_block_psc.npy"
-	                                            )
-
-	ana_paths[ "block_boot_file" ] = os.path.join( ana_paths[ "base_dir" ],
-	                                               "loc_block_boot.npy"
-	                                             )
-
-	ana_paths[ "sig" ] = os.path.join( ana_paths[ "base_dir" ],
-	                                              "loc_sig.npy"
-	                                 )
-
-	ana_paths[ "l_gt_r" ] = os.path.join( ana_paths[ "base_dir" ],
-	                                      "loc_l_gt_r"
-	                                    )
-
-	ana_paths[ "l_gt_z" ] = os.path.join( ana_paths[ "base_dir" ],
-	                                      "loc_l_gt_z"
-	                                    )
-
-	ana_paths[ "r_gt_z" ] = os.path.join( ana_paths[ "base_dir" ],
-	                                      "loc_r_gt_z"
-	                                    )
-
-	ana_paths[ "comb" ] = os.path.join( ana_paths[ "base_dir" ],
-	                                    "loc_comb"
-	                                  )
-
-
-
-	return ana_paths
-
-
-def get_subj_paths( subj_id ):
-	"""Get the path structure for a given subject"""
-
-	study_paths = get_study_paths()
-
-	subj_conf = get_subj_conf( subj_id )
-
-	study_conf = get_conf( subj_id )
-
-	subj_dir = os.path.join( study_paths[ "subj_dir" ], subj_id )
-
-	# functionals
-	func_dir = os.path.join( subj_dir, "func" )
-
-	#   - experiment functionals
-	func_exp_dir = os.path.join( func_dir, "exp" )
-
-	func_paths = fmri_tools.paths.get_func_paths( func_exp_dir,
-	                                              subj_id,
-	                                              subj_conf[ "n_runs" ],
-	                                              study_conf[ "exp" ][ "id" ]
-	                                            )
-
-	#   - localiser functionals
-	loc_id = "%s_loc" % study_conf[ "exp" ][ "id" ]
-	func_loc_dir = os.path.join( func_dir, "loc" )
-
-	loc_paths = fmri_tools.paths.get_func_paths( func_loc_dir,
-	                                             subj_id,
-	                                             subj_conf[ "n_loc_runs" ],
-	                                             loc_id
-	                                           )
-
-	# summaries
-	summ_paths = fmri_tools.paths.get_func_summ_paths( func_dir,
-	                                                   subj_id,
-	                                                   study_conf[ "exp" ][ "id" ]
-	                                                 )
-
-	# fieldmaps
-	fmap_dir = os.path.join( subj_dir, "fmap" )
-
-	fmap_paths = fmri_tools.paths.get_fmap_paths( fmap_dir,
-	                                              subj_id,
-	                                              study_conf[ "exp" ][ "id" ],
-	                                              subj_conf[ "n_fmaps" ]
-	                                            )
-
-	# anatomicals
-	anat_dir = os.path.join( subj_dir, "anat" )
-
-	anat_paths = fmri_tools.paths.get_anat_paths( anat_dir,
-	                                              subj_id,
-	                                              study_conf[ "exp" ][ "id" ]
-	                                            )
-
-	# rois
-	roi_dir = os.path.join( subj_dir, "roi" )
-	roi_paths = fmri_tools.paths.get_roi_paths( roi_dir,
-	                                            study_conf[ "ana" ][ "rois" ]
-	                                          )
-
-	# logs
-	log_dir = os.path.join( subj_dir, "log" )
-	log_paths = get_log_paths( log_dir, subj_id, "ns_aperture_fmri" )
-
-	# analysis
-	#     - experiment analysis
-	ana_exp_dir = os.path.join( subj_dir, "analysis", "exp" )
-	ana_exp_paths = fmri_tools.paths.get_ana_paths( ana_exp_dir )
-	ana_exp_paths = cust_ana_exp_paths( ana_exp_paths )
-
-	#     - localiser analysis
-	ana_loc_dir = os.path.join( subj_dir, "analysis", "loc" )
-	ana_loc_paths = fmri_tools.paths.get_ana_paths( ana_loc_dir, "loc_" )
-	ana_loc_paths = cust_ana_loc_paths( ana_loc_paths )
-
-	subj_paths = { "func" : func_paths,
-	               "loc" : loc_paths,
-	               "summ" : summ_paths,
-	               "fmap" : fmap_paths,
-	               "anat" : anat_paths,
-	               "roi" : roi_paths,
-	               "log" : log_paths,
-	               "ana_exp" : ana_exp_paths,
-	               "ana_loc" : ana_loc_paths
-	             }
-
-	return subj_paths

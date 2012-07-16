@@ -201,6 +201,25 @@ def _get_ana_paths( conf, paths ):
 	                                         ana[ "exp_cond" ] )
 	                                     )
 
+	ana[ "exp_fits" ] = os.path.join( ana[ "exp_dir" ],
+	                                  "%s_%s_exp-fits" % ( subj_id,
+	                                                       conf[ "exp" ][ "id" ]
+	                                                     )
+	                                )
+
+	ana[ "exp_glm" ] = os.path.join( ana[ "exp_dir" ],
+	                                  "%s_%s_exp-glm" % ( subj_id,
+	                                                       conf[ "exp" ][ "id" ]
+	                                                     )
+	                                )
+
+	ana[ "exp_beta" ] = os.path.join( ana[ "exp_dir" ],
+	                                  "%s_%s_exp-beta" % ( subj_id,
+	                                                       conf[ "exp" ][ "id" ]
+	                                                     )
+	                                )
+
+
 	ana[ "loc_dir" ] = os.path.join( ana_dir, "loc" )
 
 	ana[ "loc_cond" ] = [ "lvf_ON", "rvf_ON" ]

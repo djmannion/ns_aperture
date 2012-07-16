@@ -63,7 +63,8 @@ def main():
 	                  "surf_reg",
 	                  "vol_to_surf",
 	                  "design_prep",
-	                  "loc_analysis"
+	                  "loc_glm",
+	                  "exp_glm"
 	                )
 
 	parser.add_argument( "preproc_step",
@@ -105,8 +106,11 @@ def main():
 	elif args.preproc_step == "design_prep":
 		ns_aperture.fmri_analysis.preproc.design_prep( paths, conf )
 
-	elif args.preproc_step == "loc_analysis":
-		ns_aperture.fmri_analysis.analysis.loc_analysis( paths, conf )
+	elif args.preproc_step == "loc_glm":
+		ns_aperture.fmri_analysis.analysis.loc_glm( paths, conf )
+
+	elif args.preproc_step == "exp_glm":
+		ns_aperture.fmri_analysis.analysis.exp_glm( paths, conf )
 
 	else:
 		print "Not completed"

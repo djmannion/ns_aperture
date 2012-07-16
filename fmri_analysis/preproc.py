@@ -9,6 +9,7 @@ import os.path
 
 import numpy as np
 
+import ns_aperture.fmri.loc
 import fmri_tools.preproc, fmri_tools.utils
 
 
@@ -66,7 +67,7 @@ def convert( paths, conf ):
 	# make a summary image from the files
 	fmri_tools.preproc.gen_sess_summ_img( summ_paths,
 	                                      paths[ "summ" ][ "orig_summ_file" ],
-	                                      paths[ "summ" ][ "log_file" ]
+	                                      log_path = paths[ "summ" ][ "log_file" ]
 	                                    )
 
 
@@ -82,10 +83,10 @@ def st_motion_correct( paths, conf ):
 	# reorder the paths
 	# (the -1 is because the runs are specified in subj_conf in a one-based
 	# index; ie. run 1 is the first run)
-	orig_paths = [ paths[ im_type ][ "orig_files" ][ i_run - 1 ]
+	orig_paths = [ paths[ "func_%s" % im_type ][ "orig_files" ][ i_run - 1 ]
 	               for i_run, im_type in run_order
 	             ]
-	corr_paths = [ paths[ im_type ][ "corr_files" ][ i_run - 1 ]
+	corr_paths = [ paths[ "func_%s" % im_type ][ "corr_files" ][ i_run - 1 ]
 	               for i_run, im_type in run_order
 	             ]
 
@@ -111,7 +112,8 @@ def st_motion_correct( paths, conf ):
 
 	# make a summary image from the corrected files
 	fmri_tools.preproc.gen_sess_summ_img( corr_paths,
-	                                      paths[ "summ" ][ "corr_summ_file" ]
+	                                      paths[ "summ" ][ "corr_summ_file" ],
+	                                      log_path = paths[ "summ" ][ "log_file" ]
 	                                    )
 
 
@@ -146,11 +148,11 @@ def unwarp( paths, conf ):
 	            paths[ "func_loc" ][ "uw_files" ]
 	          )
 
-	for _ in xrange( conf[ "subj" ][ "n_runs" ] ):
+	for i_run in xrange( len( func_corr )  ):
 
-		fmri_tools.preproc.unwarp( func_corr,
-		                           func_fmap,
-		                           func_uw,
+		fmri_tools.preproc.unwarp( func_corr[ i_run ],
+		                           func_fmap[ i_run ],
+		                           func_uw[ i_run ],
 		                           conf[ "acq" ][ "dwell_ms" ],
 		                           conf[ "acq" ][ "ph_encode_dir" ],
 		                           log_path = paths[ "summ" ][ "log_file" ]
@@ -167,3 +169,177 @@ def unwarp( paths, conf ):
 	                                      paths[ "summ" ][ "uw_summ_file" ],
 	                                      log_path = paths[ "summ" ][ "log_file" ]
 	                                    )
+
+
+def trim( paths, conf ):
+	"""Trims the timecourses"""
+
+	exp_start_vol = conf[ "ana" ][ "exp_run_start_s" ] / conf[ "acq" ][ "tr_s" ]
+	exp_n_vol = conf[ "ana" ][ "exp_run_dur_s" ] / conf[ "acq" ][ "tr_s" ]
+
+	for ( uw_file, trim_file ) in zip( paths[ "func_exp" ][ "uw_files" ],
+	                                   paths[ "func_exp" ][ "trim_files" ]
+	                                 ):
+
+		exp_trim_cmd = [ "fslroi",
+		                 uw_file,
+		                 trim_file,
+		                 "%d" % exp_start_vol,
+		                 "%d" % exp_n_vol
+		               ]
+
+		fmri_tools.utils.run_cmd( exp_trim_cmd,
+		                          env = fmri_tools.utils.get_env(),
+		                          log_path = paths[ "summ" ][ "log_file" ]
+		                        )
+
+	loc_start_vol = conf[ "ana" ][ "loc_run_start_s" ] / conf[ "acq" ][ "tr_s" ]
+	loc_n_vol = conf[ "ana" ][ "loc_run_dur_s" ] / conf[ "acq" ][ "tr_s" ]
+
+	for ( uw_file, trim_file ) in zip( paths[ "func_loc" ][ "uw_files" ],
+	                                   paths[ "func_loc" ][ "trim_files" ]
+	                                 ):
+
+		loc_trim_cmd = [ "fslroi",
+		                 uw_file,
+		                 trim_file,
+		                 "%d" % loc_start_vol,
+		                 "%d" % loc_n_vol
+		               ]
+
+		fmri_tools.utils.run_cmd( loc_trim_cmd,
+		                          env = fmri_tools.utils.get_env(),
+		                          log_path = paths[ "summ" ][ "log_file" ]
+		                        )
+
+
+def surf_reg( paths, conf ):
+	"""Coregisters an anatomical with the SUMA reference"""
+
+	fmri_tools.preproc.surf_reg( paths[ "reg" ][ "rs_exp_anat" ],
+	                             paths[ "reg" ][ "surf_anat" ],
+	                             paths[ "summ" ][ "log_file" ]
+	                           )
+
+
+def vol_to_surf( paths, conf ):
+	"""Converts the functional volume-based images to SUMA surfaces."""
+
+	start_dir = os.getcwd()
+
+	vol_files = ( paths[ "func_exp" ][ "trim_files" ] +
+	              paths[ "func_loc" ][ "trim_files" ]
+	            )
+
+	surf_files = ( paths[ "func_exp" ][ "surf_files" ] +
+	               paths[ "func_loc" ][ "surf_files" ]
+	             )
+
+	for ( vol_file, surf_file ) in zip( vol_files, surf_files ):
+
+		file_dir = os.path.split( vol_file )[ 0 ]
+
+		os.chdir( file_dir )
+
+		for hemi in [ "lh", "rh" ]:
+
+			out = "%s_%s.niml.dset" % ( surf_file,
+			                            hemi
+			                          )
+
+			surf_cmd = [ "3dVol2Surf",
+			             "-spec", "%s%s.spec" % ( paths[ "reg" ][ "spec" ], hemi ),
+			             "-surf_A", "smoothwm",
+			             "-surf_B", "pial",
+			             "-map_func", "ave",
+			             "-f_steps", "15",
+			             "-f_index", "nodes",
+			             "-f_p1_fr", "0.0",
+			             "-f_pn_fr", "0.0",
+			             "-sv", paths[ "reg" ][ "reg" ],
+			             "-grid_parent", "%s.nii" % vol_file,
+			             "-out_niml", out,
+			             "-overwrite"
+			           ]
+
+			fmri_tools.utils.run_cmd( surf_cmd,
+			                          env = fmri_tools.utils.get_env(),
+			                          log_path = paths[ "summ" ][ "log_file" ]
+			                        )
+
+	os.chdir( start_dir )
+
+
+def design_prep( paths, conf ):
+	"""Prepares the designs for GLM analysis"""
+
+	# exp
+	run_file = open( paths[ "ana" ][ "exp_time_file" ], "w" )
+
+	for i_run in xrange( conf[ "subj" ][ "n_runs" ] ):
+
+		run_times = []
+
+		run_seq = np.load( "%s%d.npy" % ( paths[ "log" ][ "seq_base" ], i_run + 1 ) )
+
+		for i_evt in xrange( run_seq.shape[ 0 ] ):
+
+			is_transition = ( run_seq[ i_evt, 1 ] != run_seq[ i_evt - 1, 1 ] )
+
+			is_coh = ( run_seq[ i_evt, 2 ] == 0 )
+
+			if np.logical_and( is_transition, is_coh ):
+
+				start_time_s = run_seq[ i_evt, 0 ]
+
+				run_times.append( start_time_s )
+
+		run_times = np.array( run_times )
+
+		run_times -= conf[ "ana" ][ "exp_run_start_s" ]
+
+		ok = np.logical_and( run_times >= 0,
+		                     run_times < conf[ "ana" ][ "exp_run_dur_s" ]
+		                   )
+
+		run_times = run_times[ ok ]
+
+		for run_time in run_times:
+
+			run_file.write( "%.5f\t" % run_time )
+
+		run_file.write( "\n" )
+
+	run_file.close()
+
+	# loc
+	loc_order = [ "AB", "BA" ]
+
+	loc_time_files = [ open( loc_time_file, "w" )
+	                   for loc_time_file in paths[ "ana" ][ "loc_time_files" ]
+	                 ]
+
+	for loc_ord in loc_order:
+
+		block_seq = ns_aperture.fmri.loc.get_block_seq( loc_ord,
+		                                                conf[ "exp" ][ "loc_n_blocks" ]
+		                                              )
+
+		i_lvf = np.where( block_seq == 1 )[ 0 ]
+		lvf_t = i_lvf * conf[ "exp" ][ "block_len_s" ]
+
+		for t in lvf_t:
+			loc_time_files[ 0 ].write( "%.5f\t" % t )
+
+		i_rvf = np.where( block_seq == 2 )[ 0 ]
+		rvf_t = i_rvf * conf[ "exp" ][ "block_len_s" ]
+
+		for t in rvf_t:
+			loc_time_files[ 1 ].write( "%.5f\t" % t )
+
+		loc_time_files[ 0 ].write( "\n" )
+		loc_time_files[ 1 ].write( "\n" )
+
+	loc_time_files[ 0 ].close()
+	loc_time_files[ 1 ].close()
+

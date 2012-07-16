@@ -20,7 +20,7 @@ Prepare the filesystem
 
 1. Make the subject's directory structure::
 
-    mkdir -p sXXXX/{anat,analysis/{exp,loc},fmap/f01,func/exp/run{01,02,03,04,05,06,07,08,09,10},func/loc/run{01,02},log,roi}
+    mkdir -p sXXXX/{fmap/f01,func/exp/run{01,02,03,04,05,06,07,08,09,10},func/loc/run{01,02},log,reg}
 
 2. Copy the subject's runtime logfiles to the ``log`` directory.
 
@@ -33,19 +33,7 @@ Prepare the filesystem
     ln -s /labs/olmanlab/DICOM/YYYYMMDD/sXXXX/MR-SEyada mag-raw
     ln -s /labs/olmanlab/DICOM/YYYYMMDD/sXXXX/PH-SEyada ph-raw
 
-5. Copy (not symlink) the subject's main high-res anatomical (skull stripped) from the main repository to the ``anat`` directory using FSL::
-
-    fslmaths /labs/olmanlab/Anatomy/sXXXX/sXXXX_stripped sXXXX_ns_aperture_anat
-
-  N.B. We want to use single NIFTI files, so before running the above you may need to run::
-
-      setenv FSLOUTPUTTYPE NIFTI
-
-6. Make a gray matter mask from the subject's anatomical data using FSL::
-
-    fslmaths /labs/olmanlab/Anatomy/sXXXX/sXXXX_left_dist -bin -mul 2 -add /labs/olmanlab/Anatomy/sXXXX/sXXXX_right_dist -bin -kernel sphere 2 -dilM sXXXX_ns_aperture_gray
-
-7. Copy the relevant ROI MAT files from the visual localisers repository (the Gray view) to the ``roi`` directory.
+5.
 
 
 Update the experiment information file
@@ -60,18 +48,18 @@ For example::
               "n_runs" : 10,
               "n_fmaps" : 1,
               "comments" : "anything unusual or noteworthy",
-              "run_st_mot_order" : ( ( 7, "func" ),
-                                     ( 8, "func" ),
-                                     ( 9, "func" ),
-                                     ( 10, "func" ),
+              "run_st_mot_order" : ( ( 7, "exp" ),
+                                     ( 8, "exp" ),
+                                     ( 9, "exp" ),
+                                     ( 10, "exp" ),
                                      ( 1, "loc" ),
                                      ( 2, "loc" ),
-                                     ( 1, "func" ),
-                                     ( 2, "func" ),
-                                     ( 3, "func" ),
-                                     ( 4, "func" ),
-                                     ( 5, "func" ),
-                                     ( 6, "func" )
+                                     ( 1, "exp" ),
+                                     ( 2, "exp" ),
+                                     ( 3, "exp" ),
+                                     ( 4, "exp" ),
+                                     ( 5, "exp" ),
+                                     ( 6, "exp" )
                                    )
             }
 

@@ -17,13 +17,14 @@ def get_conf( subj_id = None ):
 	         "stim" : _get_stim_conf(),
 	         "task" : _get_task_conf(),
 	         "acq" : _get_acq_conf(),
-	         "ana" : _get_analysis_conf(),
 	         "all_subj" : _get_subj_conf()
 	       }
 
+	conf[ "ana" ] = _get_analysis_conf( conf )
+
 	if subj_id is not None:
 
-		conf = apply_subj_specific_fixes( conf, subj_id )
+		conf = _apply_subj_specific_fixes( conf, subj_id )
 		conf[ "subj" ] = _get_subj_conf( subj_id )
 
 	return conf
@@ -155,8 +156,6 @@ def _get_exp_conf():
 	                              )
 	exp_conf[ "loc_pre_len_s" ] = 6
 
-	exp_conf[ "loc_n_valid_blocks" ] = exp_conf[ "loc_n_blocks" ] - 1
-
 	exp_conf[ "loc_run_full_len_s" ] = ( exp_conf[ "loc_run_len_s" ] +
 	                                     exp_conf[ "loc_pre_len_s" ]
 	                                   )
@@ -230,10 +229,26 @@ def _get_acq_conf():
 	return acq_conf
 
 
-def _get_analysis_conf():
+def _get_analysis_conf( conf ):
 	"""Gets the parameters for the fMRI analysis"""
 
-	ana_conf = {}
+
+	# cull the first and last block
+	exp_run_start_s = conf[ "exp" ][ "block_len_s" ]
+	exp_run_dur_s = ( ( conf[ "exp" ][ "n_blocks" ] - 2 ) *
+	                  conf[ "exp" ][ "block_len_s" ]
+	                )
+
+	# cull the first few volumes
+	loc_run_start_s = conf[ "exp" ][ "loc_pre_len_s" ]
+	loc_run_dur_s = conf[ "exp" ][ "loc_run_len_s" ]
+
+
+	ana_conf = { "exp_run_start_s" : exp_run_start_s,
+	             "exp_run_dur_s" : exp_run_dur_s,
+	             "loc_run_start_s" : loc_run_start_s,
+	             "loc_run_dur_s" : loc_run_dur_s
+	           }
 
 	return ana_conf
 
@@ -267,18 +282,18 @@ def _get_subj_conf( subj_id = None ):
 	          "n_runs" : 10,
 	          "n_loc_runs" : 2,
 	          "n_fmaps" : 1,
-	          "run_st_mot_order" : ( ( 7, "func" ),
-	                                 ( 8, "func" ),
-	                                 ( 9, "func" ),
-	                                 ( 10, "func" ),
+	          "run_st_mot_order" : ( ( 7, "exp" ),
+	                                 ( 8, "exp" ),
+	                                 ( 9, "exp" ),
+	                                 ( 10, "exp" ),
 	                                 ( 1, "loc" ),
 	                                 ( 2, "loc" ),
-	                                 ( 1, "func" ),
-	                                 ( 2, "func" ),
-	                                 ( 3, "func" ),
-	                                 ( 4, "func" ),
-	                                 ( 5, "func" ),
-	                                 ( 6, "func" )
+	                                 ( 1, "exp" ),
+	                                 ( 2, "exp" ),
+	                                 ( 3, "exp" ),
+	                                 ( 4, "exp" ),
+	                                 ( 5, "exp" ),
+	                                 ( 6, "exp" )
 	                               ),
 	          "comments" : ""
 	        }
@@ -361,7 +376,7 @@ def _get_subj_conf( subj_id = None ):
 		return subj_conf[ subj_id ]
 
 
-def apply_subj_specific_fixes( conf, subj_id ):
+def _apply_subj_specific_fixes( conf, subj_id ):
 	"""Modify the experiment configuration for unexpected variations for
 	particular subjects (hopefully these are rare"""
 

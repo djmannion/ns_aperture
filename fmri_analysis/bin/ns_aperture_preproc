@@ -1,151 +1,116 @@
 #! /usr/bin/env python
 
-"""Runs a pre-processing step for a subject in the natural scenes aperture fMRI
+"""Runs a processing step for a subject in the natural scenes aperture fMRI
 experiment"""
 
 import argparse
 import os
 
-import ns_aperture.config
-import ns_aperture.fmri_analysis.preproc
+import ns_aperture.config, ns_aperture.fmri_analysis.paths
+import ns_aperture.fmri_analysis.preproc, ns_aperture.fmri_analysis.analysis
 
-desc = """Runs a pre-processing step for a subject in the natural scenes aperture
-fMRI experiment"""
+def main():
+	"""Execution function"""
 
-eg = """
-Example usage:
-  run motion correction on subject s1000:
-    ns_aperture_preproc s1000 correct
+	desc = """Runs a processing step for a subject in the natural scenes aperture
+	          fMRI experiment"""
 
-Steps:
-  convert : converts the scanner DICOM images to NIFTIs.
-  correct : performs slice-timing and motion correction.
-  fieldmap : prepares the fieldmaps.
-  undistort : applies distortion correction to the functional data.
-  roi-img : converts ROIs to NIFTI masks.
-  roi : converts ROI masks to coordinates.
-  vtc : extracts voxel timecourses for each voxel in each ROI.
-  vtc-cull : culls voxels in each ROI based on their mean-normed variance.
-  design : extracts the session design matrix.
+	eg = """
+	Example usage:
+	  run motion correction on subject s1000:
+	    ns_aperture_preproc s1000 correct
+	
+	Steps:
+	  convert : converts the scanner DICOM images to NIFTIs.
+	  correct : performs slice-timing and motion correction.
+	  fieldmap : prepares the fieldmaps.
+	  undistort : applies distortion correction to the functional data.
+	  trim : remove portions of each run's timecourse.
+	  surf_reg : register to the canonical anatomy.
+	  vol_to_surf : project the volumes onto the cortical surface.
+	  design_prep : prepares design specs for future GLM analysis
+	
+	---N.B.---
+	
+	* The script must be run from the ns_aperture/bin directory.
+	
+	"""
 
----N.B.---
+	target_dir = "ns_aperture/fmri_analysis/bin"
 
-* The script must be run from the ns_aperture/bin directory.
+	current_dir = os.getcwd()
 
-"""
+	if current_dir[ -len( target_dir ): ] != target_dir:
+		raise IOError( "Script needs to be launched from %s" % target_dir )
 
-target_dir = "ns_aperture/fmri_analysis/bin"
+	# use this formatter so we can supply our own indentation
+	fmt = argparse.RawDescriptionHelpFormatter
 
-current_dir = os.getcwd()
+	parser = argparse.ArgumentParser( description = desc,
+	                                  epilog = eg,
+	                                  formatter_class = fmt,
+	                                )
 
-if current_dir[ -len( target_dir ): ] != target_dir:
-	raise IOError( "Script needs to be launched from %s" % target_dir )
+	parser.add_argument( "subj_id",
+	                     help = "Subject identifier"
+	                   )
 
-# use this formatter so we can supply our own indentation
-fmt = argparse.RawDescriptionHelpFormatter
+	preproc_steps = ( "convert",
+	                  "correct",
+	                  "fieldmap",
+	                  "undistort",
+	                  "trim",
+	                  "surf_reg",
+	                  "vol_to_surf",
+	                  "design_prep",
+	                  "loc_analysis"
+	                )
 
-parser = argparse.ArgumentParser( description = desc,
-                                  epilog = eg,
-                                  formatter_class = fmt,
-                                )
+	parser.add_argument( "preproc_step",
+	                     choices = preproc_steps,
+	                     help = "Preprocessing step"
+	                   )
 
-parser.add_argument( "subj_id",
-                     help = "Subject identifier"
-                   )
+	args = parser.parse_args()
 
-preproc_steps = ( "convert",
-                  "correct",
-                  "fieldmaps",
-                  "undistort",
-                  "roi-img",
-                  "roi",
-                  "vtc",
-                  "design",
-                  "vox-cull"
-                )
+	# check the arguments are valid
+	if len( args.subj_id ) != 5 or args.subj_id[ 0 ] != "s":
+		raise ValueError( "Subject ID needs to be in the format of sXXXX" )
 
-parser.add_argument( "preproc_step",
-                     choices = preproc_steps,
-                     help = "Preprocessing step"
-                   )
+	# load the experiment / subject info
+	conf = ns_aperture.config.get_conf( args.subj_id )
+	paths = ns_aperture.fmri_analysis.paths.get_subj_paths( conf )
 
-args = parser.parse_args()
+	if args.preproc_step == "convert":
+		ns_aperture.fmri_analysis.preproc.convert( paths, conf )
 
-# check the arguments are valid
-if len( args.subj_id ) != 5 or args.subj_id[ 0 ] != "s":
-	raise ValueError( "Subject ID needs to be in the format of sXXXX" )
+	elif args.preproc_step == "correct":
+		ns_aperture.fmri_analysis.preproc.st_motion_correct( paths, conf )
 
-# load the experiment / subject info
-subj_conf = ns_aperture.config.get_subj_conf( args.subj_id )
-subj_paths = ns_aperture.config.get_subj_paths( args.subj_id )
+	elif args.preproc_step == "fieldmap":
+		ns_aperture.fmri_analysis.preproc.fieldmaps( paths, conf )
 
-conf = ns_aperture.config.get_conf( args.subj_id )
+	elif args.preproc_step == "undistort":
+		ns_aperture.fmri_analysis.preproc.unwarp( paths, conf )
 
-if args.preproc_step == "convert":
-	ns_aperture.fmri_analysis.preproc.convert( subj_paths )
+	elif args.preproc_step == "trim":
+		ns_aperture.fmri_analysis.preproc.trim( paths, conf )
 
-elif args.preproc_step == "correct":
-	ns_aperture.fmri_analysis.preproc.st_motion_correct( subj_paths,
-	                                                     conf,
-	                                                     subj_conf
-	                                                   )
+	elif args.preproc_step == "surf_reg":
+		ns_aperture.fmri_analysis.preproc.surf_reg( paths, conf )
 
-elif args.preproc_step == "fieldmaps":
-	ns_aperture.fmri_analysis.preproc.fieldmaps( subj_paths,
-	                                             conf,
-	                                             subj_conf
-	                                           )
+	elif args.preproc_step == "vol_to_surf":
+		ns_aperture.fmri_analysis.preproc.vol_to_surf( paths, conf )
 
-elif args.preproc_step == "undistort":
-	ns_aperture.fmri_analysis.preproc.unwarp( subj_paths,
-	                                          conf
-	                                        )
+	elif args.preproc_step == "design_prep":
+		ns_aperture.fmri_analysis.preproc.design_prep( paths, conf )
 
-elif args.preproc_step == "roi-img":
-	ns_aperture.fmri_analysis.preproc.make_roi_images( subj_paths,
-	                                                   conf
-	                                                 )
+	elif args.preproc_step == "loc_analysis":
+		ns_aperture.fmri_analysis.analysis.loc_analysis( paths, conf )
 
-elif args.preproc_step == "roi":
-	ns_aperture.fmri_analysis.preproc.prepare_rois( subj_paths,
-	                                                conf
-	                                              )
-
-elif args.preproc_step == "vtc":
-	ns_aperture.fmri_analysis.preproc.form_vtcs( subj_paths,
-	                                             conf,
-	                                             subj_conf
-	                                           )
-
-elif args.preproc_step == "design":
-	ns_aperture.fmri_analysis.preproc.get_design( subj_paths,
-	                                              conf,
-	                                              subj_conf,
-	                                            )
-
-elif args.preproc_step == "localiser":
-	ns_aperture.fmri_analysis.preproc.localiser_analysis( subj_paths,
-	                                                      conf
-	                                                    )
+	else:
+		print "Not completed"
 
 
-elif args.preproc_step == "vox-cull":
-	ns_aperture.fmri_analysis.preproc.cull_voxels( subj_paths,
-	                                               conf,
-	                                               subj_conf
-	                                             )
-
-elif args.preproc_step == "vtc-avg":
-	ns_aperture.fmri_analysis.preproc.avg_vtcs( subj_paths,
-	                                            conf
-	                                          )
-
-
-elif args.preproc_step == "task":
-	ns_aperture.analysis.preproc.get_task( subj_paths,
-	                                           conf[ "exp" ],
-	                                           subj_conf
-	                                         )
-
-else:
-	print "Not completed"
+if __name__ == "__main__":
+	main()

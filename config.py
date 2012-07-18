@@ -243,11 +243,14 @@ def _get_analysis_conf( conf ):
 	loc_run_start_s = conf[ "exp" ][ "loc_pre_len_s" ]
 	loc_run_dur_s = conf[ "exp" ][ "loc_run_len_s" ]
 
+	# FDR threshold for the LVF vs RVF localiser comparison
+	q_thr = 0.001
 
 	ana_conf = { "exp_run_start_s" : exp_run_start_s,
 	             "exp_run_dur_s" : exp_run_dur_s,
 	             "loc_run_start_s" : loc_run_start_s,
-	             "loc_run_dur_s" : loc_run_dur_s
+	             "loc_run_dur_s" : loc_run_dur_s,
+	             "q_thr" : q_thr
 	           }
 
 	return ana_conf
@@ -295,6 +298,9 @@ def _get_subj_conf( subj_id = None ):
 	                                 ( 5, "exp" ),
 	                                 ( 6, "exp" )
 	                               ),
+	          "node_k" : { "lh" : 140847,
+	                       "rh" : 141381
+	                     },
 	          "comments" : ""
 	        }
 

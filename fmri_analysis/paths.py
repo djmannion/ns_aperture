@@ -192,6 +192,7 @@ def _get_ana_paths( conf, paths ):
 
 	ana[ "exp_dir" ] = os.path.join( ana_dir, "exp" )
 
+
 	ana[ "exp_cond" ] = "coh"
 
 	ana[ "exp_time_file" ] = os.path.join( ana[ "exp_dir" ],
@@ -241,6 +242,34 @@ def _get_ana_paths( conf, paths ):
 
 	ana[ "loc_glm" ] = os.path.join( ana[ "loc_dir" ],
 	                                  "%s_%s_loc-glm" % ( subj_id,
+	                                                       conf[ "exp" ][ "id" ]
+	                                                     )
+	                                )
+
+	ana[ "loc_beta" ] = os.path.join( ana[ "loc_dir" ],
+	                                  "%s_%s_loc-beta" % ( subj_id,
+	                                                       conf[ "exp" ][ "id" ]
+	                                                     )
+	                                )
+
+	ana[ "loc_q" ] = os.path.join( ana[ "loc_dir" ],
+	                               "%s_%s_loc-q" % ( subj_id,
+	                                                 conf[ "exp" ][ "id" ]
+	                                               )
+	                             )
+
+	reg_dir = os.path.join( paths[ "study" ][ "subj_dir" ],
+	                        conf[ "subj" ][ "subj_id" ],
+	                        "reg"
+	                      )
+
+	ana[ "roi_dset" ] = os.path.join( reg_dir,
+	                                  "rois",
+	                                  "%s_rois" % subj_id
+	                                )
+
+	ana[ "roi_mask" ] = os.path.join( ana[ "loc_dir" ],
+	                                  "%s_%s-roi_mask" % ( subj_id,
 	                                                       conf[ "exp" ][ "id" ]
 	                                                     )
 	                                )

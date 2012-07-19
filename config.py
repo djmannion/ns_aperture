@@ -3,8 +3,6 @@
 
 from __future__ import division
 
-import os
-
 import numpy as np
 
 import fmri_tools.utils, fmri_tools.paths

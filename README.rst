@@ -1,3 +1,5 @@
+.. highlight:: tcsh
+
 ====================================================
 Analysis code for natural scenes aperture experiment
 ====================================================
@@ -20,9 +22,9 @@ Prepare the filesystem
 
 1. Make the subject's directory structure::
 
-    mkdir -p sXXXX/{fmap/f01,func/exp/run{01,02,03,04,05,06,07,08,09,10},func/loc/run{01,02},log,reg}
+    mkdir -p sXXXX/{analysis/{exp,loc},fmap/f01,func/exp/run{01,02,03,04,05,06,07,08,09,10},func/loc/run{01,02},logs,reg}
 
-2. Copy the subject's runtime logfiles to the ``log`` directory.
+2. Copy the subject's runtime logfiles to the ``logs`` directory.
 
 3. Make symlinks named ``raw`` in each functional run directory (exp and loc) that link to the location of its associated raw DICOM directory::
 
@@ -33,7 +35,15 @@ Prepare the filesystem
     ln -s /labs/olmanlab/DICOM/YYYYMMDD/sXXXX/MR-SEyada mag-raw
     ln -s /labs/olmanlab/DICOM/YYYYMMDD/sXXXX/PH-SEyada ph-raw
 
-5.
+5. Make a local copy of the AFNI/SUMA base anatomicals (original and skull-stripped) that we can use for alignment::
+
+    mri_convert \
+       {$SUBJECTS_DIR}/{$SUBJ_ID}/SUMA/{$SUBJ_ID}_SurfVol+orig.BRIK \
+       reg/{$SUBJ_ID}_anat.nii
+
+    cp \
+      {$SUBJECTS_DIR}/{$SUBJ_ID}/SUMA/brainmask.nii \
+      reg/{$SUBJ_ID}_anat_stripped.nii
 
 
 Update the experiment information file
@@ -41,11 +51,14 @@ Update the experiment information file
 
 Edit ``get_subj_conf`` within ``ns_aperture/config.py`` and add the new subject's information.
 
-For example::
+For example:
+
+.. code-block:: python
 
     sXXXX = { "subj_id" : "sXXXX",
               "acq_date" : "YYYYMMDD",
               "n_runs" : 10,
+              "n_loc_runs" : 2,
               "n_fmaps" : 1,
               "comments" : "anything unusual or noteworthy",
               "run_st_mot_order" : ( ( 7, "exp" ),
@@ -60,32 +73,37 @@ For example::
                                      ( 4, "exp" ),
                                      ( 5, "exp" ),
                                      ( 6, "exp" )
-                                   )
+                                   ),
+             "node_k" : { "lh" : 100000,
+                          "rh" : 110000
+                        }
             }
+
+.. note::
+   ``node_k`` can be found by viewing the subject's pial ASCII surface and noting the first number on the second row.
 
 Pre-processing
 --------------
 
-Most of the pre-processing is done with the command ``ns_aperture_preproc``.
+Most of the pre-processing is done with the command ``ns_aperture_proc``.
 For help on using this script, run::
 
-    ns_aperture_preproc --help
+    ns_aperture_proc --help
 
 Typical usage is::
 
-    ns_aperture_preproc sXXXX stage
+    ns_aperture_proc sXXXX stage
 
 where ``sXXXX`` is the subject ID and ``stage`` is the preprocessing stage (see below).
 
 The stages are as follows:
-
 
 Conversion
 ~~~~~~~~~~
 
 Converts from the raw scanner format to a set of 4D NIFTI files::
 
-    ns_aperture_preproc sXXXX convert
+    ns_aperture_proc sXXXX convert
 
 After execution, open up each NIFTI file and inspect for image quality and look at the summary image to see how much movement there was.
 
@@ -93,19 +111,20 @@ After execution, open up each NIFTI file and inspect for image quality and look 
 Correction
 ~~~~~~~~~~
 
-Applies a motion correction procedure::
+Applies a slice-timing and motion correction procedure::
 
-    ns_aperture_preproc sXXXX correct
+    ns_aperture_proc sXXXX correct
 
-After execution, open up the summary NIFTI file to check that most of the motion has been removed. You can also inspect the saved motion correction estimates to see how much movement there was.
+After execution, open up the summary NIFTI file to check that most of the motion has been removed.
+You can also inspect the saved motion correction estimates to see how much movement there was.
 
 
 Fieldmaps
 ~~~~~~~~~
 
-Prepares the fieldmaps::
+Prepares the fieldmap::
 
-    ns_aperture_config SXXXX fieldmaps
+    ns_aperture_proc SXXXX fieldmap
 
 
 Unwarping
@@ -117,7 +136,7 @@ Before running, need to make a symbolic link in each functional run directory to
 
 Then, to use the fieldmaps to unwarp the functional images to remove the spatial distortion::
 
-    ns_aperture_preproc sXXXX undistort
+    ns_aperture_proc sXXXX undistort
 
 To verify that the unwarping has worked correctly:
 
@@ -131,130 +150,55 @@ To verify that the unwarping has worked correctly:
 Also, look at the session summary image produced and make sure that all looks good across the session.
 
 
-ROI to images
-~~~~~~~~~~~~~
+Trim
+~~~~
 
-Converts the raw ROI files from mrLoadRet into NIFTI masks::
+Removes timepoints from the start and/or end of each timeseries, as specified in the config::
 
-    ns_aperture_preproc SXXXX roi-img
-
-To check this has worked correctly, load the subject's anatomical image and overlay the ROI images - they should lie within expected locations.
+    ns_aperture_proc SXXXX trim
 
 
 Coregistration
 ~~~~~~~~~~~~~~
 
-The anatomical and ROI images are in a completely different space to the functionals, so they need to be coregistered.
+Follow the procedure described `here <http://visual-localiser-analysis-notes.readthedocs.org/en/latest/func.html#coregister-base-anatomy-to-functional-session>`__, substituting for the ``surf_reg`` command::
 
-The automatic FSL tools are *horrible* at doing this coregistration (in my experience), so we need to do it more manually using SPM.
-
-Rough alignment
-^^^^^^^^^^^^^^^
-
-The coregistration algorithm is helped enormously if the images are in rough world-space alignment before it begins.
-
-#. In SPM, click ``Display`` and select the mean functional image.
-#. Place the crosshairs over a prominent landmark, such as the furthest posterior region of the occipital lobes. Note down the 3 values in the ``mm`` box.
-#. Click ``Display`` again, this time selecting the anatomical image.
-#. Place the crosshairs over the same landmark as was used in the functionals, and again note the 3 values in the ``mm`` box.
-#. Subtract (element-wise) the anatomical ``mm`` values from the functional ``mm`` values, and use the output to populate the ``right``, ``forward``, and ``up`` fields.
-#. To check your calculations, change the ``mm`` field to match what it was for the functional and the crosshairs should move to the same landmark.
-#. Click ''Reorient images'' and select the anatomical **and the ROI and gray matter mask images**.
-
-Coregistration
-^^^^^^^^^^^^^^
-
-#. In SPM, click ``Coregister (Estimate & Reslice)``.
-#. As the ``Reference image``, select the mean functional image.
-#. As the ``Images to reslice``, select the anatomical image.
-#. As the ``Other images``, select all the ROI and gray matter mask images.
-#. Under ``Reslice options``, change ``Interpolation`` to ``Nearest neighbour`` and ``Filename prefix`` to ``rs``.
-#. Under ``File``, click ``Save batch`` and call it ``coreg.mat`` under the ``anat`` directory.
-#. Click on the play icon to set it running.
-
-Verification
-^^^^^^^^^^^^
-
-To check that the coregistration has performed well:
-
-#. In SPM, click ``Check reg``.
-#. Select the mean functional image first, and then the (unresliced) anatomical image.
-#. Click around some prominent landmarks and check that the two images are in register.
+    ns_aperture_proc sXXXX surf_reg
 
 
-ROI preparation
-~~~~~~~~~~~~~~~
+Volume to surface
+~~~~~~~~~~~~~~~~~
 
-Converts the ROI image masks to a set of coordinates, save in numpy format::
+Projects the functional images to the cortical surface::
 
-    ns_aperture_preproc sXXXX roi
+    ns_aperture_proc sXXXX vol_to_surf
 
 
-Voxel timecourse extraction
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Extracts voxel timecourses for each voxel in each ROI, for both the experiment and localiser runs, and performs high-pass filtering (DC remains)::
-
-    ns_aperture_preproc sXXXX vtc
-
-This takes a fair while because of the filtering.
-
-Voxel culling
-~~~~~~~~~~~~~
-
-Removes voxels from the timecourses and ROI coordinates that have signals below zero::
-
-    ns_aperture_preproc sXXXX vox-cull
-
-Design
-~~~~~~
+Design preparation
+~~~~~~~~~~~~~~~~~~
 
 Computes the experimental design from the logfiles::
 
-    ns_aperture_preproc sXXXX design
-
-The extracted design is trimmed to the volumes we want but is NOT hrf corrected.
+    ns_aperture_proc sXXXX design_prep
 
 
 Subject-level analysis
 ----------------------
 
-The subject-level analysis is done with the command ``ns_aperture_subj_analysis``
-For help on using this script, run::
+Localiser analysis
+~~~~~~~~~~~~~~~~~~
 
-    ns_aperture_subj_analysis --help
+Runs a GLM on the localiser data, extracts ``q`` (FDR) values, and creates a thresholded ROI mask::
 
-Typical usage is::
-
-    ns_aperture_subj_analysis sXXXX stage
-
-where ``sXXXX`` is the subject ID and ``stage`` is the preprocessing stage (see below).
-
-The stages are as follows:
+    ns_aperture_proc sXXXX loc_glm
 
 
-Localiser blocks
-~~~~~~~~~~~~~~~~
-
-Extracts the block responses for each condition for the localiser data::
-
-    ns_aperture_subj_analysis sXXXX loc_blocks
-
-
-Localiser bootstrap
+Experiment analysis
 ~~~~~~~~~~~~~~~~~~~
 
-Bootstraps the condition differences for the localiser data::
+Runs a GLM on the experiment data::
 
-    ns_aperture_subj_analysis sXXXX loc_boot
-
-
-Experiment blocks
-~~~~~~~~~~~~~~~~~
-
-Extracts the block responses for each condition for the experiment data::
-
-    ns_aperture_subj_analysis sXXXX exp_blocks
+    ns_aperture_proc sXXXX exp_glm
 
 
 Datafile list
@@ -263,33 +207,9 @@ Datafile list
 Pre-processing
 --------------
 
-coords-gray
-  ( 3 axes, n gray voxels ) array of image coordinate locations.
-
-coords-ROI
-  ( n roi voxels ) vector of indices into ``coords-gray``.
-
-design, loc_design
-  ( blocks, runs, [ start volume index, condition index ] ) integer array.
-
-vtc-gray, loc_vtc-gray
-  ( volumes, runs, gray voxels ) array of BOLD signals. These are in scanner units, in an untrimmed timeseries that has been high-pass filtered but DC preserved. Any voxels with signals going below zero are set to NaN.
-
 
 Subject-level analysis
 ----------------------
-
-block_psc
-  ( datapoints, conditions, voxels ) array of BOLD signals. These are in units of percent signal change, relative to a blank baseline for localiser data and run mean baseline for natural scenes.
-
-block_boot
-  ( comparisons, voxels, [ orig, boot ] ) array of BOLD signals. These represent bootstrapped distributions of each condition comparison.
-
-block_sig
-  ( L and R are sig diff, L sig > 0, R sig > 0, either L or R is sig > 0, voxels ) array of booleans representing the outcome of the relevant significance test.
-
-exp_boot
-  ( voxels, [ orig, boot ] ) array of differences between scenes and non-scenes.
 
 
 Group-level analysis

@@ -3,8 +3,8 @@
 """Runs a processing step for a subject in the natural scenes aperture fMRI
 experiment"""
 
-import argparse
 import os
+import argparse
 
 import ns_aperture.config, ns_aperture.fmri_analysis.paths
 import ns_aperture.fmri_analysis.preproc, ns_aperture.fmri_analysis.analysis

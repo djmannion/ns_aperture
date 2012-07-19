@@ -173,6 +173,14 @@ def _get_log_paths( conf, paths ):
 	                                   "%s_ns_aperture_fmri_task_" % subj_id
 	                                 )
 
+	log[ "reg_A" ] = os.path.join( log_dir,
+	                               "%s_ns_aperture_reg_A.txt" % subj_id
+	                             )
+
+	log[ "reg_B" ] = os.path.join( log_dir,
+	                               "%s_ns_aperture_reg_B.txt" % subj_id
+	                             )
+
 	paths[ "log" ] = log
 
 	return paths

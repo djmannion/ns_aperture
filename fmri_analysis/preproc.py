@@ -6,6 +6,7 @@ fMRI experiment.
 from __future__ import division
 
 import os.path
+import tempfile
 
 import numpy as np
 
@@ -272,6 +273,47 @@ def vol_to_surf( paths, conf ):
 
 def design_prep( paths, conf ):
 	"""Prepares the designs for GLM analysis"""
+
+	# first, prepare the 'onset' regressor; this models the tail of the first
+	# block response, which remains after excluding the timepoints corresponding
+	# to the first block's stimulation
+	exp_run_len_vol = conf[ "exp" ][ "run_len_s" ] / conf[ "acq" ][ "tr_s" ]
+
+	x = tempfile.NamedTemporaryFile()
+
+	onset_cmd = [ "3dDeconvolve",
+	              "-polort", "-1",
+	              "-nodata",  "%d" % exp_run_len_vol, "%.3f" % conf[ "acq" ][ "tr_s" ],
+	              "-local_times",
+	              "-num_stimts", "1",
+	              "-stim_times", "1", "1D: 0", "SPMG1(16)",
+	              "-x1D", x.name,
+	              "-x1D_stop"
+	            ]
+
+	fmri_tools.utils.run_cmd( onset_cmd,
+	                          env = fmri_tools.utils.get_env(),
+	                          log_path = paths[ "summ" ][ "log_file" ]
+	                        )
+
+	tc = np.loadtxt( "%s.xmat.1D" % x.name )
+
+	start_vol = int( conf[ "ana" ][ "exp_run_start_s" ] / conf[ "acq" ][ "tr_s" ] )
+	n_vol = int( conf[ "ana" ][ "exp_run_dur_s" ] / conf[ "acq" ][ "tr_s" ] )
+
+	tc = tc[ start_vol:( start_vol + n_vol ) ]
+
+	A_reg = np.tile( np.hstack( ( tc, np.zeros( len( tc ) ) ) ),
+	                 conf[ "exp" ][ "n_runs" ] / 2
+	               )
+
+	np.savetxt( paths[ "log" ][ "reg_A" ], A_reg, "%.16f" )
+
+	B_reg = np.tile( np.hstack( ( np.zeros( len( tc ) ), tc ) ),
+	                 conf[ "exp" ][ "n_runs" ] / 2
+	               )
+
+	np.savetxt( paths[ "log" ][ "reg_B" ], B_reg, "%.16f" )
 
 	# exp
 	run_file = open( paths[ "ana" ][ "exp_time_file" ], "w" )

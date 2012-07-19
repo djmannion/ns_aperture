@@ -156,11 +156,14 @@ def exp_glm( paths, conf ):
 		                          log_path = paths[ "summ" ][ "log_file" ]
 		                        )
 
+		pad_node = "%d" % conf[ "subj" ][ "node_k" ][ hemi ]
+
 		# convert the output to full
 		for out_file in [ fit_file, glm_file, beta_file ]:
 
 			fmri_tools.utils.sparse_to_full( "%s.niml.dset" % out_file,
 			                                 "%s-full" % out_file,
+			                                 pad_node = pad_node,
 			                                 log_path = paths[ "summ" ][ "log_file" ],
 			                                 overwrite = True
 			                               )

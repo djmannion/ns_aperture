@@ -244,11 +244,23 @@ def _get_analysis_conf( conf ):
 	# FDR threshold for the LVF vs RVF localiser comparison
 	q_thr = 0.001
 
+	rois = [ [ "v1", "1" ],
+	         [ "v2", "2" ],
+	         [ "v3", "3" ],
+	         [ "hv4", "4" ],
+	         [ "v3ab", "5" ],
+	         [ "lo1", "6" ],
+	         [ "lo2", "7" ],
+	         [ "loc", "8" ],
+	         [ "hmtp", "9" ]
+	      ]
+
 	ana_conf = { "exp_run_start_s" : exp_run_start_s,
 	             "exp_run_dur_s" : exp_run_dur_s,
 	             "loc_run_start_s" : loc_run_start_s,
 	             "loc_run_dur_s" : loc_run_dur_s,
-	             "q_thr" : q_thr
+	             "q_thr" : q_thr,
+	             "rois" : rois
 	           }
 
 	return ana_conf
@@ -350,20 +362,22 @@ def _get_subj_conf( subj_id = None ):
 	          "n_runs" : 10,
 	          "n_loc_runs" : 2,
 	          "n_fmaps" : 1,
-	          "run_st_mot_order" : ( ( 7, "func" ),
-	                                 ( 8, "func" ),
-	                                 ( 9, "func" ),
-	                                 ( 10, "func" ),
+	          "run_st_mot_order" : ( ( 7, "exp" ),
+	                                 ( 8, "exp" ),
+	                                 ( 9, "exp" ),
+	                                 ( 10, "exp" ),
 	                                 ( 1, "loc" ),
 	                                 ( 2, "loc" ),
-	                                 ( 1, "func" ),
-	                                 ( 2, "func" ),
-	                                 ( 3, "func" ),
-	                                 ( 4, "func" ),
-	                                 ( 5, "func" ),
-	                                 ( 6, "func" )
+	                                 ( 1, "exp" ),
+	                                 ( 2, "exp" ),
+	                                 ( 3, "exp" ),
+	                                 ( 4, "exp" ),
+	                                 ( 5, "exp" ),
+	                                 ( 6, "exp" )
 	                               ),
-	          "boot_seed" : ( 19611, 9387 ),
+	          "node_k" : { "lh" : 140427,
+	                       "rh" : 141898
+	                     },
 	          "comments" : ""
 	        }
 

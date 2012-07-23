@@ -8,6 +8,8 @@ import argparse
 
 import ns_aperture.config, ns_aperture.fmri_analysis.paths
 import ns_aperture.fmri_analysis.preproc, ns_aperture.fmri_analysis.analysis
+import ns_aperture.fmri_analysis.figures
+
 
 def main():
 	"""Execution function"""
@@ -64,7 +66,10 @@ def main():
 	                  "vol_to_surf",
 	                  "design_prep",
 	                  "loc_glm",
-	                  "exp_glm"
+	                  "exp_glm",
+	                  "beta_to_psc",
+	                  "roi_xtr",
+	                  "plot_vox_psc"
 	                )
 
 	parser.add_argument( "preproc_step",
@@ -111,6 +116,15 @@ def main():
 
 	elif args.preproc_step == "exp_glm":
 		ns_aperture.fmri_analysis.analysis.exp_glm( paths, conf )
+
+	elif args.preproc_step == "beta_to_psc":
+		ns_aperture.fmri_analysis.analysis.beta_to_psc( paths, conf )
+
+	elif args.preproc_step == "roi_xtr":
+		ns_aperture.fmri_analysis.analysis.roi_xtr( paths, conf )
+
+	elif args.preproc_step == "plot_vox_psc":
+		ns_aperture.fmri_analysis.figures.plot_vox_psc( paths, conf )
 
 	else:
 		print "Not completed"

@@ -4,9 +4,8 @@
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import numpy as np
-import nipy
+import scipy.stats
 
-import glass_coherence.config, glass_coherence.analysis.analysis
 
 def _set_defaults():
 	"""Set some sane defaults for figures.
@@ -47,6 +46,100 @@ def _cleanup_fig( ax ):
 
 	ax.xaxis.set_ticks_position( "bottom" )
 	ax.yaxis.set_ticks_position( "left" )
+
+
+def plot_vox_psc( paths, conf ):
+	"""a"""
+
+	_set_defaults()
+
+	figs = [ [ "v1", "v2", "v3" ],
+	         [ "hv4", "v3ab" ],
+	         [ "lo1", "lo2", "loc" ],
+	         [ "hmtp" ]
+	       ]
+
+	fig_lims = [ 2, 3, 2, 1.5 ]
+
+	i_loc_F = 14
+
+	crit_F = np.sqrt( scipy.stats.f.ppf( 0.999, 2, 292 ) )
+
+	for ( i_fig, fig_rois ) in enumerate( figs ):
+
+		fig = plt.figure()
+
+		fig.set_size_inches( 8, 5, forward = False )
+
+		gs = gridspec.GridSpec( 1, len( fig_rois ) )
+
+		xlims = []
+		ylims = []
+
+		axes = []
+
+		for ( i_subfig, fig_roi ) in enumerate( fig_rois ):
+
+			ax = plt.subplot( gs[ i_subfig ] )
+
+			loc_F = []
+			exp_psc = []
+
+			for hemi in [ "lh", "rh" ]:
+
+				loc_file = "%s_%s_%s.txt" % ( paths[ "ana" ][ "loc_roi" ],
+				                              fig_roi,
+				                              hemi
+				                            )
+
+				loc_roi = np.loadtxt( loc_file )
+
+				loc_F.append( loc_roi[ :, i_loc_F ].copy() )
+
+				exp_file = "%s_%s_%s.txt" % ( paths[ "ana" ][ "exp_roi" ],
+				                              fig_roi,
+				                              hemi
+				                            )
+
+				exp_roi = np.loadtxt( exp_file )
+
+				exp_psc.append( exp_roi.copy() )
+
+			loc_F = np.concatenate( loc_F )
+			exp_psc = np.concatenate( exp_psc )
+
+			ax.scatter( np.sqrt( loc_F ),
+			            exp_psc,
+			            facecolor = "k",
+			            edgecolor = "k",
+			            alpha = 0.1
+			          )
+
+			ax.hold( True )
+
+			ax.set_title( fig_roi.upper() )
+
+			ylims.append( np.max( np.abs( ax.get_ylim() ) ) )
+
+			axes.append( ax )
+
+		ylim = np.max( ylims )
+
+		for ax in axes:
+
+			xlim = ax.get_xlim()
+
+			ax.plot( xlim, [ 0, 0 ], "k--" )
+
+			ax.plot( [ crit_F, crit_F ],
+			         [ -ylim, ylim ],
+			         "r--"
+			       )
+
+			ax.set_ylim( ( -ylim, ylim  ) )
+			ax.set_xlim( xlim )
+
+	plt.show()
 
 
 def subj_cond_diff( paths, conf ):

@@ -53,93 +53,160 @@ def plot_vox_psc( paths, conf ):
 
 	_set_defaults()
 
-	figs = [ [ "v1", "v2", "v3" ],
-	         [ "hv4", "v3ab" ],
-	         [ "lo1", "lo2", "loc" ],
-	         [ "hmtp" ]
-	       ]
+	left, width = 0.1, 0.8
+	bottom, height = 0.1, 0.6
+	bottom_h = left_h = left+height+0.02
 
-	fig_lims = [ 2, 3, 2, 1.5 ]
+	rect_scatter = [ left, bottom, width, height ]
+	rect_hist = [ left, bottom_h, width, 0.23 ]
 
-	i_loc_F = 14
+	i_loc_t = np.array( [ 2, 5 ] )
 
-	crit_F = np.sqrt( scipy.stats.f.ppf( 0.999, 2, 292 ) )
+	crit_t = scipy.stats.t.ppf( 0.999, 292 )
 
-	for ( i_fig, fig_rois ) in enumerate( figs ):
+	dot_cols = [ [ 0, 0, 1 ], [ 1, 0, 0 ] ]
+
+	for ( i_roi, roi ) in enumerate( conf[ "ana" ][ "rois" ] ):
+
+		( roi_name, _ ) = roi
 
 		fig = plt.figure()
-
 		fig.set_size_inches( 8, 5, forward = False )
 
-		gs = gridspec.GridSpec( 1, len( fig_rois ) )
+		ax_scatter = plt.axes( rect_scatter)
+		ax_hist = plt.axes( rect_hist )
 
 		xlims = []
 		ylims = []
 
 		axes = []
 
-		for ( i_subfig, fig_roi ) in enumerate( fig_rois ):
+		loc_psc = []
+		exp_psc = []
+		cols = []
 
-			ax = plt.subplot( gs[ i_subfig ] )
+		sig = []
 
-			loc_F = []
-			exp_psc = []
+		for hemi in [ "lh", "rh" ]:
 
-			for hemi in [ "lh", "rh" ]:
+			loc_stat_file = "%s_%s_%s.txt" % ( paths[ "ana" ][ "loc_roi_stat" ],
+			                                   roi_name,
+			                                   hemi
+			                                 )
 
-				loc_file = "%s_%s_%s.txt" % ( paths[ "ana" ][ "loc_roi" ],
-				                              fig_roi,
-				                              hemi
-				                            )
+			loc_roi_stat = np.loadtxt( loc_stat_file )
 
-				loc_roi = np.loadtxt( loc_file )
+			loc_psc_file = "%s_%s_%s.txt" % ( paths[ "ana" ][ "loc_roi_psc" ],
+			                                  roi_name,
+			                                  hemi
+			                                )
 
-				loc_F.append( loc_roi[ :, i_loc_F ].copy() )
+			loc_roi_psc_all = np.loadtxt( loc_psc_file )
 
-				exp_file = "%s_%s_%s.txt" % ( paths[ "ana" ][ "exp_roi" ],
-				                              fig_roi,
-				                              hemi
-				                            )
+			i_psc = np.argmax( loc_roi_stat[ :, i_loc_t ], axis = 1 )
+			t_max = np.max( loc_roi_stat[ :, i_loc_t ], axis = 1 )
 
-				exp_roi = np.loadtxt( exp_file )
+			loc_roi_psc = np.empty( loc_roi_psc_all.shape[ 0 ] )
 
-				exp_psc.append( exp_roi.copy() )
+			for i_vox in xrange( loc_roi_psc_all.shape[ 0 ] ):
 
-			loc_F = np.concatenate( loc_F )
-			exp_psc = np.concatenate( exp_psc )
+				loc_roi_psc[ i_vox ] = loc_roi_psc_all[ i_vox, i_psc[ i_vox ] ]
 
-			ax.scatter( np.sqrt( loc_F ),
-			            exp_psc,
-			            facecolor = "k",
-			            edgecolor = "k",
-			            alpha = 0.1
-			          )
+				if t_max[ i_vox ] >= crit_t:
+					cols.append( dot_cols[ 0 ] )
+					sig.append( 1 )
+				else:
+					cols.append( dot_cols[ 1 ] )
+					sig.append( 0 )
 
-			ax.hold( True )
+			loc_psc.append( loc_roi_psc.copy() )
 
-			ax.set_title( fig_roi.upper() )
+			exp_file = "%s_%s_%s.txt" % ( paths[ "ana" ][ "exp_roi_psc" ],
+			                              roi_name,
+			                              hemi
+			                            )
 
-			ylims.append( np.max( np.abs( ax.get_ylim() ) ) )
+			exp_roi = np.loadtxt( exp_file )
 
-			axes.append( ax )
+			exp_psc.append( exp_roi.copy() )
 
-		ylim = np.max( ylims )
+		loc_psc = np.concatenate( loc_psc )
+		exp_psc = np.concatenate( exp_psc )
 
-		for ax in axes:
+		sig = np.array( sig )
 
-			xlim = ax.get_xlim()
+		ns_kde = scipy.stats.gaussian_kde( exp_psc[ sig == 0 ] )
+		s_kde = scipy.stats.gaussian_kde( exp_psc[ sig == 1 ] )
 
-			ax.plot( xlim, [ 0, 0 ], "k--" )
+		ax_scatter.scatter( exp_psc,
+		                    loc_psc,
+		                    facecolor = cols,
+		                    edgecolor = cols,
+		                    alpha = 0.1
+		                  )
 
-			ax.plot( [ crit_F, crit_F ],
-			         [ -ylim, ylim ],
-			         "r--"
-			       )
+		xl = ax_scatter.get_xlim()
 
-			ax.set_ylim( ( -ylim, ylim  ) )
-			ax.set_xlim( xlim )
+		xl_max = np.max( np.abs( xl ) )
 
-	plt.show()
+		ax_scatter.set_xlim( ( -xl_max, xl_max ) )
+
+		ax_scatter.set_xlabel( "Coherent scene beta (psc)" )
+		ax_scatter.set_ylabel( "Localiser beta (psc)" )
+
+#		ax_hist.hist( exp_psc[ sig == 0 ], orientation = "horizontal" )
+
+		x = np.linspace( -xl_max, xl_max, 500 )
+
+		ns_eval = ns_kde( x )
+		s_eval = s_kde( x )
+
+		ax_hist.plot( x, ns_eval, color=dot_cols[ 1 ] )
+		ax_hist.hold( True )
+		ax_hist.plot( x, s_eval, color=dot_cols[ 0 ] )
+
+		ax_hist_ylim = ax_hist.get_ylim()
+
+		ax_hist.plot( [ 0, 0 ], ax_hist_ylim, "k--" )
+
+		ns_mean_psc = np.mean( exp_psc[ sig == 0 ] )
+		s_mean_psc = np.mean( exp_psc[ sig == 1 ] )
+
+		ax_hist.plot( [ ns_mean_psc, ns_mean_psc ],
+		              ax_hist_ylim,
+		              color = dot_cols[ 1 ],
+		              linestyle = "--"
+		            )
+
+		ax_hist.plot( [ s_mean_psc, s_mean_psc ],
+		              ax_hist_ylim,
+		              color = dot_cols[ 0 ],
+		              linestyle = "--"
+		            )
+
+
+#			ax.hold( True )
+
+		plt.title( roi_name.upper() )
+
+#		ylims.append( np.max( np.abs( ax.get_ylim() ) ) )
+
+#		axes.append( ax )
+
+#		ylim = np.max( ylims )
+
+#		for ax in axes:
+
+#			xlim = ax.get_xlim()
+
+#			ax.plot( xlim, [ 0, 0 ], "k--" )
+
+#			ax.set_ylim( ( -ylim, ylim  ) )
+#			ax.set_xlim( xlim )
+
+
+		plt.savefig( "/home/dmannion/im_temp/ns_ap_%s_%s.png" % ( conf[ "subj" ][ "subj_id" ], roi_name ) )
+#	plt.show()
 
 
 def subj_cond_diff( paths, conf ):

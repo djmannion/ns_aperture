@@ -62,6 +62,8 @@ def plot_vox_psc( paths, conf ):
 
 	i_loc_t = np.array( [ 2, 5 ] )
 
+	i_exp_var = 0
+
 	crit_t = scipy.stats.t.ppf( 0.999, 292 )
 
 	dot_cols = [ [ 0, 0, 1 ], [ 1, 0, 0 ] ]
@@ -83,11 +85,19 @@ def plot_vox_psc( paths, conf ):
 
 		loc_psc = []
 		exp_psc = []
+		exp_var = []
 		cols = []
 
 		sig = []
 
 		for hemi in [ "lh", "rh" ]:
+
+			exp_stat_file = "%s_%s_%s.txt" % ( paths[ "ana" ][ "exp_roi_stat" ],
+			                                   roi_name,
+			                                   hemi
+			                                 )
+
+			exp_roi_stat = np.loadtxt( exp_stat_file )
 
 			loc_stat_file = "%s_%s_%s.txt" % ( paths[ "ana" ][ "loc_roi_stat" ],
 			                                   roi_name,
@@ -130,8 +140,11 @@ def plot_vox_psc( paths, conf ):
 
 			exp_psc.append( exp_roi.copy() )
 
+			exp_var.append( exp_roi_stat[ :, i_exp_var ].copy() )
+
 		loc_psc = np.concatenate( loc_psc )
 		exp_psc = np.concatenate( exp_psc )
+		exp_var = np.concatenate( exp_var )
 
 		sig = np.array( sig )
 
@@ -142,6 +155,7 @@ def plot_vox_psc( paths, conf ):
 		                    loc_psc,
 		                    facecolor = cols,
 		                    edgecolor = cols,
+#		                    s = 1. / exp_var * 10000,
 		                    alpha = 0.1
 		                  )
 
@@ -205,8 +219,8 @@ def plot_vox_psc( paths, conf ):
 #			ax.set_xlim( xlim )
 
 
-		plt.savefig( "/home/dmannion/im_temp/ns_ap_%s_%s.png" % ( conf[ "subj" ][ "subj_id" ], roi_name ) )
-#	plt.show()
+#		plt.savefig( "/home/dmannion/im_temp/ns_ap_%s_%s.png" % ( conf[ "subj" ][ "subj_id" ], roi_name ) )
+	plt.show()
 
 
 def subj_cond_diff( paths, conf ):

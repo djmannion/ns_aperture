@@ -161,6 +161,7 @@ def exp_glm( paths, conf ):
 		                  "-fitts", "%s.niml.dset" % fit_file,
 		                  "-bucket", "%s.niml.dset" % glm_file,
 		                  "-cbucket", "%s.niml.dset" % beta_file,
+		                  "-vout",
 		                  "-tout",
 		                  "-overwrite",
 		                ]
@@ -318,3 +319,40 @@ def roi_xtr( paths, conf ):
 					                          env = fmri_tools.utils.get_env(),
 					                          log_path = paths[ "summ" ][ "log_file" ]
 					                        )
+
+
+def get_adj_tc( paths, conf ):
+	"""UNFINISHED"""
+
+	exp_type = [ "exp", "loc" ]
+
+	i_betas = [ "50", "10,11" ]
+
+	start_dir = os.getcwd()
+
+	for ( i_et, et ) in enumerate( exp_type ):
+
+		dir_key = "%s_dir" % et
+
+		os.chdir( paths[ "ana" ][ dir_key ] )
+
+		for hemi in [ "lh", "rh" ]:
+
+			bltc_key = "%s_bltc" % et
+			bltc_file = "%s_%s.niml.dset" % ( paths[ "ana" ][ bltc_key ], hemi )
+
+			# generate an average baseline timecourse
+			bl_cmd = [ "3dSynthesize",
+			           "-cbucket", beta_file,
+			           "-matrix", mat_file,
+			           "-select", "baseline",
+			           "-prefix", bltc_file,
+			           "-overwrite"
+			         ]
+
+			fmri_tools.utils.run_cmd( bl_cmd,
+			                          env = fmri_tools.utils.get_env(),
+			                          log_path = paths[ "summ" ][ "log_file" ]
+			                        )
+
+	os.chdir( start_dir )

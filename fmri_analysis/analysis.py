@@ -23,9 +23,9 @@ def loc_glm( paths, conf ):
 
 	for hemi in [ "lh", "rh" ]:
 
-		fit_file = "%s_%s.niml.dset" % ( paths[ "ana" ][ "loc_fits" ], hemi )
-		glm_file = "%s_%s.niml.dset" % ( paths[ "ana" ][ "loc_glm" ], hemi )
-		beta_file = "%s_%s.niml.dset" % ( paths[ "ana" ][ "loc_beta" ], hemi )
+		fit_file = "%s_%s" % ( paths[ "ana" ][ "loc_fits" ], hemi )
+		glm_file = "%s_%s" % ( paths[ "ana" ][ "loc_glm" ], hemi )
+		beta_file = "%s_%s" % ( paths[ "ana" ][ "loc_beta" ], hemi )
 
 		glm_cmd = [ "3dDeconvolve",
 		            "-input"
@@ -47,7 +47,7 @@ def loc_glm( paths, conf ):
 		                  "-gltsym", "SYM: +lvf_ON -rvf_ON",
 		                  "-glt_label", "1", "LVFgtRVF",
 		                  "-gltsym", "SYM: +lvf_ON \ +rvf_ON",
-		                  "-glt_label", "2", "ALLf",
+		                  "-glt_label", "2", "fALL",
 		                  "-xjpeg", "loc_design.png",
 		                  "-x1D", "loc_design",
 		                  "-jobs", "16",
@@ -56,7 +56,8 @@ def loc_glm( paths, conf ):
 		                  "-cbucket", beta_file,
 		                  "-tout",
 		                  "-fout",
-		                  "-overwrite"
+		                  "-overwrite",
+		                  "-x1D_stop"
 		                ]
 		              )
 
@@ -65,58 +66,32 @@ def loc_glm( paths, conf ):
 		                          log_path = paths[ "summ" ][ "log_file" ]
 		                        )
 
+		reml_cmd = [ "3dREMLfit",
+		             "-matrix", "loc_design.xmat.1D",
+		             "-input", " ".join( [ "%s_%s.niml.dset" % ( surf_file, hemi )
+		                                   for surf_file in paths[ "func_loc" ][ "surf_files" ]
+		                                 ]
+		                               ),
+		             "-Rbeta", "%s_reml.niml.dset" % beta_file,
+		             "-tout",
+		             "-fout",
+		             "-Rbuck", "%s_reml.niml.dset" % glm_file,
+		             "-Rfitts", "%s_reml.niml.dset" % fit_file
+		           ]
+
+		fmri_tools.utils.run_cmd( reml_cmd,
+		                          env = fmri_tools.utils.get_env(),
+		                          log_path = paths[ "summ" ][ "log_file" ]
+		                        )
+
 		pad_node = "%d" % conf[ "subj" ][ "node_k" ][ hemi ]
 
 		fmri_tools.utils.sparse_to_full( glm_file,
-		                                 "%s_%s-full" % ( paths[ "ana" ][ "loc_glm" ], hemi ),
+		                                 "%s_%s_reml-full" % ( paths[ "ana" ][ "loc_glm" ], hemi ),
 		                                 pad_node = pad_node,
 		                                 log_path = paths[ "summ" ][ "log_file" ],
 		                                 overwrite = True
 		                               )
-
-		# run FDR correction
-		fdr_cmd = [ "3dFDR",
-		            "-input", glm_file,
-		            "-prefix", "%s_%s.niml.dset" % ( paths[ "ana" ][ "loc_q" ], hemi ),
-		            "-qval",
-		            "-float",
-		            "-overwrite"
-		          ]
-
-		fmri_tools.utils.run_cmd( fdr_cmd,
-		                          env = fmri_tools.utils.get_env(),
-		                          log_path = paths[ "summ" ][ "log_file" ]
-		                        )
-
-		q_file = "%s_%s" % ( paths[ "ana" ][ "loc_q" ], hemi )
-
-
-		# convert the FDR to full
-		fmri_tools.utils.sparse_to_full( "%s.niml.dset" % q_file,
-		                                 "%s-full" % q_file,
-		                                 pad_node = pad_node,
-		                                 log_path = paths[ "summ" ][ "log_file" ],
-		                                 overwrite = True
-		                               )
-
-		# use it to mask the ROIs
-		mask_cmd = [ "3dcalc",
-		             "-a", "%s-full.niml.dset[6]" % q_file,
-		             "-b", "%s_%s-full.niml.dset" % (
-		                     paths[ "ana" ][ "roi_dset" ],
-		                     hemi ),
-		             "-expr", "within( a, 0, %.5f ) * b" % conf[ "ana" ][ "q_thr" ],
-		             "-prefix", "%s_%s-full.niml.dset" % (
-		                          paths[ "ana" ][ "roi_mask" ],
-		                          hemi ),
-		             "-overwrite"
-		           ]
-
-		fmri_tools.utils.run_cmd( mask_cmd,
-		                          env = fmri_tools.utils.get_env(),
-		                          log_path = paths[ "summ" ][ "log_file" ]
-		                        )
-
 
 	os.chdir( start_dir )
 
@@ -158,16 +133,34 @@ def exp_glm( paths, conf ):
 		                  "-xjpeg", "exp_design.png",
 		                  "-x1D", "exp_design",
 		                  "-jobs", "16",
-		                  "-fitts", "%s.niml.dset" % fit_file,
-		                  "-bucket", "%s.niml.dset" % glm_file,
-		                  "-cbucket", "%s.niml.dset" % beta_file,
+		                  "-fitts", "%s" % fit_file,
+		                  "-bucket", "%s" % glm_file,
+		                  "-cbucket", "%s" % beta_file,
 		                  "-vout",
 		                  "-tout",
 		                  "-overwrite",
+		                  "-x1D_stop"
 		                ]
 		              )
 
 		fmri_tools.utils.run_cmd( glm_cmd,
+		                          env = fmri_tools.utils.get_env(),
+		                          log_path = paths[ "summ" ][ "log_file" ]
+		                        )
+
+		reml_cmd = [ "3dREMLfit",
+		             "-matrix", "exp_design.xmat.1D",
+		             "-input", " ".join( [ "%s_%s.niml.dset" % ( surf_file, hemi )
+		                                   for surf_file in paths[ "func_exp" ][ "surf_files" ]
+		                                 ]
+		                               ),
+		             "-Rbeta", "%s_reml.niml.dset" % beta_file,
+		             "-tout",
+		             "-Rbuck", "%s_reml.niml.dset" % glm_file,
+		             "-Rfitts", "%s_reml.niml.dset" % fit_file
+		           ]
+
+		fmri_tools.utils.run_cmd( reml_cmd,
 		                          env = fmri_tools.utils.get_env(),
 		                          log_path = paths[ "summ" ][ "log_file" ]
 		                        )
@@ -177,26 +170,29 @@ def exp_glm( paths, conf ):
 		# convert the output to full
 		for out_file in [ fit_file, glm_file, beta_file ]:
 
-			fmri_tools.utils.sparse_to_full( "%s.niml.dset" % out_file,
-			                                 "%s-full" % out_file,
+			fmri_tools.utils.sparse_to_full( "%s_reml.niml.dset" % out_file,
+			                                 "%s_reml-full" % out_file,
 			                                 pad_node = pad_node,
 			                                 log_path = paths[ "summ" ][ "log_file" ],
 			                                 overwrite = True
 			                               )
 
-
 	os.chdir( start_dir )
 
 
 def beta_to_psc( paths, conf ):
-	"""a"""
+	"""Convert the GLM beta weights into units of percent signal change"""
 
+	# want to convert both the experiment and the localiser data
 	exp_type = [ "exp", "loc" ]
 
+	# these are the indices into the beta files for the data we want to convert
+	# they are checked below
 	i_betas = [ "50", "10,11" ]
 
 	start_dir = os.getcwd()
 
+	# loop over the experiment / localiser experiment
 	for ( i_et, et ) in enumerate( exp_type ):
 
 		dir_key = "%s_dir" % et
@@ -205,13 +201,16 @@ def beta_to_psc( paths, conf ):
 
 		for hemi in [ "lh", "rh" ]:
 
+			# dataset holding the beta weights
 			beta_key = "%s_beta" % et
-			beta_file = "%s_%s.niml.dset" % ( paths[ "ana" ][ beta_key ], hemi )
+			beta_file = "%s_%s_reml.niml.dset" % ( paths[ "ana" ][ beta_key ], hemi )
 
+			# design matrix file
 			mat_file = os.path.join( paths[ "ana" ][ dir_key ],
-		                           "%s_design.xmat.1D" % et
-		                         )
+			                         "%s_design.xmat.1D" % et
+			                       )
 
+			# baseline timecourse dataset, to write
 			bltc_key = "%s_bltc" % et
 			bltc_file = "%s_%s.niml.dset" % ( paths[ "ana" ][ bltc_key ], hemi )
 
@@ -229,10 +228,11 @@ def beta_to_psc( paths, conf ):
 			                          log_path = paths[ "summ" ][ "log_file" ]
 			                        )
 
+			# baseline (point-estimate) dataset, to write
 			bl_key = "%s_bl" % et
 			bl_file = "%s_%s.niml.dset" % ( paths[ "ana" ][ bl_key ], hemi )
 
-			# average baseline across time
+			# average baseline timecourse across time
 			avg_cmd = [ "3dTstat",
 			            "-mean",
 			            "-overwrite",
@@ -245,15 +245,27 @@ def beta_to_psc( paths, conf ):
 			                          log_path = paths[ "summ" ][ "log_file" ]
 			                        )
 
+			# dataset to hold the percent signal change, to write
 			psc_key = "%s_psc" % et
 			psc_file = "%s_%s.niml.dset" % ( paths[ "ana" ][ psc_key ], hemi )
+
+			# the input beta file, with sub-brick selector
+			beta_sel = "%s[%s]" % ( beta_file, i_betas[ i_et ] )
+
+			# check that the label is as expected
+			beta_label = fmri_tools.utils.get_dset_label( beta_sel )
+
+			if et == "exp":
+				assert( beta_label == "coh#0" )
+			elif et == "loc":
+				assert( beta_label == [ "lvf_ON#0", "rvf_ON#0" ] )
 
 			# compute psc
 			# from http://afni.nimh.nih.gov/sscc/gangc/TempNorm.html
 			psc_cmd = [ "3dcalc",
 			            "-fscale",
 			            "-a", bl_file,
-			            "-b", "%s[%s]" % ( beta_file, i_betas[ i_et ] ),
+			            "-b", beta_sel,
 			            "-expr", "100 * b/a * step( 1 - abs( b/a ) )",
 			            "-prefix", psc_file,
 			            "-overwrite"
@@ -278,35 +290,44 @@ def beta_to_psc( paths, conf ):
 
 
 def roi_xtr( paths, conf ):
-	"""a"""
+	"""Extract PSC and statistics data from ROIs"""
 
 	for hemi in [ "lh", "rh" ]:
 
 		# the *full* ROI file
 		roi_file = "%s_%s-full.niml.dset" % ( paths[ "ana" ][ "roi_dset" ], hemi )
 
+		# iterate over all the ROIs
 		for ( roi_name, roi_val ) in conf[ "ana" ][ "rois" ]:
 
+			# ... and experiment types
 			for ana_type in [ "exp", "loc" ]:
 
+				# ... and what data we want to pull out
 				for data_type in [ "psc", "stat" ]:
 
 					if data_type == "psc":
 						data_key = "%s_psc" % ana_type
+						extra_desc = ""
 					else:
 						data_key = "%s_glm" % ana_type
+						extra_desc = "_reml"
 
 					roi_key = "%s_roi_%s" % ( ana_type, data_type )
 
-					data_file = "%s_%s-full.niml.dset" % ( paths[ "ana" ][ data_key ],
-					                                       hemi
-					                                     )
+					# our input dataset - either psc or glm
+					data_file = "%s_%s%s-full.niml.dset" % ( paths[ "ana" ][ data_key ],
+					                                         hemi,
+					                                         extra_desc
+					                                       )
 
+					# our output dataset
 					out_file = "%s_%s_%s.txt" % ( paths[ "ana" ][ roi_key ],
 					                              roi_name,
 					                              hemi
 					                            )
 
+					# use the ROI file to mask the input dataset
 					xtr_cmd = [ "3dmaskdump",
 					            "-mask", roi_file,
 					            "-mrange", roi_val, roi_val,

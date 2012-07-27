@@ -10,7 +10,7 @@ import tempfile
 
 import numpy as np
 
-import ns_aperture.fmri.loc
+import ns_aperture.fmri.exp, ns_aperture.fmri.loc
 import fmri_tools.preproc, fmri_tools.utils
 
 
@@ -255,8 +255,6 @@ def vol_to_surf( paths, conf ):
 			             "-map_func", "ave",
 			             "-f_steps", "15",
 			             "-f_index", "nodes",
-			             "-f_p1_fr", "0.0",
-			             "-f_pn_fr", "0.0",
 			             "-sv", paths[ "reg" ][ "reg" ],
 			             "-grid_parent", "%s.nii" % vol_file,
 			             "-out_niml", out,
@@ -318,36 +316,57 @@ def design_prep( paths, conf ):
 	# exp
 	run_file = open( paths[ "ana" ][ "exp_time_file" ], "w" )
 
+	# get info on what index corresponds to what, in the run sequence file
+	seq_ind = ns_aperture.fmri.exp.get_seq_ind()
+
 	for i_run in xrange( conf[ "subj" ][ "n_runs" ] ):
 
 		run_times = []
 
+		# load the sequence for this run
 		run_seq = np.load( "%s%d.npy" % ( paths[ "log" ][ "seq_base" ], i_run + 1 ) )
 
+		# loop over each event in the sequence
 		for i_evt in xrange( run_seq.shape[ 0 ] ):
 
-			is_transition = ( run_seq[ i_evt, 1 ] != run_seq[ i_evt - 1, 1 ] )
+			# pull out the event info
+			evt_time_s = run_seq[ i_evt, seq_ind[ "time_s" ] ]
+			evt_block_num = run_seq[ i_evt, seq_ind[ "block_num" ] ]
+			evt_prev_block_num = run_seq[ i_evt - 1, seq_ind[ "block_num" ] ]
+			evt_block_type = run_seq[ i_evt, seq_ind[ "block_type" ] ]
+			evt_img_i_L = run_seq[ i_evt, seq_ind[ "img_i_L" ] ]
+			evt_img_i_R = run_seq[ i_evt, seq_ind[ "img_i_R" ] ]
 
-			is_coh = ( run_seq[ i_evt, 2 ] == 0 )
+			# test if the event marks the first of a new block
+			is_transition = ( evt_block_num != evt_prev_block_num )
 
+			# test if the event / block is 'coherent'; if it's condition index is 0
+			is_coh = ( evt_block_type == 0 )
+
+			# only noteworthy if it is both the start of a new block and the block is
+			# of coherent stimuli
 			if np.logical_and( is_transition, is_coh ):
 
-				start_time_s = run_seq[ i_evt, 0 ]
+				# do a sanity check that it is in fact a coherent block by testing
+				# whether both stimuli have the same id
+				assert( evt_img_i_L == evt_img_i_R )
 
-				run_times.append( start_time_s )
+				run_times.append( evt_time_s )
 
 		run_times = np.array( run_times )
 
+		# subtract the time that we cull from the data
 		run_times -= conf[ "ana" ][ "exp_run_start_s" ]
 
+		# and remove any times that are outside of our data window
 		ok = np.logical_and( run_times >= 0,
 		                     run_times < conf[ "ana" ][ "exp_run_dur_s" ]
 		                   )
 
 		run_times = run_times[ ok ]
 
+		# write the onset times to the run file
 		for run_time in run_times:
-
 			run_file.write( "%.5f\t" % run_time )
 
 		run_file.write( "\n" )

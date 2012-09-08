@@ -91,13 +91,13 @@ def main():
 		ns_aperture.fmri_analysis.preproc.convert( paths, conf )
 
 	elif args.preproc_step == "correct":
-		ns_aperture.fmri_analysis.preproc.st_motion_correct( paths, conf )
+		ns_aperture.fmri_analysis.preproc.motion_correct( paths, conf )
 
 	elif args.preproc_step == "fieldmap":
 		ns_aperture.fmri_analysis.preproc.fieldmaps( paths, conf )
 
 	elif args.preproc_step == "undistort":
-		ns_aperture.fmri_analysis.preproc.unwarp( paths, conf )
+		ns_aperture.fmri_analysis.preproc.undistort( paths, conf )
 
 	elif args.preproc_step == "trim":
 		ns_aperture.fmri_analysis.preproc.trim( paths, conf )

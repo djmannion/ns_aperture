@@ -129,6 +129,7 @@ def _get_exp_conf():
 	exp_conf = {}
 
 	exp_conf[ "id" ] = "ns_aperture"
+	exp_conf[ "id_loc" ] = "ns_aperture_loc"
 
 	# main experiment info
 	exp_conf[ "n_runs" ] = 10
@@ -292,22 +293,14 @@ def _get_subj_conf( subj_id = None ):
 
 	s1021 = { "subj_id" : "s1021",
 	          "acq_date" : "20120608",
-	          "n_runs" : 10,
+	          "n_runs" : 12,
+	          "n_exp_runs" : 10,
 	          "n_loc_runs" : 2,
 	          "n_fmaps" : 1,
-	          "run_st_mot_order" : ( ( 7, "exp" ),
-	                                 ( 8, "exp" ),
-	                                 ( 9, "exp" ),
-	                                 ( 10, "exp" ),
-	                                 ( 1, "loc" ),
-	                                 ( 2, "loc" ),
-	                                 ( 1, "exp" ),
-	                                 ( 2, "exp" ),
-	                                 ( 3, "exp" ),
-	                                 ( 4, "exp" ),
-	                                 ( 5, "exp" ),
-	                                 ( 6, "exp" )
-	                               ),
+	          "mot_base" : 7,
+	          "nudge_vals" : [ -50, 0, -14 ],
+	          "exp_runs" : [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ],
+	          "loc_runs" : [ 11, 12 ],
 	          "node_k" : { "lh" : 140847,
 	                       "rh" : 141381
 	                     },

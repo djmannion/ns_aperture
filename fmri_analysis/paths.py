@@ -24,41 +24,17 @@ def _get_func_paths( conf, paths ):
 	                         "func"
 	                       )
 
-	func_exp_dir = os.path.join( func_dir, "exp" )
-
-	func_paths = fmri_tools.paths.get_func_paths( func_exp_dir,
+	func_paths = fmri_tools.paths.get_func_paths( func_dir,
 	                                              conf[ "subj" ][ "subj_id" ],
 	                                              conf[ "subj" ][ "n_runs" ],
 	                                              conf[ "exp" ][ "id" ]
 	                                            )
 
-	func_paths[ "trim_files" ] = [ orig_file.replace( "orig", "trim" )
-	                               for orig_file in func_paths[ "orig_files" ]
-	                             ]
-
 	func_paths[ "surf_files" ] = [ orig_file.replace( "orig", "surf" )
 	                               for orig_file in func_paths[ "orig_files" ]
 	                             ]
 
-	paths[ "func_exp" ] = func_paths
-
-	func_loc_dir = os.path.join( func_dir, "loc" )
-
-	loc_paths = fmri_tools.paths.get_func_paths( func_loc_dir,
-	                                             conf[ "subj" ][ "subj_id" ],
-	                                             conf[ "subj" ][ "n_loc_runs" ],
-	                                             "%s_loc" % conf[ "exp" ][ "id" ]
-	                                           )
-
-	loc_paths[ "trim_files" ] = [ orig_file.replace( "orig", "trim" )
-	                               for orig_file in loc_paths[ "orig_files" ]
-	                            ]
-
-	loc_paths[ "surf_files" ] = [ orig_file.replace( "orig", "surf" )
-	                               for orig_file in loc_paths[ "orig_files" ]
-	                            ]
-
-	paths[ "func_loc" ] = loc_paths
+	paths[ "func" ] = func_paths
 
 	return paths
 
@@ -75,6 +51,10 @@ def _get_summ_paths( conf, paths ):
 	                                                   conf[ "subj" ][ "subj_id" ],
 	                                                   conf[ "exp" ][ "id" ]
 	                                                 )
+
+	summ_paths[ "mot_est_file" ] = summ_paths[ "mot_est_file" ].replace( "npy",
+	                                                                     "txt"
+	                                                                   )
 
 	log_file = "%s_%s-log.log" % ( conf[ "subj" ][ "subj_id" ],
 	                               conf[ "exp" ][ "id" ]
@@ -121,13 +101,13 @@ def _get_reg_paths( conf, paths ):
 
 	subj_id = conf[ "subj" ][ "subj_id" ]
 
-	reg_paths[ "exp_anat" ] = os.path.join( reg_dir,
-	                                        "%s_anat.nii" % subj_id
-	                                      )
+	reg_paths[ "anat" ] = os.path.join( reg_dir,
+	                                    "%s_anat+orig" % subj_id
+	                                  )
 
-	reg_paths[ "rs_exp_anat" ] = os.path.join( reg_dir,
-	                                           "%s_anat_rs+orig" % subj_id
-	                                         )
+	reg_paths[ "reg_anat" ] = os.path.join( reg_dir,
+	                                        "%s_reg_anat+orig" % subj_id
+	                                      )
 
 	surf_dir = os.path.join( os.environ[ "SUBJECTS_DIR" ],
 	                         subj_id,
@@ -137,10 +117,6 @@ def _get_reg_paths( conf, paths ):
 	reg_paths[ "surf_anat" ] = os.path.join( surf_dir,
 	                                         "%s_SurfVol+orig" % subj_id
 	                                       )
-
-	reg_paths[ "reg" ] = os.path.join( reg_dir,
-	                                   "%s_SurfVol_Alnd_Exp+orig" % subj_id
-	                                 )
 
 	reg_paths[ "spec" ] = os.path.join( surf_dir,
 	                                    "%s_" % subj_id

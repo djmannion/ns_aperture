@@ -10,30 +10,28 @@ import tempfile
 
 import numpy as np
 
-import ns_aperture.fmri.exp, ns_aperture.fmri.loc
 import fmri_tools.preproc, fmri_tools.utils
+
+import ns_aperture.fmri.exp, ns_aperture.fmri.loc
 
 
 def convert( paths, conf ):
 	"""Converts the functionals and fieldmaps from dicom to nifti"""
 
 	# aggregate the dicom directories
-	raw_dirs = ( paths[ "func_exp" ][ "raw_dirs" ] +
-	             paths[ "func_loc" ][ "raw_dirs" ] +
+	raw_dirs = ( paths[ "func" ][ "raw_dirs" ] +
 	             paths[ "fmap" ][ "raw_mag_dirs" ] +
 	             paths[ "fmap" ][ "raw_ph_dirs" ]
 	           )
 
 	# aggregate the output directories
-	nii_dirs = ( paths[ "func_exp" ][ "run_dirs" ] +
-	             paths[ "func_loc" ][ "run_dirs" ] +
+	nii_dirs = ( paths[ "func" ][ "run_dirs" ] +
 	             paths[ "fmap" ][ "fmap_dirs" ] +
 	             paths[ "fmap" ][ "fmap_dirs" ]
 	           )
 
 	# aggregate the images paths
-	img_paths = ( paths[ "func_exp" ][ "orig_files" ] +
-	              paths[ "func_loc" ][ "orig_files" ] +
+	img_paths = ( paths[ "func" ][ "orig_files" ] +
 	              paths[ "fmap" ][ "mag_files" ] +
 	              paths[ "fmap" ][ "ph_files" ]
 	            )
@@ -52,7 +50,6 @@ def convert( paths, conf ):
 		                               log_path = paths[ "summ" ][ "log_file" ]
 		                             )
 
-
 	# generate the full paths (with assumed extension) of the newly-created nifti
 	# files
 	full_img_paths = [ "%s.nii" % img_path for img_path in img_paths ]
@@ -61,9 +58,7 @@ def convert( paths, conf ):
 	assert( fmri_tools.utils.files_are_unique( full_img_paths ) )
 
 	# files to go into the summary
-	summ_paths = ( paths[ "func_exp" ][ "orig_files" ] +
-	               paths[ "func_loc" ][ "orig_files" ]
-	             )
+	summ_paths = paths[ "func" ][ "orig_files" ]
 
 	# make a summary image from the files
 	fmri_tools.preproc.gen_sess_summ_img( summ_paths,
@@ -72,47 +67,52 @@ def convert( paths, conf ):
 	                                    )
 
 
-def st_motion_correct( paths, conf ):
-	"""Performs slice-timing and motion correction"""
+def motion_correct( paths, conf ):
+	"""Performs motion correction"""
 
-	# get the order of runs to pass to the correction algorithm
-	# this is done because the algorithm realigns all to the first entry, which
-	# normally corresponds to the first run acquired, but we might want them to
-	# be aligned with a different run - one closer to a fieldmap, for example
-	run_order = conf[ "subj" ][ "run_st_mot_order" ]
+	# the index to the run that will be the 'base', to be corrected to
+	# it is stored in one-based, hence the minus 1 to get to an index
+	i_mc_base = conf[ "subj" ][ "mot_base" ] - 1 
 
-	# reorder the paths
-	# (the -1 is because the runs are specified in subj_conf in a one-based
-	# index; ie. run 1 is the first run)
-	orig_paths = [ paths[ "func_%s" % im_type ][ "orig_files" ][ i_run - 1 ]
-	               for i_run, im_type in run_order
-	             ]
-	corr_paths = [ paths[ "func_%s" % im_type ][ "corr_files" ][ i_run - 1 ]
-	               for i_run, im_type in run_order
-	             ]
+	mc_base = "%s.nii[0]" % paths[ "func" ][ "orig_files" ][ i_mc_base ]
 
-	# pull out the important information from the config
-	slice_order = conf[ "acq" ][ "slice_order" ]
-	tr_s = conf[ "acq" ][ "tr_s" ]
-	slice_info = ( conf[ "acq" ][ "slice_axis" ],
-	               conf[ "acq" ][ "slice_acq_dir" ]
-	             )
+	mc_params = []
 
-	# run the motion correction algorithm (slow)
-	motion_est = fmri_tools.preproc.correct_st_motion( orig_paths,
-	                                                   corr_paths,
-	                                                   slice_order,
-	                                                   tr_s,
-	                                                   slice_info
-	                                                 )
+	for i_run in xrange( conf[ "subj" ][ "n_runs" ] ):
 
-	# save the estimated motion parameters
-	np.save( paths[ "summ" ][ "mot_est_file" ],
-	         arr = motion_est
-	       )
+		orig_file = paths[ "func" ][ "orig_files" ][ i_run ]
+		corr_file = paths[ "func" ][ "corr_files" ][ i_run ]
+
+		# because we want to aggregate the motion correction files over the whole
+		# session, we only store the individual run correction temporarily
+		mc_txt = tempfile.NamedTemporaryFile()
+
+		mc_cmd = [ "3dvolreg",
+		           "-twopass",
+		           "-prefix", "%s.nii" % corr_file,
+		           "-1Dfile", mc_txt.name,
+		           "-overwrite",
+		           "-base", mc_base,
+		           "-zpad", "5",
+		           "-heptic",  # fourier can cause ringing artefacts
+		           "%s.nii" % orig_file
+		         ]
+
+		fmri_tools.utils.run_cmd( mc_cmd,
+		                          env = fmri_tools.utils.get_env(),
+		                          log_path = paths[ "summ" ][ "log_file" ]
+	                        )
+
+		# deal with the motion estimates
+		mc_params.append( np.loadtxt( mc_txt.name ) )
+
+	# concatenate the motion estimates over time
+	mc_params = np.vstack( mc_params )
+
+	np.savetxt( paths[ "summ" ][ "mot_est_file" ], mc_params )
 
 	# make a summary image from the corrected files
-	fmri_tools.preproc.gen_sess_summ_img( corr_paths,
+	fmri_tools.preproc.gen_sess_summ_img( paths[ "func" ][ "corr_files" ],
 	                                      paths[ "summ" ][ "corr_summ_file" ],
 	                                      log_path = paths[ "summ" ][ "log_file" ]
 	                                    )
@@ -131,28 +131,22 @@ def fieldmaps( paths, conf ):
 		                                )
 
 
-def unwarp( paths, conf ):
+def undistort( paths, conf ):
 	"""Uses the fieldmaps to unwarp the functional images and create a mean image
 	of all the unwarped functional images.
 	"""
 
-	# combine the experiment and localiser functional info
-	func_fmap = ( paths[ "func_exp" ][ "fmap_files" ] +
-	              paths[ "func_loc" ][ "fmap_files" ]
-	            )
+	func_fmap = paths[ "fmap" ][ "fmap_files" ][ 0 ]
 
-	func_corr = ( paths[ "func_exp" ][ "corr_files" ] +
-	              paths[ "func_loc" ][ "corr_files" ]
-	            )
-
-	func_uw = ( paths[ "func_exp" ][ "uw_files" ] +
-	            paths[ "func_loc" ][ "uw_files" ]
-	          )
+	# motion-corrected images (input)
+	func_corr = paths[ "func" ][ "corr_files" ]
+	# unwarped images (output)
+	func_uw = paths[ "func" ][ "uw_files" ]
 
 	for i_run in xrange( len( func_corr )  ):
 
 		fmri_tools.preproc.unwarp( func_corr[ i_run ],
-		                           func_fmap[ i_run ],
+		                           func_fmap,
 		                           func_uw[ i_run ],
 		                           conf[ "acq" ][ "dwell_ms" ],
 		                           conf[ "acq" ][ "ph_encode_dir" ],
@@ -172,92 +166,78 @@ def unwarp( paths, conf ):
 	                                    )
 
 
-def trim( paths, conf ):
-	"""Trims the timecourses"""
-
-	exp_start_vol = conf[ "ana" ][ "exp_run_start_s" ] / conf[ "acq" ][ "tr_s" ]
-	exp_n_vol = conf[ "ana" ][ "exp_run_dur_s" ] / conf[ "acq" ][ "tr_s" ]
-
-	for ( uw_file, trim_file ) in zip( paths[ "func_exp" ][ "uw_files" ],
-	                                   paths[ "func_exp" ][ "trim_files" ]
-	                                 ):
-
-		exp_trim_cmd = [ "fslroi",
-		                 uw_file,
-		                 trim_file,
-		                 "%d" % exp_start_vol,
-		                 "%d" % exp_n_vol
-		               ]
-
-		fmri_tools.utils.run_cmd( exp_trim_cmd,
-		                          env = fmri_tools.utils.get_env(),
-		                          log_path = paths[ "summ" ][ "log_file" ]
-		                        )
-
-	loc_start_vol = conf[ "ana" ][ "loc_run_start_s" ] / conf[ "acq" ][ "tr_s" ]
-	loc_n_vol = conf[ "ana" ][ "loc_run_dur_s" ] / conf[ "acq" ][ "tr_s" ]
-
-	for ( uw_file, trim_file ) in zip( paths[ "func_loc" ][ "uw_files" ],
-	                                   paths[ "func_loc" ][ "trim_files" ]
-	                                 ):
-
-		loc_trim_cmd = [ "fslroi",
-		                 uw_file,
-		                 trim_file,
-		                 "%d" % loc_start_vol,
-		                 "%d" % loc_n_vol
-		               ]
-
-		fmri_tools.utils.run_cmd( loc_trim_cmd,
-		                          env = fmri_tools.utils.get_env(),
-		                          log_path = paths[ "summ" ][ "log_file" ]
-		                        )
-
 
 def surf_reg( paths, conf ):
 	"""Coregisters an anatomical with the SUMA reference"""
 
-	fmri_tools.preproc.surf_reg( paths[ "reg" ][ "rs_exp_anat" ],
-	                             paths[ "reg" ][ "surf_anat" ],
-	                             paths[ "summ" ][ "log_file" ]
-	                           )
+	base_anat = paths[ "reg" ][ "anat" ]
+	reg_anat = paths[ "reg" ][ "reg_anat" ]
+
+	# use the mean to represent the functional images
+	base_func = "%s.nii" % paths[ "summ" ][ "mean_file" ]
+
+	coreg_cmd = [ "3dAllineate",
+	              "-base", base_func,
+	              "-source", base_anat,
+	              "-prefix", reg_anat,
+	              "-cost", "nmi",  # normalised mutual info cost function
+	              "-master", "SOURCE",
+	              "-warp", "shift_rotate",  # only rigid transforms
+	              "-onepass",  # false minima if it is allowed to wander
+	              "-verb"
+	            ]
+
+	# pass the algorithm three translation parameters to get it close to the
+	# mean functional
+	for ( i_nudge, nudge_val ) in enumerate( conf[ "subj" ][ "nudge_vals" ] ):
+
+		coreg_cmd.extend( [ "-parini",
+		                    "%d" % ( i_nudge + 1 ),
+		                    "%.3f" % nudge_val
+		                  ]
+		                )
+
+	fmri_tools.utils.run_cmd( coreg_cmd,
+	                          env = fmri_tools.utils.get_env(),
+	                          log_path = paths[ "summ" ][ "log_file" ]
+	                        )
 
 
 def vol_to_surf( paths, conf ):
 	"""Converts the functional volume-based images to SUMA surfaces."""
 
+	# this puts some output in the working directory, so change to where we want
+	# to save stuff
 	start_dir = os.getcwd()
 
-	vol_files = ( paths[ "func_exp" ][ "trim_files" ] +
-	              paths[ "func_loc" ][ "trim_files" ]
-	            )
+	# images to project (unwarped)
+	vol_files = paths[ "func" ][ "uw_files" ]
+	# surface files to write
+	surf_files = paths[ "func" ][ "surf_files" ]
 
-	surf_files = ( paths[ "func_exp" ][ "surf_files" ] +
-	               paths[ "func_loc" ][ "surf_files" ]
-	             )
+	# number of increments to divide the surface interval
+	f_steps = 15
+	# how to deal with multiple nodes lying on a given voxel
+	f_index = "nodes"
 
 	for ( vol_file, surf_file ) in zip( vol_files, surf_files ):
 
-		file_dir = os.path.split( vol_file )[ 0 ]
+		( file_dir, _ ) = os.path.split( vol_file )
 
 		os.chdir( file_dir )
 
 		for hemi in [ "lh", "rh" ]:
-
-			out = "%s_%s.niml.dset" % ( surf_file,
-			                            hemi
-			                          )
 
 			surf_cmd = [ "3dVol2Surf",
 			             "-spec", "%s%s.spec" % ( paths[ "reg" ][ "spec" ], hemi ),
 			             "-surf_A", "smoothwm",
 			             "-surf_B", "pial",
 			             "-map_func", "ave",
-			             "-f_steps", "15",
-			             "-f_index", "nodes",
-			             "-sv", paths[ "reg" ][ "reg" ],
+			             "-f_steps", "%d" % f_steps,
+			             "-f_index", f_index,
+			             "-sv", paths[ "reg" ][ "reg_anat" ],
 			             "-grid_parent", "%s.nii" % vol_file,
-			             "-out_niml", out,
+			             "-out_niml", "%s_%s.niml.dset" % ( surf_file, hemi ),
 			             "-overwrite"
 			           ]
 

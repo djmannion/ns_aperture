@@ -226,6 +226,46 @@ def _get_ana_paths( conf, paths ):
 	return paths
 
 
+def _get_loc_paths( conf, paths ):
+	"""Get the paths for the localiser"""
+
+	subj_id = conf[ "subj" ][ "subj_id" ]
+	id = conf[ "exp" ][ "id_loc" ]
+
+	loc = {}
+
+	loc_dir = os.path.join( paths[ "study" ][ "subj_dir" ],
+	                        subj_id,
+	                        "loc"
+	                      )
+
+	loc[ "base_dir" ] = loc_dir
+
+	loc[ "time_files" ] = os.path.join( loc_dir,
+	                                    "%s_%s_stim_times-" % ( subj_id, id )
+	                                  )
+
+	loc[ "mot_est" ] = os.path.join( loc_dir,
+	                                 "%s_%s-mot_est.txt" % ( subj_id, id )
+	                               )
+
+	loc[ "bl_poly" ] = os.path.join( loc_dir,
+	                                 "%s_%s-bl_poly.txt" % ( subj_id, id )
+	                               )
+
+	loc[ "glm" ] = os.path.join( loc_dir,
+	                             "%s_%s-glm" % ( subj_id, id )
+	                           )
+
+	loc[ "beta" ] = os.path.join( loc_dir,
+	                              "%s_%s-beta" % ( subj_id, id )
+	                            )
+
+	paths[ "loc" ] = loc
+
+	return paths
+
+
 def get_subj_paths( conf ):
 	"""Get the path structure for a given subject"""
 
@@ -244,5 +284,7 @@ def get_subj_paths( conf ):
 	paths = _get_log_paths( conf, paths )
 
 	paths = _get_ana_paths( conf, paths )
+
+	paths = _get_loc_paths( conf, paths )
 
 	return paths

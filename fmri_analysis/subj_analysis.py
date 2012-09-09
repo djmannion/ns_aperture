@@ -107,6 +107,127 @@ def glm( paths, conf ):
 	os.chdir( start_dir )
 
 
+def loc_glm( paths, conf ):
+	"""Localiser GLM"""
+
+	start_dir = os.getcwd()
+
+	os.chdir( paths[ "loc" ][ "base_dir" ] )
+
+	n_cond = 2
+
+	hrf_model = conf[ "ana" ][ "hrf_model" ]
+
+	stim_files = [ "%s%d.txt" % ( paths[ "loc" ][ "time_files" ],
+	                              cond_num
+	                            )
+	               for cond_num in np.arange( 1, n_cond + 1 )
+	             ]
+
+	stim_labels = ( "L", "R" )
+
+	con_str = [ "SYM: +L \ +R",  # F (OR) contrast
+	            "SYM: +L -R"     # t (AND) contrast
+	          ]
+
+	con_lbl = [ "LorR", "LgtR" ]
+
+	for hemi in [ "lh", "rh" ]:
+
+		glm_cmd = [ "3dDeconvolve",
+		            "-input"
+		          ]
+
+		i_surf_files = np.array( conf[ "subj" ][ "loc_runs" ] ).astype( "int" ) - 1
+
+		surf_files = [ paths[ "func" ][ "surf_files" ][ i_surf ]
+		               for i_surf in i_surf_files
+		             ]
+
+		glm_cmd.extend( [ "%s_%s.niml.dset" % ( surf_file, hemi )
+		                  for surf_file in surf_files
+		                ]
+		              )
+
+		glm_cmd.extend( [ "-force_TR", "%.3f" % conf[ "acq" ][ "tr_s" ],
+		                  "-polort", "%d" % ( conf[ "ana" ][ "poly_ord" ] - 1 ),
+		                  "-ortvec", paths[ "loc" ][ "mot_est" ], "mot",
+		                  "-local_times",
+		                  "-xjpeg", "exp_design.png",
+		                  "-x1D", "exp_design",
+		                  "-overwrite",
+		                  "-x1D_stop",  # want to use REML, so don't bother running
+		                  "-num_stimts", "%d" % n_cond
+		                ]
+		              )
+
+		for i_stim in xrange( n_cond ):
+
+			glm_cmd.extend( [ "-stim_label",
+			                  "%d" % ( i_stim + 1 ),
+			                  stim_labels[ i_stim ]
+			                ]
+			              )
+
+			glm_cmd.extend( [ "-stim_times",
+			                  "%d" % ( i_stim + 1 ),
+			                  stim_files[ i_stim ],
+			                  hrf_model
+			                ]
+			              )
+
+		# loop through all our contrasts
+		for i_con in xrange( len( con_str ) ):
+
+			glm_cmd.extend( [ "-gltsym",
+			                  con_str[ i_con ]
+			                ]
+			              )
+
+			glm_cmd.extend( [ "-glt_label",
+			                  "%d" % ( i_con + 1 ),
+			                  con_lbl[ i_con ]
+			                ]
+			              )
+
+		# run this first GLM
+		fmri_tools.utils.run_cmd( glm_cmd,
+		                          env = fmri_tools.utils.get_env(),
+		                          log_path = paths[ "summ" ][ "log_file" ]
+		                        )
+
+		# delete the annoying command file that 3dDeconvolve writes
+		os.remove( "Decon.REML_cmd" )
+
+		glm_file = "%s_%s" % ( paths[ "loc" ][ "glm" ], hemi )
+		beta_file = "%s_%s" % ( paths[ "loc" ][ "beta" ], hemi )
+
+		reml_cmd = [ "3dREMLfit",
+		             "-matrix", "exp_design.xmat.1D",
+		             "-Rbeta", "%s_reml.niml.dset" % beta_file,
+		             "-tout",
+		             "-fout",
+		             "-Rbuck", "%s_reml.niml.dset" % glm_file,
+		             "-overwrite",
+		             "-input"
+		           ]
+
+		reml_cmd.append( " ".join( [ "%s_%s.niml.dset" % ( surf_file, hemi )
+		                             for surf_file in surf_files
+		                           ]
+		                         )
+		               )
+
+		# run the proper GLM
+		fmri_tools.utils.run_cmd( reml_cmd,
+		                          env = fmri_tools.utils.get_env(),
+		                          log_path = paths[ "summ" ][ "log_file" ]
+		                        )
+
+	os.chdir( start_dir )
+
+
+
 def loc_mask( paths, conf ):
 	"""Creates a mask from the localiser contrast"""
 

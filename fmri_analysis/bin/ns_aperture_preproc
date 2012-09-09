@@ -64,11 +64,7 @@ def main():
 	                  "surf_reg",
 	                  "vol_to_surf",
 	                  "exp_design_prep",
-	                  "loc_glm",
-	                  "exp_glm",
-	                  "beta_to_psc",
-	                  "roi_xtr",
-	                  "plot_vox_psc"
+	                  "loc_design_prep"
 	                )
 
 	parser.add_argument( "preproc_step",
@@ -106,6 +102,9 @@ def main():
 
 	elif args.preproc_step == "exp_design_prep":
 		ns_aperture.fmri_analysis.preproc.exp_design_prep( paths, conf )
+
+	elif args.preproc_step == "loc_design_prep":
+		ns_aperture.fmri_analysis.preproc.loc_design_prep( paths, conf )
 
 	else:
 		print "Not completed"

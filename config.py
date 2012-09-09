@@ -231,12 +231,9 @@ def _get_acq_conf():
 def _get_analysis_conf( conf ):
 	"""Gets the parameters for the fMRI analysis"""
 
-
 	# cull the first and last block
-	exp_run_start_s = conf[ "exp" ][ "block_len_s" ]
-	exp_run_dur_s = ( ( conf[ "exp" ][ "n_blocks" ] - 2 ) *
-	                  conf[ "exp" ][ "block_len_s" ]
-	                )
+	exp_pre_cull_s = conf[ "exp" ][ "block_len_s" ]
+	exp_post_cull_s = conf[ "exp" ][ "block_len_s" ]
 
 	# cull the first few volumes
 	loc_run_start_s = conf[ "exp" ][ "loc_pre_len_s" ]
@@ -244,6 +241,10 @@ def _get_analysis_conf( conf ):
 
 	# FDR threshold for the LVF vs RVF localiser comparison
 	q_thr = 0.001
+
+	poly_ord = 4
+
+	hrf_model = "SPMG1(%d)" % conf[ "exp" ][ "block_len_s" ]
 
 	rois = [ [ "v1", "1" ],
 	         [ "v2", "2" ],
@@ -256,11 +257,13 @@ def _get_analysis_conf( conf ):
 	         [ "hmtp", "9" ]
 	      ]
 
-	ana_conf = { "exp_run_start_s" : exp_run_start_s,
-	             "exp_run_dur_s" : exp_run_dur_s,
+	ana_conf = { "exp_pre_cull_s" : exp_pre_cull_s,
+	             "exp_post_cull_s" : exp_post_cull_s,
 	             "loc_run_start_s" : loc_run_start_s,
 	             "loc_run_dur_s" : loc_run_dur_s,
 	             "q_thr" : q_thr,
+	             "hrf_model" : hrf_model,
+	             "poly_ord" : poly_ord,
 	             "rois" : rois
 	           }
 

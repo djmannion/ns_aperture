@@ -166,6 +166,7 @@ def _get_ana_paths( conf, paths ):
 	"""Get the paths for the analysis"""
 
 	subj_id = conf[ "subj" ][ "subj_id" ]
+	exp_id = conf[ "exp" ][ "id" ]
 
 	ana = {}
 
@@ -174,151 +175,51 @@ def _get_ana_paths( conf, paths ):
 	                        "analysis"
 	                      )
 
-	ana[ "exp_dir" ] = os.path.join( ana_dir, "exp" )
+	ana[ "base_dir" ] = ana_dir
 
+	ana[ "time_files" ] = os.path.join( ana_dir,
+	                                    "%s_%s_stim_times-" % ( subj_id, exp_id )
+	                                  )
 
-	ana[ "exp_cond" ] = "coh"
-
-	ana[ "exp_time_file" ] = os.path.join( ana[ "exp_dir" ],
-	                                       "%s_%s_exp-%s_stim_times.txt" % (
-	                                         subj_id,
-	                                         conf[ "exp" ][ "id" ],
-	                                         ana[ "exp_cond" ] )
-	                                     )
-
-	ana[ "exp_fits" ] = os.path.join( ana[ "exp_dir" ],
-	                                  "%s_%s_exp-fits" % ( subj_id,
-	                                                       conf[ "exp" ][ "id" ]
-	                                                     )
-	                                )
-
-	ana[ "exp_glm" ] = os.path.join( ana[ "exp_dir" ],
-	                                  "%s_%s_exp-glm" % ( subj_id,
-	                                                       conf[ "exp" ][ "id" ]
-	                                                     )
-	                                )
-
-	ana[ "exp_beta" ] = os.path.join( ana[ "exp_dir" ],
-	                                  "%s_%s_exp-beta" % ( subj_id,
-	                                                       conf[ "exp" ][ "id" ]
-	                                                     )
-	                                )
-
-	ana[ "exp_bltc" ] = os.path.join( ana[ "exp_dir" ],
-	                                  "%s_%s_exp-bltc" % ( subj_id,
-	                                                       conf[ "exp" ][ "id" ]
-	                                                     )
-	                                )
-
-	ana[ "exp_bl" ] = os.path.join( ana[ "exp_dir" ],
-	                                "%s_%s_exp-bl" % ( subj_id,
-	                                                   conf[ "exp" ][ "id" ]
-	                                                 )
-	                              )
-
-	ana[ "exp_psc" ] = os.path.join( ana[ "exp_dir" ],
-	                                 "%s_%s_exp-psc" % ( subj_id,
-	                                                    conf[ "exp" ][ "id" ]
-	                                                  )
+	ana[ "mot_est" ] = os.path.join( ana_dir,
+	                                 "%s_%s-mot_est.txt" % ( subj_id, exp_id )
 	                               )
 
-	ana[ "exp_roi_psc" ] = os.path.join( ana[ "exp_dir" ],
-	                                     "%s_%s_exp-roi_psc" % ( subj_id,
-	                                                             conf[ "exp" ][ "id" ]
-	                                                           )
-	                                   )
-
-	ana[ "exp_roi_stat" ] = os.path.join( ana[ "exp_dir" ],
-	                                      "%s_%s_exp-roi_stat" % ( subj_id,
-	                                                               conf[ "exp" ][ "id" ]
-	                                                             )
-	                                    )
-
-
-	ana[ "loc_dir" ] = os.path.join( ana_dir, "loc" )
-
-	ana[ "loc_cond" ] = [ "lvf_ON", "rvf_ON" ]
-
-	ana[ "loc_time_files" ] = [ os.path.join( ana[ "loc_dir" ],
-	                                          "%s_%s_loc-%s_stim_times.txt" % (
-	                                            subj_id,
-	                                            conf[ "exp" ][ "id" ],
-	                                            cond )
-	                                        )
-	                            for cond in ana[ "loc_cond" ]
-	                          ]
-
-	ana[ "loc_fits" ] = os.path.join( ana[ "loc_dir" ],
-	                                  "%s_%s_loc-fits" % ( subj_id,
-	                                                       conf[ "exp" ][ "id" ]
-	                                                     )
-	                                )
-
-	ana[ "loc_glm" ] = os.path.join( ana[ "loc_dir" ],
-	                                  "%s_%s_loc-glm" % ( subj_id,
-	                                                       conf[ "exp" ][ "id" ]
-	                                                     )
-	                                )
-
-	ana[ "loc_beta" ] = os.path.join( ana[ "loc_dir" ],
-	                                  "%s_%s_loc-beta" % ( subj_id,
-	                                                       conf[ "exp" ][ "id" ]
-	                                                     )
-	                                )
-
-	ana[ "loc_bltc" ] = os.path.join( ana[ "loc_dir" ],
-	                                  "%s_%s_loc-bltc" % ( subj_id,
-	                                                       conf[ "exp" ][ "id" ]
-	                                                     )
-	                                )
-
-	ana[ "loc_bl" ] = os.path.join( ana[ "loc_dir" ],
-	                                "%s_%s_loc-bl" % ( subj_id,
-	                                                   conf[ "exp" ][ "id" ]
-	                                                 )
-	                              )
-
-	ana[ "loc_psc" ] = os.path.join( ana[ "loc_dir" ],
-	                                 "%s_%s_loc-psc" % ( subj_id,
-	                                                    conf[ "exp" ][ "id" ]
-	                                                  )
+	ana[ "bl_poly" ] = os.path.join( ana[ "base_dir" ],
+	                                 "%s_%s-bl_poly.txt" % ( subj_id, exp_id )
 	                               )
 
-
-	ana[ "loc_q" ] = os.path.join( ana[ "loc_dir" ],
-	                               "%s_%s_loc-q" % ( subj_id,
-	                                                 conf[ "exp" ][ "id" ]
-	                                               )
-	                             )
-
-	ana[ "loc_roi_psc" ] = os.path.join( ana[ "loc_dir" ],
-	                                     "%s_%s_loc-roi_psc" % ( subj_id,
-	                                                             conf[ "exp" ][ "id" ]
-	                                                           )
-	                                   )
-
-	ana[ "loc_roi_stat" ] = os.path.join( ana[ "loc_dir" ],
-	                                      "%s_%s_loc-roi_stat" % ( subj_id,
-	                                                               conf[ "exp" ][ "id" ]
-	                                                             )
-	                                    )
-
-
-	reg_dir = os.path.join( paths[ "study" ][ "subj_dir" ],
-	                        conf[ "subj" ][ "subj_id" ],
-	                        "reg"
-	                      )
-
-	ana[ "roi_dset" ] = os.path.join( reg_dir,
-	                                  "rois",
-	                                  "%s_rois" % subj_id
+	ana[ "pred_adj" ] = os.path.join( ana[ "base_dir" ],
+	                                  "%s_%s-pred_adj" % ( subj_id, exp_id )
 	                                )
 
-	ana[ "roi_mask" ] = os.path.join( ana[ "loc_dir" ],
-	                                  "%s_%s-roi_mask" % ( subj_id,
-	                                                       conf[ "exp" ][ "id" ]
-	                                                     )
-	                                )
+	ana[ "glm" ] = os.path.join( ana[ "base_dir" ],
+	                             "%s_%s-glm" % ( subj_id, exp_id )
+	                           )
+
+	ana[ "beta" ] = os.path.join( ana[ "base_dir" ],
+	                              "%s_%s-beta" % ( subj_id, exp_id )
+	                            )
+
+	ana[ "bltc" ] = os.path.join( ana[ "base_dir" ],
+	                              "%s_%s-bltc" % ( subj_id, exp_id )
+	                            )
+
+	ana[ "bl" ] = os.path.join( ana[ "base_dir" ],
+	                            "%s_%s-bl" % ( subj_id, exp_id )
+	                          )
+
+	ana[ "psc" ] = os.path.join( ana[ "base_dir" ],
+	                             "%s_%s-psc" % ( subj_id, exp_id )
+	                           )
+
+	ana[ "raw" ] = os.path.join( ana[ "base_dir" ],
+	                             "%s_%s-raw" % ( subj_id, exp_id )
+	                           )
+
+	ana[ "raw_adj" ] = os.path.join( ana[ "base_dir" ],
+	                                 "%s_%s-raw_adj" % ( subj_id, exp_id )
+	                               )
 
 	paths[ "ana" ] = ana
 

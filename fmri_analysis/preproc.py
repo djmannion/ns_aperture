@@ -249,138 +249,133 @@ def vol_to_surf( paths, conf ):
 	os.chdir( start_dir )
 
 
-def design_prep( paths, conf ):
+def exp_design_prep( paths, conf ):
 	"""Prepares the designs for GLM analysis"""
 
-	# first, prepare the 'onset' regressor; this models the tail of the first
-	# block response, which remains after excluding the timepoints corresponding
-	# to the first block's stimulation
-	exp_run_len_vol = conf[ "exp" ][ "run_len_s" ] / conf[ "acq" ][ "tr_s" ]
+	n_vols = int( conf[ "exp" ][ "run_len_s" ] / conf[ "acq" ][ "tr_s" ] )
 
-	x = tempfile.NamedTemporaryFile()
+	seq_info = ns_aperture.fmri.exp.get_seq_ind()
 
-	onset_cmd = [ "3dDeconvolve",
-	              "-polort", "-1",
-	              "-nodata",  "%d" % exp_run_len_vol, "%.3f" % conf[ "acq" ][ "tr_s" ],
-	              "-local_times",
-	              "-num_stimts", "1",
-	              "-stim_times", "1", "1D: 0", "SPMG1(16)",
-	              "-x1D", x.name,
-	              "-x1D_stop"
-	            ]
+	# coherent blocks, initial coherent block, initial non-coherent block
+	n_cond = 3
 
-	fmri_tools.utils.run_cmd( onset_cmd,
-	                          env = fmri_tools.utils.get_env(),
-	                          log_path = paths[ "summ" ][ "log_file" ]
-	                        )
+	cond_files = [ open( "%s%d.txt" % ( paths[ "ana" ][ "time_files" ],
+	                                    cond_num
+	                                  ),
+	                     "w"
+	                   )
+	               for cond_num in np.arange( 1, n_cond + 1 )
+	             ]
 
-	tc = np.loadtxt( "%s.xmat.1D" % x.name )
-
-	start_vol = int( conf[ "ana" ][ "exp_run_start_s" ] / conf[ "acq" ][ "tr_s" ] )
-	n_vol = int( conf[ "ana" ][ "exp_run_dur_s" ] / conf[ "acq" ][ "tr_s" ] )
-
-	tc = tc[ start_vol:( start_vol + n_vol ) ]
-
-	A_reg = np.tile( np.hstack( ( tc, np.zeros( len( tc ) ) ) ),
-	                 conf[ "exp" ][ "n_runs" ] / 2
-	               )
-
-	np.savetxt( paths[ "log" ][ "reg_A" ], A_reg, "%.16f" )
-
-	B_reg = np.tile( np.hstack( ( np.zeros( len( tc ) ), tc ) ),
-	                 conf[ "exp" ][ "n_runs" ] / 2
-	               )
-
-	np.savetxt( paths[ "log" ][ "reg_B" ], B_reg, "%.16f" )
-
-	# exp
-	run_file = open( paths[ "ana" ][ "exp_time_file" ], "w" )
-
-	# get info on what index corresponds to what, in the run sequence file
-	seq_ind = ns_aperture.fmri.exp.get_seq_ind()
-
-	for i_run in xrange( conf[ "subj" ][ "n_runs" ] ):
+	for i_run in xrange( len( conf[ "subj" ][ "exp_runs" ] ) ):
 
 		run_times = []
+		run_conds = []
 
-		# load the sequence for this run
-		run_seq = np.load( "%s%d.npy" % ( paths[ "log" ][ "seq_base" ], i_run + 1 ) )
+		run_seq = np.load( "%s%d.npy" % ( paths[ "log" ][ "seq_base" ],
+		                                  i_run + 1
+		                                )
+		                 )
 
-		# loop over each event in the sequence
-		for i_evt in xrange( run_seq.shape[ 0 ] ):
+		( n_evt, n_params ) = run_seq.shape
 
-			# pull out the event info
-			evt_time_s = run_seq[ i_evt, seq_ind[ "time_s" ] ]
-			evt_block_num = run_seq[ i_evt, seq_ind[ "block_num" ] ]
-			evt_prev_block_num = run_seq[ i_evt - 1, seq_ind[ "block_num" ] ]
-			evt_block_type = run_seq[ i_evt, seq_ind[ "block_type" ] ]
-			evt_img_i_L = run_seq[ i_evt, seq_ind[ "img_i_L" ] ]
-			evt_img_i_R = run_seq[ i_evt, seq_ind[ "img_i_R" ] ]
+		for i_evt in xrange( n_evt ):
 
-			# test if the event marks the first of a new block
-			is_transition = ( evt_block_num != evt_prev_block_num )
+			curr_block_num = run_seq[ i_evt, seq_info[ "block_num" ] ]
+			prev_block_num = run_seq[ i_evt - 1, seq_info[ "block_num" ] ]
 
-			# test if the event / block is 'coherent'; if it's condition index is 0
-			is_coh = ( evt_block_type == 0 )
+			is_transition = ( curr_block_num != prev_block_num )
 
-			# only noteworthy if it is both the start of a new block and the block is
-			# of coherent stimuli
-			if np.logical_and( is_transition, is_coh ):
+			if is_transition:
 
-				# do a sanity check that it is in fact a coherent block by testing
-				# whether both stimuli have the same id
-				assert( evt_img_i_L == evt_img_i_R )
+				start_time_s = run_seq[ i_evt, seq_info[ "time_s" ] ]
 
-				run_times.append( evt_time_s )
+				cond = int( run_seq[ i_evt, seq_info[ "block_type" ] ] )
+
+				# don't want to model non-coherent blocks (for non-first blocks,
+				# anyway)
+				if ( cond == 1 ) and ( curr_block_num > 1 ):
+					cond = 999
+
+				if curr_block_num == 1:
+					# this makes the first starting coherent block 1, first starting
+					# non-coherent block 2
+					cond += 1
+
+				if cond != 999:
+					run_times.append( start_time_s )
+					run_conds.append( cond )
 
 		run_times = np.array( run_times )
+		run_conds = np.array( run_conds )
 
-		# subtract the time that we cull from the data
-		run_times -= conf[ "ana" ][ "exp_run_start_s" ]
+		for i_cond in xrange( n_cond ):
 
-		# and remove any times that are outside of our data window
-		ok = np.logical_and( run_times >= 0,
-		                     run_times < conf[ "ana" ][ "exp_run_dur_s" ]
-		                   )
+			i_evt_cond = np.where( run_conds == i_cond )[ 0 ]
 
-		run_times = run_times[ ok ]
+			if i_evt_cond.size == 0:
+				cond_files[ i_cond ].write( "*" )
+			else:
+				_ = [ cond_files[ i_cond ].write( "%.5f\t" % evt_time )
+				      for evt_time in run_times[ i_evt_cond ]
+				    ]
 
-		# write the onset times to the run file
-		for run_time in run_times:
-			run_file.write( "%.5f\t" % run_time )
+			cond_files[ i_cond ].write( "\n" )
 
-		run_file.write( "\n" )
+	_ = [ cond_file.close() for cond_file in cond_files ]
 
-	run_file.close()
+	# POLYNOMIALS
+	# ---
 
-	# loc
-	loc_order = [ "AB", "BA" ]
+	n_pre_vol = int( conf[ "ana" ][ "exp_pre_cull_s" ] /
+	                 conf[ "acq" ][ "tr_s" ]
+	               )
 
-	loc_time_files = [ open( loc_time_file, "w" )
-	                   for loc_time_file in paths[ "ana" ][ "loc_time_files" ]
-	                 ]
+	n_post_vol = int( conf[ "ana" ][ "exp_pre_cull_s" ] /
+	                  conf[ "acq" ][ "tr_s" ]
+	                )
 
-	for loc_ord in loc_order:
+	n_valid_vol = n_vols - n_pre_vol - n_post_vol
 
-		block_seq = ns_aperture.fmri.loc.get_block_seq( loc_ord,
-		                                                conf[ "exp" ][ "loc_n_blocks" ]
-		                                              )
+	# compute the polynomial timecourses
+	run_trends = fmri_tools.utils.legendre_poly( conf[ "ana" ][ "poly_ord" ],
+	                                             int( n_valid_vol ),
+	                                             pre_n = n_pre_vol,
+	                                             post_n = n_post_vol
+	                                           )
 
-		i_lvf = np.where( block_seq == 1 )[ 0 ]
-		lvf_t = i_lvf * conf[ "exp" ][ "block_len_s" ]
+	assert( run_trends.shape[ 0 ] == n_vols )
 
-		for t in lvf_t:
-			loc_time_files[ 0 ].write( "%.5f\t" % t )
+	n_runs = len( conf[ "subj" ][ "exp_runs" ] )
 
-		i_rvf = np.where( block_seq == 2 )[ 0 ]
-		rvf_t = i_rvf * conf[ "exp" ][ "block_len_s" ]
+	# need to have a set of trends for each run, zeroed elsewhere
+	bl_trends = np.zeros( ( n_vols * n_runs,
+	                        conf[ "ana" ][ "poly_ord" ] * n_runs
+	                      )
+	                    )
 
-		for t in rvf_t:
-			loc_time_files[ 1 ].write( "%.5f\t" % t )
+	for i_run in xrange( n_runs ):
 
-		loc_time_files[ 0 ].write( "\n" )
-		loc_time_files[ 1 ].write( "\n" )
+		i_row_start = i_run * run_trends.shape[ 0 ]
+		i_row_end = i_row_start + run_trends.shape[ 0 ]
 
-	loc_time_files[ 0 ].close()
-	loc_time_files[ 1 ].close()
+		i_col_start = i_run * run_trends.shape[ 1 ]
+		i_col_end = i_col_start + run_trends.shape[ 1 ]
+
+		bl_trends[ i_row_start:i_row_end, i_col_start:i_col_end ] = run_trends
+
+	np.savetxt( paths[ "ana" ][ "bl_poly" ], bl_trends )
+
+
+	# MOTION PARAMETERS
+	# ---
+
+	all_mc = np.loadtxt( paths[ "summ" ][ "mot_est_file" ] )
+
+	exp_mc = all_mc[ :( n_vols * n_runs ), : ]
+
+	np.savetxt( paths[ "ana" ][ "mot_est" ], exp_mc )
+
+
+
 

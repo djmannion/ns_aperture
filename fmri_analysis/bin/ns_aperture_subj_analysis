@@ -55,6 +55,7 @@ def main():
 	                   )
 
 	proc_steps = ( "glm",
+	               "loc_glm",
 	               "loc_mask",
 	               "beta_to_psc",
 	               "roi_xtr",
@@ -79,6 +80,9 @@ def main():
 
 	if args.proc_step == "glm":
 		ns_aperture.fmri_analysis.subj_analysis.glm( paths, conf )
+
+	elif args.proc_step == "loc_glm":
+		ns_aperture.fmri_analysis.subj_analysis.loc_glm( paths, conf )
 
 	elif args.proc_step == "loc_mask":
 		ns_aperture.analysis.subj_analysis.loc_mask( paths, conf )

@@ -275,6 +275,88 @@ def _get_loc_paths( conf, paths ):
 	return paths
 
 
+def _get_roi_paths( conf, paths ):
+	"""Get the paths for the ROI data"""
+
+	subj_id = conf[ "subj" ][ "subj_id" ]
+	exp_id = conf[ "exp" ][ "id" ]
+
+	rois = {}
+
+	rois[ "base_dir" ] = os.path.join( paths[ "study" ][ "subj_dir" ],
+	                                   subj_id,
+	                                   "rois"
+	                                 )
+
+	rois[ "dset" ] = os.path.join( rois[ "base_dir" ],
+	                               "%s_%s-rois" % ( subj_id, exp_id )
+	                             )
+
+	rois[ "psc" ] = os.path.join( rois[ "base_dir" ],
+	                              "%s_%s-psc" % ( subj_id, exp_id )
+	                            )
+
+	rois[ "raw_adj_tc" ] = os.path.join( rois[ "base_dir" ],
+	                                     "%s_%s-raw_adj_tc" % ( subj_id, exp_id )
+	                                   )
+
+	rois[ "pred_adj_tc" ] = os.path.join( rois[ "base_dir" ],
+	                                      "%s_%s-pred_adj_tc" % ( subj_id, exp_id )
+	                                    )
+
+	paths[ "rois" ] = rois
+
+	return paths
+
+
+def _get_svm_paths( conf, paths ):
+	"""Get the paths for the SVM analysis"""
+
+	subj_id = conf[ "subj" ][ "subj_id" ]
+	id = "ns_aperture_svm"
+
+	svm = {}
+
+	svm_dir = os.path.join( paths[ "study" ][ "subj_dir" ],
+	                        subj_id,
+	                        "svm"
+	                      )
+
+	svm[ "base_dir" ] = svm_dir
+
+	filt_files = [ os.path.join( svm_dir,
+	                             os.path.split( surf_file )[ 1 ].replace( "surf", "surf_filt" )
+	                           )
+	               for surf_file in paths[ "func" ][ "surf_files" ]
+	             ]
+
+	svm[ "filt_files" ] = filt_files[ :conf[ "subj" ][ "n_exp_runs" ] ]
+
+	svm[ "orig" ] = os.path.join( svm_dir,
+	                              "roi_orig",
+	                              "%s_%s-orig" % ( subj_id, id )
+	                            )
+
+	svm[ "loc_stat" ] = os.path.join( svm_dir,
+	                                  "roi_loc_stat",
+	                                  "%s_%s-loc_stat" % ( subj_id, id )
+	                                )
+
+	svm[ "z" ] = os.path.join( svm_dir,
+	                           "roi_z",
+	                           "%s_%s-z" % ( subj_id, id )
+	                         )
+
+	svm[ "run_info" ] = os.path.join( svm_dir,
+	                                  "%s_%s-run_info.npy" % ( subj_id, id )
+	                                )
+
+
+	paths[ "svm" ] = svm
+
+	return paths
+
+
 def get_subj_paths( conf ):
 	"""Get the path structure for a given subject"""
 
@@ -294,6 +376,10 @@ def get_subj_paths( conf ):
 
 	paths = _get_ana_paths( conf, paths )
 
+	paths = _get_roi_paths( conf, paths )
+
 	paths = _get_loc_paths( conf, paths )
+
+	paths = _get_svm_paths( conf, paths )
 
 	return paths

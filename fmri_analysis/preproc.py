@@ -460,3 +460,50 @@ def loc_design_prep( paths, conf ):
 	assert( loc_mc.shape[ 0 ] == ( n_vols * conf[ "subj" ][ "n_loc_runs" ] ) )
 
 	np.savetxt( paths[ "loc" ][ "mot_est" ], loc_mc )
+
+
+def filter_for_svm( paths, conf ):
+	"""Filters the timecourses for SVM analysis"""
+
+	start_dir = os.getcwd()
+
+	os.chdir( paths[ "svm" ][ "base_dir" ] )
+
+	i_surf_files = np.array( conf[ "subj" ][ "exp_runs" ] ).astype( "int" ) - 1
+
+	surf_files = [ paths[ "func" ][ "surf_files" ][ i_surf ]
+	               for i_surf in i_surf_files
+	             ]
+
+	filt_files = [ paths[ "svm" ][ "filt_files" ][ i_surf ]
+	               for i_surf in i_surf_files
+	             ]
+
+	for hemi in [ "lh", "rh" ]:
+
+		for ( surf_file, filt_file ) in zip( surf_files, filt_files ):
+
+			filt_cmd = [ "3dDetrend",
+			             "-prefix", "%s_%s.niml.dset" % ( filt_file, hemi ),
+			             "-polort", "%d" % ( conf[ "ana" ][ "poly_ord" ] - 1 ),
+			             "-overwrite",
+			             "%s_%s.niml.dset" % ( surf_file, hemi )
+			           ]
+
+			fmri_tools.utils.run_cmd( filt_cmd,
+			                          env = fmri_tools.utils.get_env(),
+			                          log_path = paths[ "summ" ][ "log_file" ]
+			                        )
+
+			# convert to full
+			full_filt_file = "%s_%s-full.niml.dset" % ( filt_file, hemi )
+			pad_node = "%d" % conf[ "subj" ][ "node_k" ][ hemi ]
+
+			fmri_tools.utils.sparse_to_full( "%s_%s.niml.dset" % ( filt_file, hemi ),
+			                                 full_filt_file,
+			                                 pad_node = pad_node,
+			                                 log_path = paths[ "summ" ][ "log_file" ],
+			                                 overwrite = True
+			                               )
+
+	os.chdir( start_dir )

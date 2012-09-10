@@ -9,9 +9,11 @@ import os, os.path
 import tempfile
 
 import numpy as np
+import scipy.stats
 
 import fmri_tools.utils
 
+import ns_aperture.fmri.exp
 
 def glm( paths, conf ):
 	"""Experiment GLM"""
@@ -538,6 +540,153 @@ def raw_adj( paths, conf ):
 			                               )
 
 	os.chdir( start_dir )
+
+
+def svm_roi_xtr( paths, conf ):
+	"""Extract the timecourses for each node of each ROI"""
+
+	for ( roi_name, roi_val ) in conf[ "ana" ][ "rois" ]:
+
+		roi_data = []
+
+		for filt_file in paths[ "svm" ][ "filt_files" ]:
+
+			run_data = []
+
+			for hemi in [ "lh", "rh" ]:
+
+				# the *full* ROI file
+				roi_file = "%s_%s-full.niml.dset" % ( paths[ "rois" ][ "dset" ], hemi )
+
+				out_file = os.path.join( paths[ "svm" ][ "base_dir" ], "temp.txt" )
+
+				# our input dataset
+				data_file = "%s_%s-full.niml.dset" % ( filt_file, hemi )
+
+				# use the ROI file to mask the input dataset
+				xtr_cmd = [ "3dmaskdump",
+				            "-mask", roi_file,
+				            "-mrange", roi_val, roi_val,
+				            "-noijk",
+				            "-o", out_file,
+				            data_file
+				          ]
+
+				fmri_tools.utils.run_cmd( xtr_cmd,
+				                          env = fmri_tools.utils.get_env(),
+				                          log_path = paths[ "summ" ][ "log_file" ]
+				                        )
+
+				out_data = np.loadtxt( out_file )
+
+				run_data.append( out_data )
+
+				os.remove( out_file )
+
+			run_data = np.concatenate( run_data ).T
+
+			roi_data.append( run_data )
+
+		# runs x time x node
+		roi_data = np.array( roi_data )
+
+		roi_data_file = "%s-%s.npy" % ( paths[ "svm" ][ "orig" ], roi_name )
+
+		np.save( roi_data_file, roi_data )
+
+
+def svm_info( paths, conf ):
+	"""Extract z-scored blocks for each ROI"""
+
+	seq_info = ns_aperture.fmri.exp.get_seq_ind()
+
+	run_info = np.empty( ( conf[ "subj" ][ "n_exp_runs" ],
+	                       conf[ "exp" ][ "n_blocks" ] - 2,
+	                       2  # onset volume, block type
+	                     )
+	                   )
+	run_info.fill( np.NAN )
+
+	for i_run in xrange( len( conf[ "subj" ][ "exp_runs" ] ) ):
+
+		run_seq = np.load( "%s%d.npy" % ( paths[ "log" ][ "seq_base" ],
+		                                  i_run + 1
+		                                )
+		                 )
+
+		for i_evt in xrange( run_seq.shape[ 0 ] ):
+
+			curr_block_num = run_seq[ i_evt, seq_info[ "block_num" ] ]
+			prev_block_num = run_seq[ i_evt - 1, seq_info[ "block_num" ] ]
+
+			is_transition = ( curr_block_num != prev_block_num )
+
+			if is_transition:
+
+				if curr_block_num != 1 and curr_block_num != conf[ "exp" ][ "n_blocks" ]:
+
+					cond = run_seq[ i_evt, seq_info[ "block_type" ] ]
+
+					if cond == 0:
+						block_type = 1
+					else:
+						block_type = -1
+
+					i_block = curr_block_num - 1 - 1
+
+					run_info[ i_run, i_block, 1 ] = block_type
+
+					time_s = run_seq[ i_evt, seq_info[ "time_s" ] ]
+
+					time_vol = time_s / conf[ "acq" ][ "tr_s" ]
+
+					time_adj = time_vol + conf[ "ana" ][ "hrf_corr_vol" ]
+
+					run_info[ i_run, i_block, 0 ] = time_adj
+
+	np.save( paths[ "svm" ][ "run_info" ], run_info )
+
+
+def svm_roi_z( paths, conf ):
+	"""a"""
+
+	run_info = np.load( paths[ "svm" ][ "run_info" ] )
+
+	n_vol_per_block = conf[ "exp" ][ "block_len_s" ] / conf[ "acq" ][ "tr_s" ]
+
+	for ( roi_name, _ ) in conf[ "ana" ][ "rois" ]:
+
+		# runs x time x nodes
+		orig_data = np.load( "%s-%s.npy" % ( paths[ "svm" ][ "orig" ], roi_name ) )
+
+		blk_data = np.empty( ( orig_data.shape[ 0 ],
+		                       run_info.shape[ 1 ],
+		                       orig_data.shape[ 2 ]
+		                     )
+		                   )
+		blk_data.fill( np.NAN )
+
+		for i_run in xrange( run_info.shape[ 0 ] ):
+
+			for i_block in xrange( run_info.shape[ 1 ] ):
+
+				i_r = np.arange( run_info[ i_run, i_block, 0 ],
+				                 run_info[ i_run, i_block, 0 ] + n_vol_per_block
+				               ).astype( "int" )
+
+				# average over block timepoints
+				data = np.mean( orig_data[ i_run, i_r, : ], axis = 0 )
+
+				blk_data[ i_run, i_block, : ] = data
+
+			blk_data[ i_run, :, : ] = scipy.stats.zscore( blk_data[ i_run, :, : ],
+			                                              axis = 0
+			                                            )
+
+		roi_z_file = "%s-%s.npy" % ( paths[ "svm" ][ "z" ], roi_name )
+
+		np.save( roi_z_file, blk_data )
+
 
 
 def roi_tc( paths, conf ):

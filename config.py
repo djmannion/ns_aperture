@@ -246,14 +246,16 @@ def _get_analysis_conf( conf ):
 
 	hrf_model = "SPMG1(%d)" % conf[ "exp" ][ "block_len_s" ]
 
+	hrf_corr_vol = 3
+
 	rois = [ [ "v1", "1" ],
 	         [ "v2", "2" ],
 	         [ "v3", "3" ],
 	         [ "hv4", "4" ],
+	         [ "vo1", "10" ],
 	         [ "v3ab", "5" ],
 	         [ "lo1", "6" ],
 	         [ "lo2", "7" ],
-	         [ "loc", "8" ],
 	         [ "hmtp", "9" ]
 	      ]
 
@@ -263,6 +265,7 @@ def _get_analysis_conf( conf ):
 	             "loc_run_dur_s" : loc_run_dur_s,
 	             "q_thr" : q_thr,
 	             "hrf_model" : hrf_model,
+	             "hrf_corr_vol" : hrf_corr_vol,
 	             "poly_ord" : poly_ord,
 	             "rois" : rois
 	           }

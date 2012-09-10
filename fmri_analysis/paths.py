@@ -197,6 +197,7 @@ def _get_ana_paths( conf, paths ):
 	                             "%s_%s-glm" % ( subj_id, exp_id )
 	                           )
 
+
 	ana[ "beta" ] = os.path.join( ana[ "base_dir" ],
 	                              "%s_%s-beta" % ( subj_id, exp_id )
 	                            )
@@ -259,6 +260,14 @@ def _get_loc_paths( conf, paths ):
 
 	loc[ "beta" ] = os.path.join( loc_dir,
 	                              "%s_%s-beta" % ( subj_id, id )
+	                            )
+
+	loc[ "fdr" ] = os.path.join( loc_dir,
+	                             "%s_%s-fdr" % ( subj_id, id )
+	                           )
+
+	loc[ "mask" ] = os.path.join( loc_dir,
+	                              "%s_%s-mask" % ( subj_id, id )
 	                            )
 
 	paths[ "loc" ] = loc

@@ -6,6 +6,7 @@ apertures fMRI experiment.
 from __future__ import division
 
 import os, os.path
+import tempfile
 
 import numpy as np
 
@@ -233,27 +234,22 @@ def loc_mask( paths, conf ):
 
 	start_dir = os.getcwd()
 
-	os.chdir( paths[ "ana" ][ "base_dir" ] )
+	os.chdir( paths[ "loc" ][ "base_dir" ] )
 
-	# brik in the glm file that contains the localiser statistic
+	# bricks in the glm file that contains the localiser statistics
 	# this is verified below
-	loc_stat_brik = "10"
+	loc_stat_bricks = [ 2, 5 ]
 
 	for hemi in [ "lh", "rh" ]:
 
-		glm_file = "%s_%s_reml.niml.dset" % ( paths[ "ana" ][ "glm" ], hemi )
-		glm_file += "[%s]" % loc_stat_brik
+		glm_file = "%s_%s_reml.niml.dset" % ( paths[ "loc" ][ "glm" ], hemi )
 
-		# check the localiser brik is as expected
-		assert( fmri_tools.utils.get_dset_label( glm_file ) == [ "stim#0_Tstat" ] )
-
-		# to write
-		loc_fdr_file = "%s_%s.niml.dset" % ( paths[ "ana" ][ "loc_fdr" ], hemi )
+		fdr_file = "%s.niml.dset" % paths[ "loc" ][ "fdr" ]
 
 		# convert the statistics for the localiser to a q (FDR) value
 		fdr_cmd = [ "3dFDR",
 		            "-input", glm_file,
-		            "-prefix", loc_fdr_file,
+		            "-prefix", fdr_file,
 		            "-qval",  # specify that we want q, not z
 		            "-float",
 		            "-overwrite"
@@ -264,16 +260,17 @@ def loc_mask( paths, conf ):
 		                          log_path = paths[ "summ" ][ "log_file" ]
 		                        )
 
-		loc_mask_file = "%s_%s.niml.dset" % ( paths[ "ana" ][ "loc_mask" ], hemi )
+		loc_mask_file = "%s_%s.niml.dset" % ( paths[ "loc" ][ "mask" ], hemi )
 
-		q_thresh = conf[ "ana" ][ "loc_q" ]
+		q_thresh = conf[ "ana" ][ "q_thr" ]
 
 		# create a localiser mask as nodes that both have a q that is below
 		# threshold and have positive beta weights
 		mask_cmd = [ "3dcalc",
-		             "-a", loc_fdr_file,
-		             "-b", glm_file,
-		             "-expr", "within( a, 0, %.6f ) * ispositive( b )" % q_thresh,
+		             "-a", "%s[%d]" % ( fdr_file, loc_stat_bricks[ 0 ] ),
+		             "-b", "%s[%d]" % ( fdr_file, loc_stat_bricks[ 1 ] ),
+		             "-expr", "or( within( a, 0, %.6f ), within( b, 0, %.6f ) )" %
+		               ( q_thresh, q_thresh ),
 		             "-prefix", loc_mask_file,
 		             "-overwrite"
 		           ]
@@ -284,7 +281,7 @@ def loc_mask( paths, conf ):
 		                        )
 
 		# convert to full
-		full_mask_file = "%s_%s-full" % ( paths[ "ana" ][ "loc_mask" ], hemi )
+		full_mask_file = "%s_%s-full" % ( paths[ "loc" ][ "mask" ], hemi )
 
 		pad_node = "%d" % conf[ "subj" ][ "node_k" ][ hemi ]
 
@@ -302,7 +299,7 @@ def beta_to_psc( paths, conf ):
 	"""Convert the GLM beta weights into units of percent signal change"""
 
 	# these are the indices into the beta files for the data we want to convert
-	beta_briks = "0,1,2,3"
+	beta_brick = "0"
 
 	start_dir = os.getcwd()
 
@@ -311,7 +308,7 @@ def beta_to_psc( paths, conf ):
 	for hemi in [ "lh", "rh" ]:
 
 		# dataset holding the beta weights
-		beta_file = "%s_%s_reml.niml.dset" % ( paths[ "ana" ][ "beta" ], hemi )
+		beta_file = "%s_%s.niml.dset" % ( paths[ "ana" ][ "beta" ], hemi )
 
 		# design matrix file
 		mat_file = os.path.join( paths[ "ana" ][ "base_dir" ],
@@ -356,11 +353,11 @@ def beta_to_psc( paths, conf ):
 		psc_file = "%s_%s.niml.dset" % ( paths[ "ana" ][ "psc" ], hemi )
 
 		# the input beta file, with sub-brick selector
-		beta_sel = "%s[%s]" % ( beta_file, beta_briks )
+		beta_sel = "%s[%s]" % ( beta_file, beta_brick )
 
 		# check that the label is as expected
 		beta_label = fmri_tools.utils.get_dset_label( beta_sel )
-		assert( beta_label == [ "0.00#0", "0.33#0", "0.66#0", "1.00#0" ] )
+		assert( beta_label == [ "coh#0" ] )
 
 		# compute psc
 		# from http://afni.nimh.nih.gov/sscc/gangc/TempNorm.html

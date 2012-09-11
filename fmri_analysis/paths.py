@@ -270,6 +270,10 @@ def _get_loc_paths( conf, paths ):
 	                              "%s_%s-mask" % ( subj_id, id )
 	                            )
 
+	loc[ "stat" ] = os.path.join( loc_dir,
+	                              "%s_%s-stat" % ( subj_id, id )
+	                            )
+
 	paths[ "loc" ] = loc
 
 	return paths
@@ -347,10 +351,21 @@ def _get_svm_paths( conf, paths ):
 	                           "%s_%s-z" % ( subj_id, id )
 	                         )
 
+	svm[ "summ" ] = os.path.join( svm_dir,
+	                              "roi_svm",
+	                              "%s_%s-svm_summ" % ( subj_id, id )
+	                            )
+
 	svm[ "run_info" ] = os.path.join( svm_dir,
 	                                  "%s_%s-run_info.npy" % ( subj_id, id )
 	                                )
 
+	svm[ "train_base" ] = "%s_%s-train_set" % ( subj_id, id )
+	svm[ "model_base" ] = "%s_%s-model" % ( subj_id, id )
+	svm[ "test_base" ] = "%s_%s-test_set" % ( subj_id, id )
+	svm[ "pred_base" ] = "%s_%s-pred" % ( subj_id, id )
+
+	svm[ "fold_base" ] = os.path.join( svm_dir, "roi_svm", "fold" )
 
 	paths[ "svm" ] = svm
 

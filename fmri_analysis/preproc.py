@@ -182,6 +182,8 @@ def surf_reg( paths, conf ):
 	              "-prefix", reg_anat,
 	              "-cost", "nmi",  # normalised mutual info cost function
 	              "-master", "SOURCE",
+#	              "-maxrot", "15",
+	              "-overwrite",
 	              "-warp", "shift_rotate",  # only rigid transforms
 	              "-onepass",  # false minima if it is allowed to wander
 	              "-verb"

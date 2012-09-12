@@ -313,6 +313,45 @@ def _get_roi_paths( conf, paths ):
 	return paths
 
 
+def _get_mvpa_paths( conf, paths ):
+	"""Get the paths for the MVPA analysis"""
+
+	subj_id = conf[ "subj" ][ "subj_id" ]
+	id = "ns_aperture_mvpa"
+
+	mvpa = {}
+
+	mvpa_dir = os.path.join( paths[ "study" ][ "subj_dir" ],
+	                         subj_id,
+	                         "mvpa"
+	                       )
+
+	mvpa[ "base_dir" ] = mvpa_dir
+
+	filt_files = [ os.path.join( mvpa_dir,
+	                             "filt",
+	                             os.path.split( surf_file )[ 1 ].replace( "surf", "surf_filt" )
+	                           )
+	               for surf_file in paths[ "func" ][ "surf_files" ]
+	             ]
+
+	mvpa[ "filt_files" ] = filt_files[ :conf[ "subj" ][ "n_exp_runs" ] ]
+
+	mvpa[ "data" ] = os.path.join( mvpa_dir,
+	                               "data",
+	                               "%s_%s-data" % ( subj_id, id )
+	                             )
+
+	mvpa[ "data_info" ] = os.path.join( mvpa_dir,
+	                                    "data",
+	                                    "%s_%s-data_info" % ( subj_id, id )
+	                                  )
+
+	paths[ "mvpa" ] = mvpa
+
+	return paths
+
+
 def _get_svm_paths( conf, paths ):
 	"""Get the paths for the SVM analysis"""
 
@@ -395,6 +434,6 @@ def get_subj_paths( conf ):
 
 	paths = _get_loc_paths( conf, paths )
 
-	paths = _get_svm_paths( conf, paths )
+	paths = _get_mvpa_paths( conf, paths )
 
 	return paths

@@ -332,7 +332,7 @@ def _get_subj_conf( subj_id = None ):
 	          "n_loc_runs" : 2,
 	          "n_fmaps" : 1,
 	          "mot_base" : 7,
-	          "nudge_vals" : [ -25, 0, -17 ],
+	          "nudge_vals" : [ -25, -6, -18 ],
 	          "exp_runs" : [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ],
 	          "loc_runs" : [ 11, 12 ],
 	          "node_k" : { "lh" : 126078,

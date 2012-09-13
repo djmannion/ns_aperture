@@ -347,18 +347,24 @@ def searchlight( paths, conf ):
 			disk_data = np.empty( ( n_runs, n_blocks, len( disk_nodes ) ) )
 			disk_data.fill( np.NAN )
 
-			# extract the indices corresponding to each node index in the disk
-			i_disk_nodes = [ np.where( data_info[ 0, : ] == disk_node )[ 0 ][ 0 ]
-			                 for disk_node in disk_nodes
-			               ]
+			i_disk_nodes = []
+
+			for disk_node in disk_nodes:
+
+				i = np.where( data_info[ 0, : ] == disk_node )[ 0 ]
+
+				if i.size == 1:
+
+					i_disk_node = i[ 0 ]
+
+					if i_disk_node < n_nodes:
+						i_disk_nodes.append( i_disk_node )
+
 			i_disk_nodes = np.array( i_disk_nodes )
 
-			for ( i, i_disk_node ) in enumerate( i_disk_nodes ):
+			disk_data = blk_data[ :, :, i_disk_nodes ]
 
-				if i_disk_node < n_nodes:
-					disk_data[ :, :, i ] = blk_data[ :, :, i_disk_node ]
-				else:
-					print "Node %d (seed %d) outside of region" % ( i_disk_node, seed_node )
+			assert( disk_data.shape == ( n_runs, n_blocks, len( i_disk_nodes ) ) )
 
 			# now we have our data set, can run the classification
 			acc[ i_seed_node ] = _svm_classify( disk_data,

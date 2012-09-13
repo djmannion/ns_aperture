@@ -122,6 +122,10 @@ def _get_reg_paths( conf, paths ):
 	                                    "%s_" % subj_id
 	                                  )
 
+	reg_paths[ "flat" ] = os.path.join( reg_dir,
+	                                    "%s_flat_patch" % subj_id
+	                                  )
+
 	paths[ "reg" ] = reg_paths
 
 	return paths
@@ -346,6 +350,24 @@ def _get_mvpa_paths( conf, paths ):
 	                                    "data",
 	                                    "%s_%s-data_info" % ( subj_id, id )
 	                                  )
+
+	mvpa[ "blk_data_info" ] = os.path.join( mvpa_dir,
+	                                        "data",
+	                                        "%s_%s-blk_data_info.npy" % ( subj_id, id )
+	                                      )
+
+	mvpa[ "blk_data" ] = os.path.join( mvpa_dir,
+	                                   "data",
+	                                   "%s_%s-blk_data" % ( subj_id, id )
+	                                 )
+
+	mvpa[ "nodes" ] = os.path.join( mvpa_dir,
+	                                "%s_%s-nodes" % ( subj_id, id )
+	                              )
+
+	mvpa[ "acc" ] = os.path.join( mvpa_dir,
+	                              "%s_%s-acc" % ( subj_id, id )
+	                            )
 
 	paths[ "mvpa" ] = mvpa
 

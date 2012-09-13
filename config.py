@@ -248,6 +248,9 @@ def _get_analysis_conf( conf ):
 
 	hrf_corr_vol = 3
 
+	# radius of the searchlight, in nodes
+	slight_r = 4
+
 	rois = [ [ "v1", "1" ],
 	         [ "v2", "2" ],
 	         [ "v3", "3" ],
@@ -267,6 +270,7 @@ def _get_analysis_conf( conf ):
 	             "hrf_model" : hrf_model,
 	             "hrf_corr_vol" : hrf_corr_vol,
 	             "poly_ord" : poly_ord,
+	             "slight_r" : slight_r,
 	             "rois" : rois
 	           }
 

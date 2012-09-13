@@ -57,9 +57,9 @@ def main():
 
 	proc_steps = ( "filt",
 	               "data",
-	               "loc_mask",
-	               "beta_to_psc",
-	               "roi_xtr",
+	               "info",
+	               "blk_data",
+	               "searchlight",
 	               "raw_adj",
 	               "roi_tc",
 	               "svm_roi_xtr",
@@ -90,14 +90,14 @@ def main():
 	elif args.proc_step == "data":
 		ns_aperture.fmri_analysis.mvpa.data( paths, conf )
 
-	elif args.proc_step == "loc_mask":
-		ns_aperture.fmri_analysis.subj_analysis.loc_mask( paths, conf )
+	elif args.proc_step == "info":
+		ns_aperture.fmri_analysis.mvpa.info( paths, conf )
 
-	elif args.proc_step == "beta_to_psc":
-		ns_aperture.fmri_analysis.subj_analysis.beta_to_psc( paths, conf )
+	elif args.proc_step == "blk_data":
+		ns_aperture.fmri_analysis.mvpa.blk_data( paths, conf )
 
-	elif args.proc_step == "roi_xtr":
-		ns_aperture.analysis.subj_analysis.roi_xtr( paths, conf )
+	elif args.proc_step == "searchlight":
+		ns_aperture.fmri_analysis.mvpa.searchlight( paths, conf )
 
 	elif args.proc_step == "raw_adj":
 		ns_aperture.analysis.subj_analysis.raw_adj( paths, conf )

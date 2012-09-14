@@ -87,14 +87,14 @@ def main():
 	if args.proc_step == "filt":
 		ns_aperture.fmri_analysis.mvpa.filt( paths, conf )
 
-	elif args.proc_step == "data":
-		ns_aperture.fmri_analysis.mvpa.data( paths, conf )
+	elif args.proc_step == "data_xtr":
+		ns_aperture.fmri_analysis.mvpa.data_xtr( paths, conf )
 
 	elif args.proc_step == "info":
 		ns_aperture.fmri_analysis.mvpa.info( paths, conf )
 
-	elif args.proc_step == "blk_data":
-		ns_aperture.fmri_analysis.mvpa.blk_data( paths, conf )
+	elif args.proc_step == "blk_data_xtr":
+		ns_aperture.fmri_analysis.mvpa.blk_data_xtr( paths, conf )
 
 	elif args.proc_step == "searchlight":
 		ns_aperture.fmri_analysis.mvpa.searchlight( paths, conf )

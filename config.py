@@ -326,7 +326,8 @@ def _get_subj_conf( subj_id = None ):
 	                       "rh" : 128461
 	                     },
 	          "comments" : """Fifth run, might be switched (couldnt remember
-	                       which). Tenth run, started with three buttons"""
+	                       which); no, looks ok. Tenth run, started with three
+	                       buttons"""
 	        }
 
 	s1032 = { "subj_id" : "s1032",

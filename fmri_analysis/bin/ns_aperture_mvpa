@@ -56,10 +56,11 @@ def main():
 	                   )
 
 	proc_steps = ( "filt",
-	               "data",
+	               "data_xtr",
 	               "info",
-	               "blk_data",
+	               "blk_data_xtr",
 	               "searchlight",
+	               "write_searchlight",
 	               "raw_adj",
 	               "roi_tc",
 	               "svm_roi_xtr",
@@ -99,8 +100,8 @@ def main():
 	elif args.proc_step == "searchlight":
 		ns_aperture.fmri_analysis.mvpa.searchlight( paths, conf )
 
-	elif args.proc_step == "raw_adj":
-		ns_aperture.analysis.subj_analysis.raw_adj( paths, conf )
+	elif args.proc_step == "write_searchlight":
+		ns_aperture.fmri_analysis.mvpa.write_searchlight( paths, conf )
 
 	elif args.proc_step == "roi_tc":
 		ns_aperture.analysis.subj_analysis.roi_tc( paths, conf )

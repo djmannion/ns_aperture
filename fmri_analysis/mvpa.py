@@ -114,8 +114,8 @@ def data_xtr( paths, conf ):
 		# pull put the node index (first entry) and roi index (last entry)
 		data_info = data[ 0, :, [ 0, -1 ] ].astype( "int" )
 
-		# ... and remove them the data array
-		data = data[ :, :, 1:-1 ]
+		# ... and remove them the data array (4 because of node, ijk)
+		data = data[ :, :, 4:-1 ]
 
 		# now we're ready to save
 		data_file = "%s-%s.npy" % ( paths[ "mvpa" ][ "data" ], hemi )
@@ -343,7 +343,7 @@ def searchlight( paths, conf ):
 			                        )
 
 			# load the nodes corresponding to this seed node
-			disk_nodes = np.loadtxt( "%s.1D" % curr_disk_file )
+			disk_nodes = np.loadtxt( "%s.1D" % curr_disk_file ).astype( "int" )
 
 			if disk_nodes.size == 1:
 				disk_nodes = np.array( [ disk_nodes ] )
@@ -362,9 +362,14 @@ def searchlight( paths, conf ):
 					i_disk_node = i[ 0 ]
 
 					if i_disk_node < n_nodes:
-						i_disk_nodes.append( i_disk_node )
 
-			i_disk_nodes = np.array( i_disk_nodes )
+						poss_data = blk_data[ ..., i_disk_node ]
+
+						# have to be wary of the occasional NaN
+						if np.logical_not( np.any( np.isnan( poss_data ) ) ):
+							i_disk_nodes.append( i_disk_node )
+
+			i_disk_nodes = np.array( i_disk_nodes ).astype( "int" )
 
 			disk_data = blk_data[ :, :, i_disk_nodes ]
 

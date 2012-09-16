@@ -244,29 +244,19 @@ def searchlight( paths, conf ):
 
 	svm_temp_dir = os.path.join( paths[ "mvpa" ][ "base_dir" ], "svm_temp" )
 
-	train_info = [ [ 1, 2, 3, 4, 5, 6, 7, 8, 9 ],  # no 0
-	               [ 0, 2, 3, 4, 5, 6, 7, 8, 9 ],  # no 1
-	               [ 0, 1, 3, 4, 5, 6, 7, 8, 9 ],  # no 2
-	               [ 0, 1, 2, 4, 5, 6, 7, 8, 9 ],  # no 3
-	               [ 0, 1, 2, 3, 5, 6, 7, 8, 9 ],  # no 4
-	               [ 0, 1, 2, 3, 4, 6, 7, 8, 9 ],  # no 5
-	               [ 0, 1, 2, 3, 4, 5, 7, 8, 9 ],  # no 6
-	               [ 0, 1, 2, 3, 4, 5, 6, 8, 9 ],  # no 7
-	               [ 0, 1, 2, 3, 4, 5, 6, 7, 9 ],  # no 8
-	               [ 0, 1, 2, 3, 4, 5, 6, 7, 8 ]   # no 9
-
+	train_info = [ [ 2, 3, 4, 5, 6, 7, 8, 9 ],
+	               [ 0, 1, 4, 5, 6, 7, 8, 9 ],
+	               [ 0, 1, 2, 3, 6, 7, 8, 9 ],
+	               [ 0, 1, 2, 3, 4, 5, 8, 9 ],
+	               [ 0, 1, 2, 3, 4, 5, 6, 7 ]
 	             ]
 
-	test_info = [ [ 0 ], [ 1 ], [ 2 ], [ 3 ], [ 4 ],
-	              [ 5 ], [ 6 ], [ 7 ], [ 8 ], [ 9 ]
+	test_info = [ [ 0, 1 ],
+	              [ 2, 3 ],
+	              [ 4, 5 ],
+	              [ 6, 7 ],
+	              [ 8, 9 ]
 	            ]
-
-#	test_info = [ [ 0, 1 ],
-#	              [ 2, 3 ],
-#	              [ 4, 5 ],
-#	              [ 6, 7 ],
-#	              [ 8, 9 ]
-#	            ]
 
 	# analysis proceeds separately for the two hemispheres
 	for hemi in [ "lh", "rh" ]:
@@ -284,6 +274,10 @@ def searchlight( paths, conf ):
 		                   )
 
 		( n_runs, n_blocks, n_nodes ) = blk_data.shape
+
+		assert( len( test_info ) == len( train_info ) )
+
+		n_folds = len( train_info )
 
 		# first step is to transform the ROI dataset into a more readable form
 
@@ -324,7 +318,7 @@ def searchlight( paths, conf ):
 		                                maxval = seed_nodes.shape[ 0 ]
 		                              ).start()
 
-		acc = np.empty( ( n_nodes ) )
+		acc = np.empty( ( n_nodes, n_folds ) )
 		acc.fill( np.NAN )
 
 		# iterate through each seed node
@@ -377,13 +371,13 @@ def searchlight( paths, conf ):
 			assert( disk_data.shape == ( n_runs, n_blocks, len( i_disk_nodes ) ) )
 
 			# now we have our data set, can run the classification
-			acc[ i_seed_node ] = _svm_classify( disk_data,
-			                                    blk_data_info,
-			                                    train_info,
-			                                    test_info,
-			                                    svm_temp_dir,
-			                                    paths[ "summ" ][ "log_file" ]
-			                                  )
+			acc[ i_seed_node, : ] = _svm_classify( disk_data,
+			                                       blk_data_info,
+			                                       train_info,
+			                                       test_info,
+			                                       svm_temp_dir,
+			                                       paths[ "mvpa" ][ "log_file" ]
+			                                     )
 
 		pbar.finish()
 
@@ -399,7 +393,17 @@ def write_searchlight( paths, conf ):
 
 	for hemi in [ "lh", "rh" ]:
 
-		acc_file = "%s-%s.txt" % ( paths[ "mvpa" ][ "acc" ], hemi )
+		acc_txt_file = "%s-%s.txt" % ( paths[ "mvpa" ][ "acc" ], hemi )
+
+		# acc is nodes x folds
+		acc = np.loadtxt( acc_txt_file )
+
+		# average over folds
+		acc = np.mean( acc, axis = 1 )
+
+		acc_mean_file = "%s-%s.txt" % ( paths[ "mvpa" ][ "acc_mean" ], hemi )
+
+		np.savetxt( acc_mean_file, acc )
 
 		seed_node_file = "%s_%s.1D.dset" % ( paths[ "mvpa" ][ "nodes" ], hemi )
 
@@ -407,7 +411,7 @@ def write_searchlight( paths, conf ):
 
 		conv_cmd = [ "ConvertDset",
 		             "-o_niml",
-		             "-input", acc_file,
+		             "-input", acc_mean_file,
 		             "-node_index_1D", "%s[0]" % seed_node_file,
 		             "-i_1D",
 		             "-overwrite",
@@ -442,6 +446,9 @@ def _svm_classify( blk_data,
 	acc.fill( np.NAN )
 
 	for ( i_fold, ( train_runs, test_runs ) ) in enumerate( svm_runs ):
+
+		# check that there is no contamination of train and test sets
+		assert( set.isdisjoint( set( train_runs ), set( test_runs ) ) )
 
 		train_data = blk_data[ train_runs, :, : ]
 
@@ -528,7 +535,7 @@ def _svm_classify( blk_data,
 
 		acc[ i_fold ] = np.sum( true_conds == np.sign( pred ) ) / len( pred ) * 100
 
-	return np.mean( acc )
+	return acc
 
 
 def svm_roi_loc_stat( paths, conf ):

@@ -131,6 +131,33 @@ def _get_reg_paths( conf, paths ):
 	return paths
 
 
+def _get_task_paths( conf, paths ):
+	"""Get the paths for the task"""
+
+	subj_id = conf[ "subj" ][ "subj_id" ]
+
+	task = {}
+
+	task_dir = os.path.join( paths[ "study" ][ "subj_dir" ],
+	                        subj_id,
+	                        "task"
+	                      )
+
+	task[ "base_dir" ] = task_dir
+
+	task[ "resp" ] = os.path.join( task_dir,
+	                               "%s_ns_aperture_fmri_resp.npy" % subj_id
+	                             )
+
+	task[ "hist" ] = os.path.join( task_dir,
+	                               "%s_ns_aperture_fmri_resp_hist.npy" % subj_id
+	                             )
+
+	paths[ "task" ] = task
+
+	return paths
+
+
 def _get_log_paths( conf, paths ):
 	"""Get the paths for the logfiles"""
 
@@ -369,6 +396,15 @@ def _get_mvpa_paths( conf, paths ):
 	                              "%s_%s-acc" % ( subj_id, id )
 	                            )
 
+	mvpa[ "acc_mean" ] = os.path.join( mvpa_dir,
+	                                   "%s_%s-acc_mean" % ( subj_id, id )
+	                                 )
+
+	mvpa[ "log_file" ] = os.path.join( mvpa_dir,
+	                                   "%s_%s-mvpa_log.txt" % ( subj_id, id )
+	                                 )
+
+
 	paths[ "mvpa" ] = mvpa
 
 	return paths
@@ -455,6 +491,8 @@ def get_subj_paths( conf ):
 	paths = _get_roi_paths( conf, paths )
 
 	paths = _get_loc_paths( conf, paths )
+
+	paths = _get_task_paths( conf, paths )
 
 	paths = _get_mvpa_paths( conf, paths )
 

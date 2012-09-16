@@ -244,19 +244,29 @@ def searchlight( paths, conf ):
 
 	svm_temp_dir = os.path.join( paths[ "mvpa" ][ "base_dir" ], "svm_temp" )
 
-	train_info = [ [ 2, 3, 4, 5, 6, 7, 8, 9 ],
-	               [ 4, 5, 6, 7, 8, 9, 0, 1 ],
-	               [ 6, 7, 8, 9, 0, 1, 2, 3 ],
-	               [ 8, 9, 0, 1, 2, 3, 4, 5 ],
-	               [ 0, 1, 2, 3, 4, 5, 6, 7 ]
+	train_info = [ [ 1, 2, 3, 4, 5, 6, 7, 8, 9 ],  # no 0
+	               [ 0, 2, 3, 4, 5, 6, 7, 8, 9 ],  # no 1
+	               [ 0, 1, 3, 4, 5, 6, 7, 8, 9 ],  # no 2
+	               [ 0, 1, 2, 4, 5, 6, 7, 8, 9 ],  # no 3
+	               [ 0, 1, 2, 3, 5, 6, 7, 8, 9 ],  # no 4
+	               [ 0, 1, 2, 3, 4, 6, 7, 8, 9 ],  # no 5
+	               [ 0, 1, 2, 3, 4, 5, 7, 8, 9 ],  # no 6
+	               [ 0, 1, 2, 3, 4, 5, 6, 8, 9 ],  # no 7
+	               [ 0, 1, 2, 3, 4, 5, 6, 7, 9 ],  # no 8
+	               [ 0, 1, 2, 3, 4, 5, 6, 7, 8 ]   # no 9
+
 	             ]
 
-	test_info = [ [ 0, 1 ],
-	              [ 2, 3 ],
-	              [ 4, 5 ],
-	              [ 6, 7 ],
-	              [ 8, 9 ]
+	test_info = [ [ 0 ], [ 1 ], [ 2 ], [ 3 ], [ 4 ],
+	              [ 5 ], [ 6 ], [ 7 ], [ 8 ], [ 9 ]
 	            ]
+
+#	test_info = [ [ 0, 1 ],
+#	              [ 2, 3 ],
+#	              [ 4, 5 ],
+#	              [ 6, 7 ],
+#	              [ 8, 9 ]
+#	            ]
 
 	# analysis proceeds separately for the two hemispheres
 	for hemi in [ "lh", "rh" ]:
@@ -400,13 +410,15 @@ def write_searchlight( paths, conf ):
 		             "-input", acc_file,
 		             "-node_index_1D", "%s[0]" % seed_node_file,
 		             "-i_1D",
+		             "-overwrite",
 		             "-prefix", out_file
 		           ]
 
 		fmri_tools.utils.run_cmd( conv_cmd,
 		                          env = fmri_tools.utils.get_env(),
-		                          log_path = log_path
+		                          log_path = paths[ "summ" ][ "log_file" ]
 		                        )
+
 
 	os.chdir( start_dir )
 

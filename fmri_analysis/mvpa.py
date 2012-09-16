@@ -6,7 +6,6 @@ apertures fMRI experiment.
 from __future__ import division
 
 import os, os.path
-import tempfile
 
 import numpy as np
 import scipy.stats

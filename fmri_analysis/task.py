@@ -28,7 +28,7 @@ def task_xtr( paths, conf ):
 
 	# order was ordered for subject s1000, and the order was not stored in the
 	# task file
-	s1000_hand_order = [ 0, 1, 1, 0, 0, 1, 1, 0, 0, 1 ]
+	s1000_hand_order = [ 1, 0, 0, 1, 1, 0, 0, 1, 1, 0 ]
 
 	for i_run in xrange( conf[ "subj" ][ "n_exp_runs" ] ):
 
@@ -50,6 +50,10 @@ def task_xtr( paths, conf ):
 				hand_flag = s1000_hand_order[ i_run ]
 			else:
 				( resp, time_s, hand_flag ) = curr_task
+
+			# s1032 had it backwards
+			if conf[ "subj" ][ "subj_id" ] == "s1032":
+				hand_flag = np.logical_not( hand_flag )
 
 			# find the last event where the response time is greater than the
 			# presentation onset time

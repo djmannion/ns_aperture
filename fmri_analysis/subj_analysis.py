@@ -251,14 +251,14 @@ def loc_mask( paths, conf ):
 	os.chdir( paths[ "loc" ][ "base_dir" ] )
 
 	# bricks in the glm file that contains the localiser statistics
-	# this is verified below
-	loc_stat_bricks = [ 2, 5 ]
+	# [ rvf T, lvf T ]
+	loc_stat_bricks = [ 5, 2 ]
 
-	for hemi in [ "lh", "rh" ]:
+	for ( i_hemi, hemi ) in enumerate( [ "lh", "rh" ] ):
 
 		glm_file = "%s_%s_reml.niml.dset" % ( paths[ "loc" ][ "glm" ], hemi )
 
-		fdr_file = "%s.niml.dset" % paths[ "loc" ][ "fdr" ]
+		fdr_file = "%s_%s.niml.dset" % ( paths[ "loc" ][ "fdr" ], hemi )
 
 		# convert the statistics for the localiser to a q (FDR) value
 		fdr_cmd = [ "3dFDR",
@@ -278,13 +278,31 @@ def loc_mask( paths, conf ):
 
 		q_thresh = conf[ "ana" ][ "q_thr" ]
 
+		i_contra = i_hemi
+		i_ipsi = np.logical_not( i_hemi )
+
+		# 'a'
+		contra_vf_p = "%s[%d]" % ( fdr_file, loc_stat_bricks[ i_contra ] )
+
+		# 'b'
+		ipsi_vf_p = "%s[%d]" % ( fdr_file, loc_stat_bricks[ i_ipsi ] )
+
+		# 'c'
+		contra_vf_t = "%s[%d]" % ( glm_file, loc_stat_bricks[ i_contra ] )
+
+		expr = "and( within( a, 0, %(q).6f ), "  # contra p < thresh
+		expr += "within( b, %(q).6f, 1 ), "  # ipsi p > thresh
+		expr += "ispositive( c ) )"
+
+		expr = expr % { "q" : q_thresh }
+
 		# create a localiser mask as nodes that both have a q that is below
 		# threshold and have positive beta weights
 		mask_cmd = [ "3dcalc",
-		             "-a", "%s[%d]" % ( fdr_file, loc_stat_bricks[ 0 ] ),
-		             "-b", "%s[%d]" % ( fdr_file, loc_stat_bricks[ 1 ] ),
-		             "-expr", "or( within( a, 0, %.6f ), within( b, 0, %.6f ) )" %
-		               ( q_thresh, q_thresh ),
+		             "-a", contra_vf_p,
+		             "-b", ipsi_vf_p,
+		             "-c", contra_vf_t,
+		             "-expr", expr,
 		             "-prefix", loc_mask_file,
 		             "-overwrite"
 		           ]

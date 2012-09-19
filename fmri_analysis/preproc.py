@@ -72,7 +72,7 @@ def motion_correct( paths, conf ):
 
 	# the index to the run that will be the 'base', to be corrected to
 	# it is stored in one-based, hence the minus 1 to get to an index
-	i_mc_base = conf[ "subj" ][ "mot_base" ] - 1 
+	i_mc_base = conf[ "subj" ][ "mot_base" ] - 1
 
 	mc_base = "%s.nii[0]" % paths[ "func" ][ "orig_files" ][ i_mc_base ]
 
@@ -83,14 +83,9 @@ def motion_correct( paths, conf ):
 		orig_file = paths[ "func" ][ "orig_files" ][ i_run ]
 		corr_file = paths[ "func" ][ "corr_files" ][ i_run ]
 
-		# because we want to aggregate the motion correction files over the whole
-		# session, we only store the individual run correction temporarily
-		mc_txt = tempfile.NamedTemporaryFile()
-
 		mc_cmd = [ "3dvolreg",
 		           "-twopass",
 		           "-prefix", "%s.nii" % corr_file,
-		           "-1Dfile", mc_txt.name,
 		           "-overwrite",
 		           "-base", mc_base,
 		           "-zpad", "5",
@@ -102,14 +97,6 @@ def motion_correct( paths, conf ):
 		                          env = fmri_tools.utils.get_env(),
 		                          log_path = paths[ "summ" ][ "log_file" ]
 	                        )
-
-		# deal with the motion estimates
-		mc_params.append( np.loadtxt( mc_txt.name ) )
-
-	# concatenate the motion estimates over time
-	mc_params = np.vstack( mc_params )
-
-	np.savetxt( paths[ "summ" ][ "mot_est_file" ], mc_params )
 
 	# make a summary image from the corrected files
 	fmri_tools.preproc.gen_sess_summ_img( paths[ "func" ][ "corr_files" ],
@@ -385,87 +372,3 @@ def exp_design_prep( paths, conf ):
 	cens = np.tile( cens, conf[ "subj" ][ "n_exp_runs" ] )
 
 	np.savetxt( paths[ "ana" ][ "cens" ], cens )
-
-
-
-def loc_design_prep( paths, conf ):
-	"""Prepares the designs for GLM analysis"""
-
-	n_vols = int( conf[ "exp" ][ "loc_run_full_len_s" ] /
-	              conf[ "acq" ][ "tr_s" ]
-	            )
-
-	seq_info = ns_aperture.fmri.loc.get_seq_ind()
-
-	# L /R
-	n_cond = 2
-
-	cond_files = [ open( "%s%d.txt" % ( paths[ "loc" ][ "time_files" ],
-	                                    cond_num
-	                                  ),
-	                     "w"
-	                   )
-	               for cond_num in np.arange( 1, n_cond + 1 )
-	             ]
-
-	loc_ord = ( "AB", "BA" )
-
-	for i_run in xrange( conf[ "subj" ][ "n_loc_runs" ] ):
-
-		run_times = []
-		run_conds = []
-
-		run_seq = ns_aperture.fmri.loc.get_seq( conf, loc_ord[ i_run ] )
-
-		( n_evt, n_params ) = run_seq.shape
-
-		for i_evt in xrange( n_evt ):
-
-			curr_block_num = run_seq[ i_evt, seq_info[ "block_num" ] ]
-			prev_block_num = run_seq[ i_evt - 1, seq_info[ "block_num" ] ]
-
-			is_transition = ( curr_block_num != prev_block_num )
-
-			if is_transition:
-
-				start_time_s = run_seq[ i_evt, seq_info[ "time_s" ] ]
-
-				cond = int( run_seq[ i_evt, seq_info[ "block_type" ] ] )
-
-				# 0 = blank
-				if cond > 0:
-					run_times.append( start_time_s )
-					run_conds.append( cond - 1 )
-
-		run_times = np.array( run_times )
-		run_conds = np.array( run_conds )
-
-		for i_cond in xrange( n_cond ):
-
-			i_evt_cond = np.where( run_conds == i_cond )[ 0 ]
-
-			if i_evt_cond.size == 0:
-				cond_files[ i_cond ].write( "*" )
-			else:
-				_ = [ cond_files[ i_cond ].write( "%.5f\t" % evt_time )
-				      for evt_time in run_times[ i_evt_cond ]
-				    ]
-
-			cond_files[ i_cond ].write( "\n" )
-
-	_ = [ cond_file.close() for cond_file in cond_files ]
-
-
-	# MOTION PARAMETERS
-	# ---
-
-	all_mc = np.loadtxt( paths[ "summ" ][ "mot_est_file" ] )
-
-	i_loc_start = ( conf[ "exp" ][ "run_len_s" ] /
-	                conf[ "acq" ][ "tr_s" ] *
-	                conf[ "subj" ][ "n_exp_runs" ]
-	              )
-
-	loc_mc = all_mc[ i_loc_start:, : ]
-
-	np.savetxt( paths[ "loc" ][ "mot_est" ], loc_mc )

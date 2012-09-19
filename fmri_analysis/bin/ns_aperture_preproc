@@ -7,8 +7,7 @@ import os
 import argparse
 
 import ns_aperture.config, ns_aperture.fmri_analysis.paths
-import ns_aperture.fmri_analysis.preproc, ns_aperture.fmri_analysis.analysis
-import ns_aperture.fmri_analysis.figures
+import ns_aperture.fmri_analysis.preproc
 
 
 def main():
@@ -18,23 +17,17 @@ def main():
 	          fMRI experiment"""
 
 	eg = """
-	Example usage:
-	  run motion correction on subject s1000:
-	    ns_aperture_preproc s1000 correct
-	
 	Steps:
 	  convert : converts the scanner DICOM images to NIFTIs.
-	  correct : performs slice-timing and motion correction.
+	  correct : performs motion correction.
 	  fieldmap : prepares the fieldmaps.
 	  undistort : applies distortion correction to the functional data.
-	  trim : remove portions of each run's timecourse.
 	  surf_reg : register to the canonical anatomy.
 	  vol_to_surf : project the volumes onto the cortical surface.
-	  design_prep : prepares design specs for future GLM analysis
 	
 	---N.B.---
 	
-	* The script must be run from the ns_aperture/bin directory.
+	* The script must be run from the ns_aperture/fmri_analysis/bin directory.
 	
 	"""
 
@@ -62,10 +55,7 @@ def main():
 	                  "fieldmap",
 	                  "undistort",
 	                  "surf_reg",
-	                  "vol_to_surf",
-	                  "exp_design_prep",
-	                  "loc_design_prep",
-	                  "filter_for_svm"
+	                  "vol_to_surf"
 	                )
 
 	parser.add_argument( "preproc_step",
@@ -100,15 +90,6 @@ def main():
 
 	elif args.preproc_step == "vol_to_surf":
 		ns_aperture.fmri_analysis.preproc.vol_to_surf( paths, conf )
-
-	elif args.preproc_step == "exp_design_prep":
-		ns_aperture.fmri_analysis.preproc.exp_design_prep( paths, conf )
-
-	elif args.preproc_step == "loc_design_prep":
-		ns_aperture.fmri_analysis.preproc.loc_design_prep( paths, conf )
-
-	elif args.preproc_step == "filter_for_svm":
-		ns_aperture.fmri_analysis.preproc.filter_for_svm( paths, conf )
 
 	else:
 		print "Not completed"

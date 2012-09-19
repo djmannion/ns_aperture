@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 
-"""Runs a single-subject analysis step in the Glass coherence block fMRI
+"""Runs a localiser analysis step in the natural scene apertures fMRI
 experiment"""
 
 import os
@@ -14,25 +14,18 @@ import ns_aperture.fmri_analysis.localiser
 def main():
 	"""Execution function"""
 
-	desc = """Runs a single-subject analysis step in the Glass coherence block
+	desc = """Runs a localiser analysis step in the natural scene apertures
 	          fMRI experiment"""
 
 	eg = """
-	Example usage:
-	  run the GLM on subject s1000:
-	    ns_aperture_subj_analysis s1000 glm
-	
 	Steps:
-	  glm : executes the GLM analysis.
-	  loc_mask : generates a localising mask from the GLM.
-	  beta_to_psc : converts the fitted beta values to percent signal change.
-	  roi_xtr : extracts the ROI statistics.
-	  raw_adj : computes the raw and predicted timecourses, adjusted.
-	  roi_tc : compiles raw and predicted timecourses for each ROI.
+	  design_prep : readies the design
+	  glm : executes the GLM analysis
+	  parcellate : distributes the localiser nodes according to their responses
 	
 	---N.B.---
 	
-	* The script must be run from the ns_aperture/bin directory.
+	* The script must be run from the ns_aperture/fmri_analysis/bin directory.
 	
 	"""
 
@@ -55,13 +48,9 @@ def main():
 	                     help = "Subject identifier"
 	                   )
 
-	proc_steps = ( "glm",
-	               "parcellate",
-	               "loc_mask",
-	               "beta_to_psc",
-	               "roi_xtr",
-	               "raw_adj",
-	               "roi_tc"
+	proc_steps = ( "design",
+	               "glm",
+	               "parcellate"
 	             )
 
 	parser.add_argument( "proc_step",
@@ -79,26 +68,14 @@ def main():
 	conf = ns_aperture.config.get_conf( args.subj_id )
 	paths = ns_aperture.fmri_analysis.paths.get_subj_paths( conf )
 
-	if args.proc_step == "glm":
+	if args.proc_step == "design":
+		ns_aperture.fmri_analysis.localiser.loc_design( paths, conf )
+
+	elif args.proc_step == "glm":
 		ns_aperture.fmri_analysis.localiser.loc_glm( paths, conf )
 
 	elif args.proc_step == "parcellate":
 		ns_aperture.fmri_analysis.localiser.loc_parcellate( paths, conf )
-
-	elif args.proc_step == "loc_mask":
-		ns_aperture.fmri_analysis.subj_analysis.loc_mask( paths, conf )
-
-	elif args.proc_step == "beta_to_psc":
-		ns_aperture.fmri_analysis.subj_analysis.beta_to_psc( paths, conf )
-
-	elif args.proc_step == "roi_xtr":
-		ns_aperture.fmri_analysis.subj_analysis.roi_xtr( paths, conf )
-
-	elif args.proc_step == "raw_adj":
-		ns_aperture.fmri_analysis.subj_analysis.raw_adj( paths, conf )
-
-	elif args.proc_step == "roi_tc":
-		ns_aperture.fmri_analysis.subj_analysis.roi_tc( paths, conf )
 
 	else:
 		print "Not completed"

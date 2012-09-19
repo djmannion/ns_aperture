@@ -6,14 +6,149 @@ apertures fMRI experiment.
 from __future__ import division
 
 import os, os.path
-import tempfile
 
 import numpy as np
-import scipy.stats
 
 import fmri_tools.utils
 
 import ns_aperture.fmri.exp
+
+
+def exp_design_prep( paths, conf ):
+	"""Prepares the designs for GLM analysis"""
+
+	n_vols = int( conf[ "exp" ][ "run_len_s" ] / conf[ "acq" ][ "tr_s" ] )
+
+	seq_info = ns_aperture.fmri.exp.get_seq_ind()
+
+	# coherent blocks, initial coherent block, initial non-coherent block
+	n_cond = 3
+
+	cond_files = [ open( "%s%d.txt" % ( paths[ "ana" ][ "time_files" ],
+	                                    cond_num
+	                                  ),
+	                     "w"
+	                   )
+	               for cond_num in np.arange( 1, n_cond + 1 )
+	             ]
+
+	for i_run in xrange( len( conf[ "subj" ][ "exp_runs" ] ) ):
+
+		run_times = []
+		run_conds = []
+
+		run_seq = np.load( "%s%d.npy" % ( paths[ "log" ][ "seq_base" ],
+		                                  i_run + 1
+		                                )
+		                 )
+
+		( n_evt, _ ) = run_seq.shape
+
+		for i_evt in xrange( n_evt ):
+
+			curr_block_num = run_seq[ i_evt, seq_info[ "block_num" ] ]
+			prev_block_num = run_seq[ i_evt - 1, seq_info[ "block_num" ] ]
+
+			is_transition = ( curr_block_num != prev_block_num )
+
+			if is_transition:
+
+				start_time_s = run_seq[ i_evt, seq_info[ "time_s" ] ]
+
+				cond = int( run_seq[ i_evt, seq_info[ "block_type" ] ] )
+
+				# don't want to model non-coherent blocks (for non-first blocks,
+				# anyway)
+				if ( cond == 1 ) and ( curr_block_num > 1 ):
+					cond = 999
+
+				if curr_block_num == 1:
+					# this makes the first starting coherent block 1, first starting
+					# non-coherent block 2
+					cond += 1
+
+				if cond != 999:
+					run_times.append( start_time_s )
+					run_conds.append( cond )
+
+		run_times = np.array( run_times )
+		run_conds = np.array( run_conds )
+
+		for i_cond in xrange( n_cond ):
+
+			i_evt_cond = np.where( run_conds == i_cond )[ 0 ]
+
+			if i_evt_cond.size == 0:
+				cond_files[ i_cond ].write( "*" )
+			else:
+				_ = [ cond_files[ i_cond ].write( "%.5f\t" % evt_time )
+				      for evt_time in run_times[ i_evt_cond ]
+				    ]
+
+			cond_files[ i_cond ].write( "\n" )
+
+	_ = [ cond_file.close() for cond_file in cond_files ]
+
+	# POLYNOMIALS
+	# ---
+
+	n_pre_vol = int( conf[ "ana" ][ "exp_pre_cull_s" ] /
+	                 conf[ "acq" ][ "tr_s" ]
+	               )
+
+	n_post_vol = int( conf[ "ana" ][ "exp_pre_cull_s" ] /
+	                  conf[ "acq" ][ "tr_s" ]
+	                )
+
+	n_valid_vol = n_vols - n_pre_vol - n_post_vol
+
+	# compute the polynomial timecourses
+	run_trends = fmri_tools.utils.legendre_poly( conf[ "ana" ][ "poly_ord" ],
+	                                             int( n_valid_vol ),
+	                                             pre_n = n_pre_vol,
+	                                             post_n = n_post_vol
+	                                           )
+
+	assert( run_trends.shape[ 0 ] == n_vols )
+
+	n_runs = len( conf[ "subj" ][ "exp_runs" ] )
+
+	# need to have a set of trends for each run, zeroed elsewhere
+	bl_trends = np.zeros( ( n_vols * n_runs,
+	                        conf[ "ana" ][ "poly_ord" ] * n_runs
+	                      )
+	                    )
+
+	for i_run in xrange( n_runs ):
+
+		i_row_start = i_run * run_trends.shape[ 0 ]
+		i_row_end = i_row_start + run_trends.shape[ 0 ]
+
+		i_col_start = i_run * run_trends.shape[ 1 ]
+		i_col_end = i_col_start + run_trends.shape[ 1 ]
+
+		bl_trends[ i_row_start:i_row_end, i_col_start:i_col_end ] = run_trends
+
+	np.savetxt( paths[ "ana" ][ "bl_poly" ], bl_trends )
+
+	# CENSORING
+	# ---
+
+	cens = np.ones( n_vols )
+
+	n_vols_per_block = int( conf[ "exp" ][ "block_len_s" ] /
+	                        conf[ "acq" ][ "tr_s" ]
+	                      )
+
+	cens[ :n_vols_per_block ] = 0
+	cens[ -n_vols_per_block: ] = 0
+
+	assert( np.sum( cens == 0 ) == ( n_vols_per_block * 2 ) )
+
+	cens = np.tile( cens, conf[ "subj" ][ "n_exp_runs" ] )
+
+	np.savetxt( paths[ "ana" ][ "cens" ], cens )
+
 
 def glm( paths, conf ):
 	"""Experiment GLM"""
@@ -275,21 +410,17 @@ def beta_to_psc( paths, conf ):
 def roi_xtr( paths, conf ):
 	"""Extract PSC and statistics data from ROIs"""
 
-	for hemi in [ "lh", "rh" ]:
+	os.chdir( paths[ "rois" ][ "base_dir" ] )
 
-		# the *full* localiser mask file
-		loc_mask_file = "%s_%s-full.niml.dset" % ( paths[ "loc" ][ "mask" ],
-		                                           hemi
-		                                         )
+	for ( roi_name, _ ) in conf[ "ana" ][ "rois" ]:
 
-		# expression to apply the localiser mask
-		cmask_expr = "-a %s -expr step(a)" % loc_mask_file
+		for hemi in [ "lh", "rh" ]:
 
-		# the *full* ROI file
-		roi_file = "%s_%s-full.niml.dset" % ( paths[ "rois" ][ "dset" ], hemi )
-
-		# iterate over all the ROIs
-		for ( roi_name, roi_val ) in conf[ "ana" ][ "rois" ]:
+			# the *full* localiser mask file
+			loc_mask_file = "%s_%s_%s-full.niml.dset" % ( paths[ "loc" ][ "roi_parc" ],
+			                                              roi_name,
+			                                              hemi
+			                                            )
 
 			roi_psc_file = "%s_%s_%s.txt" % ( paths[ "rois" ][ "psc" ],
 			                                  roi_name,
@@ -307,22 +438,18 @@ def roi_xtr( paths, conf ):
 
 			# use the ROI file to mask the input dataset
 			xtr_cmd = [ "3dmaskdump",
-			            "-mask", roi_file,
-			            "-cmask", cmask_expr,
-			            "-mrange", roi_val, roi_val,
+			            "-mask", loc_mask_file,
 			            "-noijk",
 			            "-o", roi_psc_file,
-			            data_file
+			            data_file,
+			            loc_mask_file
 			          ]
 
-			try:
-				fmri_tools.utils.run_cmd( xtr_cmd,
-				                          env = fmri_tools.utils.get_env(),
-				                          log_path = paths[ "summ" ][ "log_file" ]
-				                        )
-			except:
-				with file( roi_psc_file, "a" ):
-					os.utime( roi_psc_file, None )
+			fmri_tools.utils.run_cmd( xtr_cmd,
+			                          env = fmri_tools.utils.get_env(),
+			                          log_path = paths[ "summ" ][ "log_file" ]
+			                        )
+
 
 def raw_adj( paths, conf ):
 	"""Concatenates raw timecourses and adjusts them for baselines"""

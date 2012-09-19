@@ -368,15 +368,24 @@ def exp_design_prep( paths, conf ):
 
 	np.savetxt( paths[ "ana" ][ "bl_poly" ], bl_trends )
 
-
-	# MOTION PARAMETERS
+	# CENSORING
 	# ---
 
-	all_mc = np.loadtxt( paths[ "summ" ][ "mot_est_file" ] )
+	cens = np.ones( n_vols )
 
-	exp_mc = all_mc[ :( n_vols * n_runs ), : ]
+	n_vols_per_block = int( conf[ "exp" ][ "block_len_s" ] /
+	                        conf[ "acq" ][ "tr_s" ]
+	                      )
 
-	np.savetxt( paths[ "ana" ][ "mot_est" ], exp_mc )
+	cens[ :n_vols_per_block ] = 0
+	cens[ -n_vols_per_block: ] = 0
+
+	assert( np.sum( cens == 0 ) == ( n_vols_per_block * 2 ) )
+
+	cens = np.tile( cens, conf[ "subj" ][ "n_exp_runs" ] )
+
+	np.savetxt( paths[ "ana" ][ "cens" ], cens )
+
 
 
 def loc_design_prep( paths, conf ):
@@ -459,53 +468,4 @@ def loc_design_prep( paths, conf ):
 
 	loc_mc = all_mc[ i_loc_start:, : ]
 
-	assert( loc_mc.shape[ 0 ] == ( n_vols * conf[ "subj" ][ "n_loc_runs" ] ) )
-
 	np.savetxt( paths[ "loc" ][ "mot_est" ], loc_mc )
-
-
-def filter_for_svm( paths, conf ):
-	"""Filters the timecourses for SVM analysis"""
-
-	start_dir = os.getcwd()
-
-	os.chdir( paths[ "svm" ][ "base_dir" ] )
-
-	i_surf_files = np.array( conf[ "subj" ][ "exp_runs" ] ).astype( "int" ) - 1
-
-	surf_files = [ paths[ "func" ][ "surf_files" ][ i_surf ]
-	               for i_surf in i_surf_files
-	             ]
-
-	filt_files = [ paths[ "svm" ][ "filt_files" ][ i_surf ]
-	               for i_surf in i_surf_files
-	             ]
-
-	for hemi in [ "lh", "rh" ]:
-
-		for ( surf_file, filt_file ) in zip( surf_files, filt_files ):
-
-			filt_cmd = [ "3dDetrend",
-			             "-prefix", "%s_%s.niml.dset" % ( filt_file, hemi ),
-			             "-polort", "%d" % ( conf[ "ana" ][ "poly_ord" ] - 1 ),
-			             "-overwrite",
-			             "%s_%s.niml.dset" % ( surf_file, hemi )
-			           ]
-
-			fmri_tools.utils.run_cmd( filt_cmd,
-			                          env = fmri_tools.utils.get_env(),
-			                          log_path = paths[ "summ" ][ "log_file" ]
-			                        )
-
-			# convert to full
-			full_filt_file = "%s_%s-full.niml.dset" % ( filt_file, hemi )
-			pad_node = "%d" % conf[ "subj" ][ "node_k" ][ hemi ]
-
-			fmri_tools.utils.sparse_to_full( "%s_%s.niml.dset" % ( filt_file, hemi ),
-			                                 full_filt_file,
-			                                 pad_node = pad_node,
-			                                 log_path = paths[ "summ" ][ "log_file" ],
-			                                 overwrite = True
-			                               )
-
-	os.chdir( start_dir )

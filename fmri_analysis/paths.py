@@ -220,6 +220,10 @@ def _get_ana_paths( conf, paths ):
 	                                 "%s_%s-bl_poly.txt" % ( subj_id, exp_id )
 	                               )
 
+	ana[ "cens" ] = os.path.join( ana[ "base_dir" ],
+	                              "%s_%s-cens.txt" % ( subj_id, exp_id )
+	                            )
+
 	ana[ "pred_adj" ] = os.path.join( ana[ "base_dir" ],
 	                                  "%s_%s-pred_adj" % ( subj_id, exp_id )
 	                                )
@@ -292,6 +296,18 @@ def _get_loc_paths( conf, paths ):
 	loc[ "beta" ] = os.path.join( loc_dir,
 	                              "%s_%s-beta" % ( subj_id, id )
 	                            )
+
+	loc[ "roi_stat" ] = os.path.join( loc_dir,
+	                                  "%s_%s-roi_stat" % ( subj_id, id )
+	                                )
+
+	loc[ "parc" ] = os.path.join( loc_dir,
+	                              "%s_%s-parc" % ( subj_id, id )
+	                            )
+
+	loc[ "roi_parc" ] = os.path.join( loc_dir,
+	                                  "%s_%s-roi_parc" % ( subj_id, id )
+	                                )
 
 	loc[ "fdr" ] = os.path.join( loc_dir,
 	                             "%s_%s-fdr" % ( subj_id, id )

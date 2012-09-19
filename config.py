@@ -239,8 +239,8 @@ def _get_analysis_conf( conf ):
 	loc_run_start_s = conf[ "exp" ][ "loc_pre_len_s" ]
 	loc_run_dur_s = conf[ "exp" ][ "loc_run_len_s" ]
 
-	# FDR threshold for the LVF vs RVF localiser comparison
-	q_thr = 0.001
+	# p threshold for the localiser
+	loc_p = 0.01
 
 	poly_ord = 4
 
@@ -266,7 +266,7 @@ def _get_analysis_conf( conf ):
 	             "exp_post_cull_s" : exp_post_cull_s,
 	             "loc_run_start_s" : loc_run_start_s,
 	             "loc_run_dur_s" : loc_run_dur_s,
-	             "q_thr" : q_thr,
+	             "loc_p" : loc_p,
 	             "hrf_model" : hrf_model,
 	             "hrf_corr_vol" : hrf_corr_vol,
 	             "poly_ord" : poly_ord,

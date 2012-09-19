@@ -253,13 +253,7 @@ def _get_analysis_conf( conf ):
 
 	rois = [ [ "v1", "1" ],
 	         [ "v2", "2" ],
-	         [ "v3", "3" ],
-	         [ "hv4", "4" ],
-	         [ "vo1", "10" ],
-	         [ "v3ab", "5" ],
-	         [ "lo1", "6" ],
-	         [ "lo2", "7" ],
-	         [ "hmtp", "9" ]
+	         [ "v3", "3" ]
 	      ]
 
 	ana_conf = { "exp_pre_cull_s" : exp_pre_cull_s,

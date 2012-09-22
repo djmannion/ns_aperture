@@ -8,7 +8,7 @@ import argparse
 
 import ns_aperture.config, ns_aperture.fmri_analysis.paths
 import ns_aperture.fmri_analysis.preproc
-import ns_aperture.fmri_analysis.subj_analysis
+import ns_aperture.fmri_analysis.exp_analysis
 
 def main():
 	"""Execution function"""
@@ -17,21 +17,15 @@ def main():
 	          fMRI experiment"""
 
 	eg = """
-	Example usage:
-	  run the GLM on subject s1000:
-	    ns_aperture_subj_analysis s1000 glm
-	
 	Steps:
+	  design : prepares the design info
 	  glm : executes the GLM analysis.
-	  loc_mask : generates a localising mask from the GLM.
 	  beta_to_psc : converts the fitted beta values to percent signal change.
 	  roi_xtr : extracts the ROI statistics.
-	  raw_adj : computes the raw and predicted timecourses, adjusted.
-	  roi_tc : compiles raw and predicted timecourses for each ROI.
 	
 	---N.B.---
 	
-	* The script must be run from the ns_aperture/bin directory.
+	* The script must be run from the ns_aperture/fmri_analysis/bin directory.
 	
 	"""
 
@@ -54,13 +48,11 @@ def main():
 	                     help = "Subject identifier"
 	                   )
 
-	proc_steps = ( "glm",
-	               "loc_glm",
-	               "loc_mask",
+	proc_steps = ( "design",
+	               "glm",
 	               "beta_to_psc",
 	               "roi_xtr",
-	               "raw_adj",
-	               "roi_tc"
+	               "roi_mean"
 	             )
 
 	parser.add_argument( "proc_step",
@@ -78,26 +70,20 @@ def main():
 	conf = ns_aperture.config.get_conf( args.subj_id )
 	paths = ns_aperture.fmri_analysis.paths.get_subj_paths( conf )
 
-	if args.proc_step == "glm":
-		ns_aperture.fmri_analysis.subj_analysis.glm( paths, conf )
+	if args.proc_step == "design":
+		ns_aperture.fmri_analysis.exp_analysis.exp_design_prep( paths, conf )
 
-	elif args.proc_step == "loc_glm":
-		ns_aperture.fmri_analysis.subj_analysis.loc_glm( paths, conf )
-
-	elif args.proc_step == "loc_mask":
-		ns_aperture.fmri_analysis.subj_analysis.loc_mask( paths, conf )
+	elif args.proc_step == "glm":
+		ns_aperture.fmri_analysis.exp_analysis.glm( paths, conf )
 
 	elif args.proc_step == "beta_to_psc":
-		ns_aperture.fmri_analysis.subj_analysis.beta_to_psc( paths, conf )
+		ns_aperture.fmri_analysis.exp_analysis.beta_to_psc( paths, conf )
 
 	elif args.proc_step == "roi_xtr":
-		ns_aperture.fmri_analysis.subj_analysis.roi_xtr( paths, conf )
+		ns_aperture.fmri_analysis.exp_analysis.roi_xtr( paths, conf )
 
-	elif args.proc_step == "raw_adj":
-		ns_aperture.fmri_analysis.subj_analysis.raw_adj( paths, conf )
-
-	elif args.proc_step == "roi_tc":
-		ns_aperture.fmri_analysis.subj_analysis.roi_tc( paths, conf )
+	elif args.proc_step == "roi_mean":
+		ns_aperture.fmri_analysis.exp_analysis.roi_mean( paths, conf )
 
 	else:
 		print "Not completed"

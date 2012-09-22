@@ -209,12 +209,8 @@ def _get_ana_paths( conf, paths ):
 	ana[ "base_dir" ] = ana_dir
 
 	ana[ "time_files" ] = os.path.join( ana_dir,
-	                                    "%s_%s_stim_times-" % ( subj_id, exp_id )
+	                                    "%s_%s-stim_times_" % ( subj_id, exp_id )
 	                                  )
-
-	ana[ "mot_est" ] = os.path.join( ana_dir,
-	                                 "%s_%s-mot_est.txt" % ( subj_id, exp_id )
-	                               )
 
 	ana[ "bl_poly" ] = os.path.join( ana[ "base_dir" ],
 	                                 "%s_%s-bl_poly.txt" % ( subj_id, exp_id )
@@ -224,14 +220,9 @@ def _get_ana_paths( conf, paths ):
 	                              "%s_%s-cens.txt" % ( subj_id, exp_id )
 	                            )
 
-	ana[ "pred_adj" ] = os.path.join( ana[ "base_dir" ],
-	                                  "%s_%s-pred_adj" % ( subj_id, exp_id )
-	                                )
-
 	ana[ "glm" ] = os.path.join( ana[ "base_dir" ],
 	                             "%s_%s-glm" % ( subj_id, exp_id )
 	                           )
-
 
 	ana[ "beta" ] = os.path.join( ana[ "base_dir" ],
 	                              "%s_%s-beta" % ( subj_id, exp_id )
@@ -248,14 +239,6 @@ def _get_ana_paths( conf, paths ):
 	ana[ "psc" ] = os.path.join( ana[ "base_dir" ],
 	                             "%s_%s-psc" % ( subj_id, exp_id )
 	                           )
-
-	ana[ "raw" ] = os.path.join( ana[ "base_dir" ],
-	                             "%s_%s-raw" % ( subj_id, exp_id )
-	                           )
-
-	ana[ "raw_adj" ] = os.path.join( ana[ "base_dir" ],
-	                                 "%s_%s-raw_adj" % ( subj_id, exp_id )
-	                               )
 
 	paths[ "ana" ] = ana
 
@@ -278,24 +261,12 @@ def _get_loc_paths( conf, paths ):
 	loc[ "base_dir" ] = loc_dir
 
 	loc[ "time_files" ] = os.path.join( loc_dir,
-	                                    "%s_%s_stim_times-" % ( subj_id, id )
+	                                    "%s_%s-stim_times_" % ( subj_id, id )
 	                                  )
-
-	loc[ "mot_est" ] = os.path.join( loc_dir,
-	                                 "%s_%s-mot_est.txt" % ( subj_id, id )
-	                               )
-
-	loc[ "bl_poly" ] = os.path.join( loc_dir,
-	                                 "%s_%s-bl_poly.txt" % ( subj_id, id )
-	                               )
 
 	loc[ "glm" ] = os.path.join( loc_dir,
 	                             "%s_%s-glm" % ( subj_id, id )
 	                           )
-
-	loc[ "beta" ] = os.path.join( loc_dir,
-	                              "%s_%s-beta" % ( subj_id, id )
-	                            )
 
 	loc[ "roi_stat" ] = os.path.join( loc_dir,
 	                                  "%s_%s-roi_stat" % ( subj_id, id )
@@ -308,18 +279,6 @@ def _get_loc_paths( conf, paths ):
 	loc[ "roi_parc" ] = os.path.join( loc_dir,
 	                                  "%s_%s-roi_parc" % ( subj_id, id )
 	                                )
-
-	loc[ "fdr" ] = os.path.join( loc_dir,
-	                             "%s_%s-fdr" % ( subj_id, id )
-	                           )
-
-	loc[ "mask" ] = os.path.join( loc_dir,
-	                              "%s_%s-mask" % ( subj_id, id )
-	                            )
-
-	loc[ "stat" ] = os.path.join( loc_dir,
-	                              "%s_%s-stat" % ( subj_id, id )
-	                            )
 
 	paths[ "loc" ] = loc
 
@@ -346,6 +305,10 @@ def _get_roi_paths( conf, paths ):
 	rois[ "psc" ] = os.path.join( rois[ "base_dir" ],
 	                              "%s_%s-psc" % ( subj_id, exp_id )
 	                            )
+
+	rois[ "parc_psc" ] = os.path.join( rois[ "base_dir" ],
+	                                   "%s_%s-parc_psc" % ( subj_id, exp_id )
+	                                 )
 
 	rois[ "raw_adj_tc" ] = os.path.join( rois[ "base_dir" ],
 	                                     "%s_%s-raw_adj_tc" % ( subj_id, exp_id )
@@ -389,6 +352,16 @@ def _get_mvpa_paths( conf, paths ):
 	                               "%s_%s-data" % ( subj_id, id )
 	                             )
 
+	mvpa[ "parc_data" ] = os.path.join( mvpa_dir,
+	                                    "data",
+	                                    "%s_%s-parc_data" % ( subj_id, id )
+	                                  )
+
+	mvpa[ "parc_info" ] = os.path.join( mvpa_dir,
+	                                    "data",
+	                                    "%s_%s-parc_info" % ( subj_id, id )
+	                                  )
+
 	mvpa[ "data_info" ] = os.path.join( mvpa_dir,
 	                                    "data",
 	                                    "%s_%s-data_info" % ( subj_id, id )
@@ -401,7 +374,7 @@ def _get_mvpa_paths( conf, paths ):
 
 	mvpa[ "blk_data" ] = os.path.join( mvpa_dir,
 	                                   "data",
-	                                   "%s_%s-blk_data" % ( subj_id, id )
+	                                   "%s_%s-blk_parc_data" % ( subj_id, id )
 	                                 )
 
 	mvpa[ "nodes" ] = os.path.join( mvpa_dir,

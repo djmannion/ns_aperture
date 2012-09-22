@@ -12,6 +12,9 @@ import scipy.stats
 
 import fmri_tools.utils
 
+import ns_aperture.fmri.loc
+
+
 def loc_design( paths, conf ):
 	"""Prepares the designs for GLM analysis"""
 
@@ -148,11 +151,9 @@ def loc_glm( paths, conf ):
 		os.remove( "Decon.REML_cmd" )
 
 		glm_file = "%s_%s" % ( paths[ "loc" ][ "glm" ], hemi )
-		beta_file = "%s_%s" % ( paths[ "loc" ][ "beta" ], hemi )
 
 		reml_cmd = [ "3dREMLfit",
 		             "-matrix", "exp_design.xmat.1D",
-		             "-Rbeta", "%s_reml.niml.dset" % beta_file,
 		             "-tout",
 		             "-Rbuck", "%s_reml.niml.dset" % glm_file,
 		             "-overwrite",

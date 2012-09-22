@@ -6,56 +6,51 @@ fMRI experiment.
 from __future__ import division
 
 import os.path
-import tempfile
-
-import numpy as np
 
 import fmri_tools.preproc, fmri_tools.utils
-
-import ns_aperture.fmri.exp, ns_aperture.fmri.loc
 
 
 def convert( paths, conf ):
 	"""Converts the functionals and fieldmaps from dicom to nifti"""
 
-	# aggregate the dicom directories
-	raw_dirs = ( paths[ "func" ][ "raw_dirs" ] +
-	             paths[ "fmap" ][ "raw_mag_dirs" ] +
-	             paths[ "fmap" ][ "raw_ph_dirs" ]
-	           )
+	# functional DICOM files
+	dcm_files = [ os.path.join( dcm_dir, dcm_file )
+	              for ( dcm_dir, dcm_file ) in zip( paths[ "func" ][ "raw_dirs" ],
+	                                                conf[ "subj" ][ "func_dcm" ]
+	                                              )
+	            ]
 
-	# aggregate the output directories
-	nii_dirs = ( paths[ "func" ][ "run_dirs" ] +
-	             paths[ "fmap" ][ "fmap_dirs" ] +
-	             paths[ "fmap" ][ "fmap_dirs" ]
-	           )
+	# add in the fieldmap DICOMs
+	dcm_files += [ os.path.join( paths[ "fmap" ][ "base_dir" ],
+	                             "f01",
+	                             "%s-raw" % im_type,
+	                             dcm_file
+	                           )
+	               for ( im_type, dcm_file ) in zip( [ "mag", "ph" ],
+	                                                 conf[ "subj" ][ "fmap_dcm" ]
+	                                               )
+	             ]
 
 	# aggregate the images paths
-	img_paths = ( paths[ "func" ][ "orig_files" ] +
+	nii_files = ( paths[ "func" ][ "orig_files" ] +
 	              paths[ "fmap" ][ "mag_files" ] +
 	              paths[ "fmap" ][ "ph_files" ]
 	            )
 
-	# pull out the filenames
-	img_names = [ os.path.split( img_path )[ 1 ]
-	              for img_path in img_paths
-	            ]
+	for ( dcm_file, nii_file ) in zip( dcm_files, nii_files ):
 
-	for i_dir in xrange( len( raw_dirs ) ):
-
-		fmri_tools.preproc.dcm_to_nii( raw_dirs[ i_dir ],
-		                               nii_dirs[ i_dir ],
-		                               img_names[ i_dir ],
+		fmri_tools.preproc.dcm_to_nii( dcm_file,
+		                               "%s.nii" % nii_file,
 		                               reorient_dim = conf[ "acq" ][ "ras" ],
 		                               log_path = paths[ "summ" ][ "log_file" ]
 		                             )
 
 	# generate the full paths (with assumed extension) of the newly-created nifti
 	# files
-	full_img_paths = [ "%s.nii" % img_path for img_path in img_paths ]
+	full_nii_paths = [ "%s.nii" % nii_file for nii_file in nii_files ]
 
 	# check that they are all unique
-	assert( fmri_tools.utils.files_are_unique( full_img_paths ) )
+	assert( fmri_tools.utils.files_are_unique( full_nii_paths ) )
 
 	# files to go into the summary
 	summ_paths = paths[ "func" ][ "orig_files" ]
@@ -76,12 +71,9 @@ def motion_correct( paths, conf ):
 
 	mc_base = "%s.nii[0]" % paths[ "func" ][ "orig_files" ][ i_mc_base ]
 
-	mc_params = []
-
-	for i_run in xrange( conf[ "subj" ][ "n_runs" ] ):
-
-		orig_file = paths[ "func" ][ "orig_files" ][ i_run ]
-		corr_file = paths[ "func" ][ "corr_files" ][ i_run ]
+	for ( orig_file, corr_file ) in zip( paths[ "func" ][ "orig_files" ],
+	                                     paths[ "func" ][ "corr_files" ]
+	                                   ):
 
 		mc_cmd = [ "3dvolreg",
 		           "-twopass",
@@ -192,7 +184,7 @@ def surf_reg( paths, conf ):
 	                        )
 
 
-def vol_to_surf( paths, conf ):
+def vol_to_surf( paths, _ ):
 	"""Converts the functional volume-based images to SUMA surfaces."""
 
 	# this puts some output in the working directory, so change to where we want
@@ -236,139 +228,3 @@ def vol_to_surf( paths, conf ):
 			                        )
 
 	os.chdir( start_dir )
-
-
-def exp_design_prep( paths, conf ):
-	"""Prepares the designs for GLM analysis"""
-
-	n_vols = int( conf[ "exp" ][ "run_len_s" ] / conf[ "acq" ][ "tr_s" ] )
-
-	seq_info = ns_aperture.fmri.exp.get_seq_ind()
-
-	# coherent blocks, initial coherent block, initial non-coherent block
-	n_cond = 3
-
-	cond_files = [ open( "%s%d.txt" % ( paths[ "ana" ][ "time_files" ],
-	                                    cond_num
-	                                  ),
-	                     "w"
-	                   )
-	               for cond_num in np.arange( 1, n_cond + 1 )
-	             ]
-
-	for i_run in xrange( len( conf[ "subj" ][ "exp_runs" ] ) ):
-
-		run_times = []
-		run_conds = []
-
-		run_seq = np.load( "%s%d.npy" % ( paths[ "log" ][ "seq_base" ],
-		                                  i_run + 1
-		                                )
-		                 )
-
-		( n_evt, n_params ) = run_seq.shape
-
-		for i_evt in xrange( n_evt ):
-
-			curr_block_num = run_seq[ i_evt, seq_info[ "block_num" ] ]
-			prev_block_num = run_seq[ i_evt - 1, seq_info[ "block_num" ] ]
-
-			is_transition = ( curr_block_num != prev_block_num )
-
-			if is_transition:
-
-				start_time_s = run_seq[ i_evt, seq_info[ "time_s" ] ]
-
-				cond = int( run_seq[ i_evt, seq_info[ "block_type" ] ] )
-
-				# don't want to model non-coherent blocks (for non-first blocks,
-				# anyway)
-				if ( cond == 1 ) and ( curr_block_num > 1 ):
-					cond = 999
-
-				if curr_block_num == 1:
-					# this makes the first starting coherent block 1, first starting
-					# non-coherent block 2
-					cond += 1
-
-				if cond != 999:
-					run_times.append( start_time_s )
-					run_conds.append( cond )
-
-		run_times = np.array( run_times )
-		run_conds = np.array( run_conds )
-
-		for i_cond in xrange( n_cond ):
-
-			i_evt_cond = np.where( run_conds == i_cond )[ 0 ]
-
-			if i_evt_cond.size == 0:
-				cond_files[ i_cond ].write( "*" )
-			else:
-				_ = [ cond_files[ i_cond ].write( "%.5f\t" % evt_time )
-				      for evt_time in run_times[ i_evt_cond ]
-				    ]
-
-			cond_files[ i_cond ].write( "\n" )
-
-	_ = [ cond_file.close() for cond_file in cond_files ]
-
-	# POLYNOMIALS
-	# ---
-
-	n_pre_vol = int( conf[ "ana" ][ "exp_pre_cull_s" ] /
-	                 conf[ "acq" ][ "tr_s" ]
-	               )
-
-	n_post_vol = int( conf[ "ana" ][ "exp_pre_cull_s" ] /
-	                  conf[ "acq" ][ "tr_s" ]
-	                )
-
-	n_valid_vol = n_vols - n_pre_vol - n_post_vol
-
-	# compute the polynomial timecourses
-	run_trends = fmri_tools.utils.legendre_poly( conf[ "ana" ][ "poly_ord" ],
-	                                             int( n_valid_vol ),
-	                                             pre_n = n_pre_vol,
-	                                             post_n = n_post_vol
-	                                           )
-
-	assert( run_trends.shape[ 0 ] == n_vols )
-
-	n_runs = len( conf[ "subj" ][ "exp_runs" ] )
-
-	# need to have a set of trends for each run, zeroed elsewhere
-	bl_trends = np.zeros( ( n_vols * n_runs,
-	                        conf[ "ana" ][ "poly_ord" ] * n_runs
-	                      )
-	                    )
-
-	for i_run in xrange( n_runs ):
-
-		i_row_start = i_run * run_trends.shape[ 0 ]
-		i_row_end = i_row_start + run_trends.shape[ 0 ]
-
-		i_col_start = i_run * run_trends.shape[ 1 ]
-		i_col_end = i_col_start + run_trends.shape[ 1 ]
-
-		bl_trends[ i_row_start:i_row_end, i_col_start:i_col_end ] = run_trends
-
-	np.savetxt( paths[ "ana" ][ "bl_poly" ], bl_trends )
-
-	# CENSORING
-	# ---
-
-	cens = np.ones( n_vols )
-
-	n_vols_per_block = int( conf[ "exp" ][ "block_len_s" ] /
-	                        conf[ "acq" ][ "tr_s" ]
-	                      )
-
-	cens[ :n_vols_per_block ] = 0
-	cens[ -n_vols_per_block: ] = 0
-
-	assert( np.sum( cens == 0 ) == ( n_vols_per_block * 2 ) )
-
-	cens = np.tile( cens, conf[ "subj" ][ "n_exp_runs" ] )
-
-	np.savetxt( paths[ "ana" ][ "cens" ], cens )

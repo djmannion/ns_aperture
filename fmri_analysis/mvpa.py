@@ -68,62 +68,92 @@ def filt( paths, conf ):
 def data_xtr( paths, conf ):
 	"""Extract the timecourses for each node of each ROI"""
 
-	for hemi in [ "lh", "rh" ]:
+	os.chdir( paths[ "mvpa" ][ "base_dir" ] )
+
+	for ( roi_name, _ ) in conf[ "ana" ][ "rois" ]:
 
 		data = []
+		node_info = []
 
-		# the *full* ROI file for this hemisphere
-		roi_file = "%s_%s-full.niml.dset" % ( paths[ "rois" ][ "dset" ], hemi )
+		for ( i_hemi, hemi ) in enumerate( [ "lh", "rh" ] ):
 
-		for filt_file in paths[ "mvpa" ][ "filt_files" ]:
+			mask_file = "%s_%s_%s-full.niml.dset" % ( paths[ "loc" ][ "roi_parc" ],
+			                                          roi_name,
+			                                          hemi
+			                                        )
 
-			# our input dataset
-			data_file = "%s_%s-full.niml.dset" % ( filt_file, hemi )
+			run_data = []
 
-			out_file = os.path.join( paths[ "mvpa" ][ "base_dir" ], "temp.txt" )
+			for ( i_run, filt_file ) in enumerate( paths[ "mvpa" ][ "filt_files" ] ):
 
-			if os.path.exists( out_file ):
-				os.remove( out_file )
+				# our input dataset
+				data_file = "%s_%s-full.niml.dset" % ( filt_file, hemi )
 
-			# use the ROI file to mask the input dataset
-			xtr_cmd = [ "3dmaskdump",
-			            "-mask", roi_file,
-			            "-index",  # include the node index in output
-			            "-o", out_file,
-			            data_file,
-			            roi_file  # include the ROI value in output
-			          ]
+				out_file = os.path.join( paths[ "mvpa" ][ "base_dir" ], "temp.txt" )
 
-			fmri_tools.utils.run_cmd( xtr_cmd,
-			                          env = fmri_tools.utils.get_env(),
-			                          log_path = paths[ "summ" ][ "log_file" ]
-			                        )
+				if os.path.exists( out_file ):
+					os.remove( out_file )
 
-			# append the output to this hemisphere's data
-			data.append( np.loadtxt( out_file ) )
+				# use the ROI file to mask the input dataset
+				xtr_cmd = [ "3dmaskdump",
+				            "-mask", mask_file,
+				            "-index",  # include the node index in output
+				            "-noijk",
+				            "-o", out_file,
+				            data_file,
+				            mask_file  # include the ROI parcel value in output
+				          ]
 
-			# clean up the unwanted output
-			if os.path.exists( out_file ):
-				os.remove( out_file )
+				fmri_tools.utils.run_cmd( xtr_cmd,
+				                          env = fmri_tools.utils.get_env(),
+				                          log_path = paths[ "summ" ][ "log_file" ]
+				                        )
 
-		# both the items in `data` are arrays with the same shape, so we can do a
-		# straight conversion to a numpy array, which will be runs x nodes x time
-		data = np.array( data )
+				curr_data = np.loadtxt( out_file )
 
-		# pull put the node index (first entry) and roi index (last entry)
-		data_info = data[ 0, :, [ 0, -1 ] ].astype( "int" )
+				# clean up the unwanted output
+				if os.path.exists( out_file ):
+					os.remove( out_file )
 
-		# ... and remove them the data array (4 because of node, ijk)
-		data = data[ :, :, 4:-1 ]
+				run_data.append( curr_data[ :, 1:-1 ] )
 
-		# now we're ready to save
-		data_file = "%s-%s.npy" % ( paths[ "mvpa" ][ "data" ], hemi )
+				if i_run == 0:
+					hemi_info = np.ones( ( curr_data.shape[ 0 ], 1 ) ) * i_hemi
+					node_info.append( np.hstack( ( curr_data[ :, [ 0, -1 ] ], hemi_info ) ) )
 
-		np.save( data_file, data )
+			run_data = np.array( run_data )
 
-		data_info_file = "%s-%s.npy" % ( paths[ "mvpa" ][ "data_info" ], hemi )
+			data.append( run_data )
 
-		np.save( data_info_file, data_info )
+		# data is runs x nodes x time
+		data = np.concatenate( data, axis = 1 )
+		# node_info is nodes x 3 ( node index, parcel index, hemi )
+		node_info = np.vstack( node_info )
+
+		for ( i_parc, parc_ind ) in enumerate( conf[ "ana" ][ "i_parc" ] ):
+
+			i_parc_nodes = np.any( [ node_info[ :, 1 ] == k
+			                         for k in parc_ind
+			                       ], axis = 0
+			                     )
+
+			parc_data = data[ :, i_parc_nodes, : ]
+			parc_info = node_info[ i_parc_nodes, : ]
+
+			parc_data_file = "%s_%s_%s.npy" % ( paths[ "mvpa" ][ "parc_data" ],
+			                                    roi_name,
+			                                    conf[ "ana" ][ "parc_lbl" ][ i_parc ]
+			                                  )
+
+			np.save( parc_data_file, parc_data )
+
+			parc_info_file = "%s_%s_%s.npy" % ( paths[ "mvpa" ][ "parc_info" ],
+			                                    roi_name,
+			                                    conf[ "ana" ][ "parc_lbl" ][ i_parc ]
+			                                  )
+
+			np.save( parc_info_file, parc_info )
+
 
 
 def info( paths, conf ):
@@ -188,51 +218,60 @@ def blk_data_xtr( paths, conf ):
 
 	blk_data_info = np.load( paths[ "mvpa" ][ "blk_data_info" ] )
 
-	for hemi in [ "lh", "rh" ]:
+	for ( roi_name, _ ) in conf[ "ana" ][ "rois" ]:
 
-		# data is runs x nodes x time
-		data = np.load( "%s-%s.npy" % ( paths[ "mvpa" ][ "data" ], hemi ) )
-		data_info = np.load( "%s-%s.npy" % ( paths[ "mvpa" ][ "data_info" ], hemi ) )
+		for parc_lbl in conf[ "ana" ][ "parc_lbl" ]:
 
-		( n_runs, n_nodes, n_vols ) = data.shape
-		( _, n_blocks, _ ) = blk_data_info.shape
+			parc_data_file = "%s_%s_%s.npy" % ( paths[ "mvpa" ][ "parc_data" ],
+			                                    roi_name,
+			                                    parc_lbl
+			                                  )
 
-		blk_data = np.empty( ( n_runs, n_blocks, n_nodes ) )
-		blk_data.fill( np.NAN )
+			# parc_data is runs x nodes x time
+			parc_data = np.load( parc_data_file )
 
-		for i_run in xrange( n_runs ):
+			( n_runs, n_nodes, n_vols ) = parc_data.shape
+			( _, n_blocks, _ ) = blk_data_info.shape
 
-			for i_block in xrange( n_blocks ):
+			blk_data = np.empty( ( n_runs, n_blocks, n_nodes ) )
+			blk_data.fill( np.NAN )
 
-				# onset volume for this block, HRF corrected
-				i_block_start = blk_data_info[ i_run, i_block, 0 ]
+			for i_run in xrange( n_runs ):
 
-				# get the volume range for this block
-				i_vol_range = np.arange( i_block_start,
-				                         i_block_start + n_vol_per_block,
-				                       ).astype( "int" )
+				for i_block in xrange( n_blocks ):
 
-				# this extraction flips the dimensions around; `blk_tc` is vol x node,
-				# surprisingly
-				blk_tc = data[ i_run, :, i_vol_range ]
+					# onset volume for this block, HRF corrected
+					i_block_start = blk_data_info[ i_run, i_block, 0 ]
 
-				# just verify that is indeed the case
-				assert( blk_tc.shape == ( len( i_vol_range ), n_nodes ) )
+					# get the volume range for this block
+					i_vol_range = np.arange( i_block_start,
+					                         i_block_start + n_vol_per_block,
+					                       ).astype( "int" )
 
-				# ... because we want to average over the vol dimension
-				blk_mean = np.mean( blk_tc, axis = 0 )
+					# this extraction flips the dimensions around; `blk_tc` is vol x node,
+					# surprisingly
+					blk_tc = parc_data[ i_run, :, i_vol_range ]
 
-				# average over block timepoints
-				blk_data[ i_run, i_block, : ] = blk_mean
+					# just verify that is indeed the case
+					assert( blk_tc.shape == ( len( i_vol_range ), n_nodes ) )
 
-			# z-score all the blocks in this run, for each node
-			blk_data[ i_run, :, : ] = scipy.stats.zscore( blk_data[ i_run, :, : ],
-			                                              axis = 0
-			                                            )
+					# ... because we want to average over the vol dimension
+					blk_mean = np.mean( blk_tc, axis = 0 )
 
-		blk_file = "%s-%s.npy" % ( paths[ "mvpa" ][ "blk_data" ], hemi )
+					# average over block timepoints
+					blk_data[ i_run, i_block, : ] = blk_mean
 
-		np.save( blk_file, blk_data )
+				# z-score all the blocks in this run, for each node
+				blk_data[ i_run, :, : ] = scipy.stats.zscore( blk_data[ i_run, :, : ],
+				                                              axis = 0
+				                                            )
+
+			blk_file = "%s_%s_%s.npy" % ( paths[ "mvpa" ][ "blk_data" ],
+			                              roi_name,
+			                              parc_lbl
+			                            )
+
+			np.save( blk_file, blk_data )
 
 
 def searchlight( paths, conf ):

@@ -248,13 +248,16 @@ def _get_analysis_conf( conf ):
 
 	hrf_corr_vol = 3
 
-	# radius of the searchlight, in nodes
-	slight_r = 4
-
 	rois = [ [ "v1", "1" ],
 	         [ "v2", "2" ],
 	         [ "v3", "3" ]
 	      ]
+
+	i_parc = [ [ 2, 4 ],  # ( +, 0 ) | ( 0, + )
+	           [ 5 ]      # ( 0, 0 )
+	         ]
+
+	parc_lbl = [ "stim", "blnk" ]
 
 	ana_conf = { "exp_pre_cull_s" : exp_pre_cull_s,
 	             "exp_post_cull_s" : exp_post_cull_s,
@@ -264,7 +267,8 @@ def _get_analysis_conf( conf ):
 	             "hrf_model" : hrf_model,
 	             "hrf_corr_vol" : hrf_corr_vol,
 	             "poly_ord" : poly_ord,
-	             "slight_r" : slight_r,
+	             "i_parc" : i_parc,
+	             "parc_lbl" : parc_lbl,
 	             "rois" : rois
 	           }
 
@@ -279,6 +283,22 @@ def _get_subj_conf( subj_id = None ):
 	          "n_runs" : 12,
 	          "n_exp_runs" : 10,
 	          "n_loc_runs" : 2,
+	          "func_dcm" : [ "PN-ANON-ST001-SE004-0001.dcm",
+	                         "PN-ANON-ST001-SE005-0001.dcm",
+	                         "PN-ANON-ST001-SE006-0001.dcm",
+	                         "PN-ANON-ST001-SE007-0001.dcm",
+	                         "PN-ANON-ST001-SE008-0001.dcm",
+	                         "PN-ANON-ST001-SE009-0001.dcm",
+	                         "PN-ANON-ST001-SE012-0001.dcm",
+	                         "PN-ANON-ST001-SE013-0001.dcm",
+	                         "PN-ANON-ST001-SE014-0001.dcm",
+	                         "PN-ANON-ST001-SE015-0001.dcm",
+	                         "PN-ANON-ST001-SE016-0001.dcm",
+	                         "PN-ANON-ST001-SE017-0001.dcm",
+	                       ],
+	          "fmap_dcm" : [ "PN-ANON-ST001-SE010-0001.dcm",
+	                         "PN-ANON-ST001-SE011-0001.dcm"
+	                       ],
 	          "n_fmaps" : 1,
 	          "mot_base" : 7,
 	          "nudge_vals" : [ -25, 0, -17 ],
@@ -296,6 +316,22 @@ def _get_subj_conf( subj_id = None ):
 	          "n_exp_runs" : 10,
 	          "n_loc_runs" : 2,
 	          "n_fmaps" : 1,
+	          "func_dcm" : [ "PN-ANON-ST001-SE003-0001.dcm",
+	                         "PN-ANON-ST001-SE004-0001.dcm",
+	                         "PN-ANON-ST001-SE005-0001.dcm",
+	                         "PN-ANON-ST001-SE006-0001.dcm",
+	                         "PN-ANON-ST001-SE007-0001.dcm",
+	                         "PN-ANON-ST001-SE008-0001.dcm",
+	                         "PN-ANON-ST001-SE011-0001.dcm",
+	                         "PN-ANON-ST001-SE012-0001.dcm",
+	                         "PN-ANON-ST001-SE013-0001.dcm",
+	                         "PN-ANON-ST001-SE014-0001.dcm",
+	                         "PN-ANON-ST001-SE015-0001.dcm",
+	                         "PN-ANON-ST001-SE016-0001.dcm"
+	                      ],
+	          "fmap_dcm" : [ "PN-ANON-ST001-SE009-0001.dcm",
+	                         "PN-ANON-ST001-SE010-0001.dcm"
+	                       ],
 	          "mot_base" : 7,
 	          "nudge_vals" : [ -50, 0, -14 ],
 	          "exp_runs" : [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ],
@@ -312,6 +348,22 @@ def _get_subj_conf( subj_id = None ):
 	          "n_exp_runs" : 10,
 	          "n_loc_runs" : 2,
 	          "n_fmaps" : 1,
+	          "func_dcm" : [ "PN-ANON-ST001-SE004-0001.dcm",
+	                         "PN-ANON-ST001-SE005-0001.dcm",
+	                         "PN-ANON-ST001-SE006-0001.dcm",
+	                         "PN-ANON-ST001-SE007-0001.dcm",
+	                         "PN-ANON-ST001-SE008-0001.dcm",
+	                         "PN-ANON-ST001-SE009-0001.dcm",
+	                         "PN-ANON-ST001-SE012-0001.dcm",
+	                         "PN-ANON-ST001-SE013-0001.dcm",
+	                         "PN-ANON-ST001-SE014-0001.dcm",
+	                         "PN-ANON-ST001-SE015-0001.dcm",
+	                         "PN-ANON-ST001-SE016-0001.dcm",
+	                         "PN-ANON-ST001-SE017-0001.dcm",
+	                       ],
+	          "fmap_dcm" : [ "PN-ANON-ST001-SE010-0001.dcm",
+	                         "PN-ANON-ST001-SE011-0001.dcm"
+	                       ],
 	          "mot_base" : 7,
 	          "nudge_vals" : [ -17, -2, -14 ],
 	          "exp_runs" : [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ],
@@ -330,6 +382,23 @@ def _get_subj_conf( subj_id = None ):
 	          "n_exp_runs" : 10,
 	          "n_loc_runs" : 2,
 	          "n_fmaps" : 1,
+	          "func_dcm" : [ "PN-ANON-ST001-SE003-0001.dcm",
+	                         "PN-ANON-ST001-SE004-0001.dcm",
+	                         "PN-ANON-ST001-SE005-0001.dcm",
+	                         "PN-ANON-ST001-SE006-0001.dcm",
+	                         "PN-ANON-ST001-SE007-0001.dcm",
+	                         "PN-ANON-ST001-SE008-0001.dcm",
+	                         "PN-ANON-ST001-SE011-0001.dcm",
+	                         "PN-ANON-ST001-SE012-0001.dcm",
+	                         "PN-ANON-ST001-SE013-0001.dcm",
+	                         "PN-ANON-ST001-SE014-0001.dcm",
+	                         "PN-ANON-ST001-SE015-0001.dcm",
+	                         "PN-ANON-ST001-SE016-0001.dcm"
+	                      ],
+	          "fmap_dcm" : [ "PN-ANON-ST001-SE009-0001.dcm",
+	                         "PN-ANON-ST001-SE010-0001.dcm"
+	                       ],
+
 	          "mot_base" : 7,
 	          "nudge_vals" : [ -25, -6, -18 ],
 	          "exp_runs" : [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ],
@@ -346,6 +415,23 @@ def _get_subj_conf( subj_id = None ):
 	          "n_exp_runs" : 10,
 	          "n_loc_runs" : 2,
 	          "n_fmaps" : 1,
+	          "func_dcm" : [ "PN-ANON-ST001-SE003-0001.dcm",
+	                         "PN-ANON-ST001-SE004-0001.dcm",
+	                         "PN-ANON-ST001-SE005-0001.dcm",
+	                         "PN-ANON-ST001-SE006-0001.dcm",
+	                         "PN-ANON-ST001-SE007-0001.dcm",
+	                         "PN-ANON-ST001-SE008-0001.dcm",
+	                         "PN-ANON-ST001-SE011-0001.dcm",
+	                         "PN-ANON-ST001-SE012-0001.dcm",
+	                         "PN-ANON-ST001-SE013-0001.dcm",
+	                         "PN-ANON-ST001-SE014-0001.dcm",
+	                         "PN-ANON-ST001-SE015-0001.dcm",
+	                         "PN-ANON-ST001-SE016-0001.dcm"
+	                      ],
+	          "fmap_dcm" : [ "PN-ANON-ST001-SE009-0001.dcm",
+	                         "PN-ANON-ST001-SE010-0001.dcm"
+	                       ],
+
 	          "mot_base" : 7,
 	          "nudge_vals" : [ -11, -1, -14 ],
 	          "exp_runs" : [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ],

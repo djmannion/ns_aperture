@@ -259,6 +259,10 @@ def _get_analysis_conf( conf ):
 
 	parc_lbl = [ "stim", "blnk" ]
 
+	rfe_levels = 10
+
+	rfe_cull_p = 0.25
+
 	ana_conf = { "exp_pre_cull_s" : exp_pre_cull_s,
 	             "exp_post_cull_s" : exp_post_cull_s,
 	             "loc_run_start_s" : loc_run_start_s,
@@ -269,6 +273,8 @@ def _get_analysis_conf( conf ):
 	             "poly_ord" : poly_ord,
 	             "i_parc" : i_parc,
 	             "parc_lbl" : parc_lbl,
+	             "rfe_levels" : rfe_levels,
+	             "rfe_cull_p" : rfe_cull_p,
 	             "rois" : rois
 	           }
 

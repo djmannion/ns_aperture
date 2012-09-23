@@ -274,13 +274,15 @@ def blk_data_xtr( paths, conf ):
 			np.save( blk_file, blk_data )
 
 
-def searchlight( paths, conf ):
-	"""Runs a searchlight analysis"""
+def rfe_classify( paths, conf ):
+	"""Runs recursive feature elimination classification"""
 
 	# load the info for each block, which doesn't depend on hemisphere
 	blk_data_info = np.load( paths[ "mvpa" ][ "blk_data_info" ] )
 
 	svm_temp_dir = os.path.join( paths[ "mvpa" ][ "base_dir" ], "svm_temp" )
+
+	log_path = paths[ "mvpa" ][ "log_file" ]
 
 	train_info = [ [ 2, 3, 4, 5, 6, 7, 8, 9 ],
 	               [ 0, 1, 4, 5, 6, 7, 8, 9 ],
@@ -296,135 +298,229 @@ def searchlight( paths, conf ):
 	              [ 8, 9 ]
 	            ]
 
-	# analysis proceeds separately for the two hemispheres
-	for hemi in [ "lh", "rh" ]:
+	for ( roi_name, _ ) in conf[ "ana" ][ "rois" ]:
 
-		# load the all-important data
-		blk_data = np.load( "%s-%s.npy" % ( paths[ "mvpa" ][ "blk_data" ],
-		                                    hemi
-		                                  )
-		                  )
+		for parc_lbl in conf[ "ana" ][ "parc_lbl" ]:
 
-		# ... and the data info; ( ( node index, roi ), node )
-		data_info = np.load( "%s-%s.npy" % ( paths[ "mvpa" ][ "data_info" ],
-		                                     hemi
-		                                   )
-		                   )
+			roi_parc_dir = os.path.join( paths[ "mvpa" ][ "rfe_base_dir" ],
+			                             "%s_%s" % ( roi_name, parc_lbl )
+			                           )
 
-		( n_runs, n_blocks, n_nodes ) = blk_data.shape
+			blk_data_file = "%s_%s_%s.npy" % ( paths[ "mvpa" ][ "blk_data" ],
+			                                   roi_name,
+			                                   parc_lbl
+			                                 )
 
-		assert( len( test_info ) == len( train_info ) )
+			blk_data = np.load( blk_data_file )
 
-		n_folds = len( train_info )
+			( n_runs, n_blocks, n_nodes ) = blk_data.shape
 
-		# first step is to transform the ROI dataset into a more readable form
+			svm_runs = zip( train_info, test_info )
 
-		# we don't need (or want) the full version here, since we write out the
-		# node indices
-		roi_file = "%s_%s.niml.dset" % ( paths[ "rois" ][ "dset" ], hemi )
-		seed_node_file = "%s_%s" % ( paths[ "mvpa" ][ "nodes" ], hemi )
+			n_folds = len( svm_runs )
 
-		conv_cmd = [ "ConvertDset",
-		             "-o_1D",  # output format, 1D
-		             "-input", roi_file,
-		             "-prepend_node_index_1D",
-		             "-overwrite",
-		             "-prefix", seed_node_file
-		           ]
+			acc = np.empty( ( n_folds, conf[ "ana" ][ "rfe_levels" ] ) )
 
-		fmri_tools.utils.run_cmd( conv_cmd,
-		                          env = fmri_tools.utils.get_env(),
-		                          log_path = paths[ "summ" ][ "log_file" ]
-		                        )
+			for ( i_fold, ( train_runs, test_runs ) ) in enumerate( svm_runs ):
 
-		# now load the resulting nodes file
-		seed_nodes = np.loadtxt( "%s.1D.dset" % seed_node_file ).astype( "int" )
+				fold_dir = os.path.join( roi_parc_dir, "fold%02d" % ( i_fold + 1 ) )
 
-		# path to a text file containing the current node number
-		curr_seed_file = os.path.join( paths[ "mvpa" ][ "base_dir" ],
-		                               "curr_seed.1D"
-		                             )
+				# check that there is no contamination of train and test sets
+				assert( set.isdisjoint( set( train_runs ), set( test_runs ) ) )
 
-		# base path for the current disk ROI info
-		curr_disk_file = os.path.join( paths[ "mvpa" ][ "base_dir" ],
-		                               "curr_disk"
-		                             )
+				train_data = blk_data[ train_runs, :, : ]
+				train_data_info = blk_data_info[ train_runs, :, 1 ]
 
-		pbar = progressbar.ProgressBar( widgets = [ progressbar.Percentage(),
-		                                            progressbar.Bar()
-		                                          ],
-		                                maxval = seed_nodes.shape[ 0 ]
-		                              ).start()
+				( n_train_runs, n_train_blocks, n_train_nodes ) = train_data.shape
 
-		acc = np.empty( ( n_nodes, n_folds ) )
-		acc.fill( np.NAN )
+				n_splits = int( n_train_runs / 2 )
 
-		# iterate through each seed node
-		for ( i_seed_node, seed_node ) in enumerate( seed_nodes[ :, 0 ] ):
+				test_data = blk_data[ test_runs, :, : ]
+				test_data_info = blk_data_info[ test_runs, :, 1 ]
 
-			pbar.update( i_seed_node )
+				( n_test_runs, n_test_blocks, n_test_nodes ) = test_data.shape
 
-			# write the current node to a file
-			np.savetxt( curr_seed_file, [ seed_node ] )
+				for i_level in xrange( conf[ "ana" ][ "rfe_levels" ] ):
 
-			grow_cmd = [ "ROIgrow",
-			             "-i", "%s-%s.asc" % ( paths[ "reg" ][ "flat" ], hemi ),
-			             "-roi_nodes", curr_seed_file,
-			             "-lim", "%d" % conf[ "ana" ][ "slight_r" ],
-			             "-prefix", curr_disk_file,
-			             "-overwrite"
-			           ]
+					level_dir = os.path.join( fold_dir, "rfe%02d" % ( i_level + 1 ) )
 
-			fmri_tools.utils.run_cmd( grow_cmd,
-			                          env = fmri_tools.utils.get_env(),
-			                          log_path = paths[ "summ" ][ "log_file" ]
-			                        )
+					split_wgt = np.empty( ( n_train_nodes, n_splits ) )
+					split_wgt.fill( np.NAN )
 
-			# load the nodes corresponding to this seed node
-			disk_nodes = np.loadtxt( "%s.1D" % curr_disk_file ).astype( "int" )
+					for i_split in xrange( n_splits ):
 
-			if disk_nodes.size == 1:
-				disk_nodes = np.array( [ disk_nodes ] )
+						split_dir = os.path.join( level_dir, "split%02d" % ( i_split + 1 ) )
 
-			disk_data = np.empty( ( n_runs, n_blocks, len( disk_nodes ) ) )
-			disk_data.fill( np.NAN )
+						# extract training data for this split
+						i_split_runs = np.delete( np.arange( n_train_runs ),
+						                          [ i_split * 2, i_split * 2 + 1 ]
+						                        )
 
-			i_disk_nodes = []
+						split_data = train_data[ i_split_runs, :, : ]
+						split_data_info = train_data_info[ i_split_runs, : ]
 
-			for disk_node in disk_nodes:
+						split_wgt[ :, i_split ] = _get_split_weights( split_dir,
+						                                              split_data,
+						                                              split_data_info,
+						                                              None  # log_path
+						                                            )
 
-				i = np.where( data_info[ 0, : ] == disk_node )[ 0 ]
+					# average weights over splits
+					wgt = np.mean( split_wgt, axis = 1 )
 
-				if i.size == 1:
+					# sort |weights| (in ascending order )
+					i_wgt = np.argsort( np.abs( wgt ) )
 
-					i_disk_node = i[ 0 ]
+					# cull lowest performing weights
+					n_to_cull = np.round( n_train_nodes * conf[ "ana" ][ "rfe_cull_p" ] )
 
-					if i_disk_node < n_nodes:
+					# update
+					train_data = train_data[ :, :, i_wgt[ n_to_cull: ] ]
+					n_train_nodes = train_data.shape[ -1 ]
 
-						poss_data = blk_data[ ..., i_disk_node ]
+					test_data = test_data[ :, :, i_wgt[ n_to_cull: ] ]
+					n_test_nodes = test_data.shape[ -1 ]
 
-						# have to be wary of the occasional NaN
-						if np.logical_not( np.any( np.isnan( poss_data ) ) ):
-							i_disk_nodes.append( i_disk_node )
+					[ lvl_acc, lvl_wgt ] = _run_level( level_dir,
+					                                   train_data,
+					                                   train_data_info,
+					                                   test_data,
+					                                   test_data_info,
+					                                   None  #log_path
+					                                 )
 
-			i_disk_nodes = np.array( i_disk_nodes ).astype( "int" )
+					acc[ i_fold, i_level ] = lvl_acc
 
-			disk_data = blk_data[ :, :, i_disk_nodes ]
+			acc_file = os.path.join( roi_parc_dir,
+			                         "%s_%s_%s.txt" % ( paths[ "mvpa" ][ "acc_base" ],
+			                                            roi_name,
+			                                            parc_lbl
+			                                          )
+			                       )
 
-			assert( disk_data.shape == ( n_runs, n_blocks, len( i_disk_nodes ) ) )
+			np.savetxt( acc_file, acc )
 
-			# now we have our data set, can run the classification
-			acc[ i_seed_node, : ] = _svm_classify( disk_data,
-			                                       blk_data_info,
-			                                       train_info,
-			                                       test_info,
-			                                       svm_temp_dir,
-			                                       paths[ "mvpa" ][ "log_file" ]
-			                                     )
 
-		pbar.finish()
+def _run_level( level_dir,
+                train_data,
+                train_data_info,
+                test_data,
+                test_data_info,
+                log_path
+              ):
+	"""Run a train-and-test procedure for an RFE level"""
 
-		np.savetxt( "%s-%s.txt" % ( paths[ "mvpa" ][ "acc" ], hemi ), acc )
+	# learn from all train data
+	train_str = _get_svm_str( train_data, train_data_info )
+
+	train_path = os.path.join( level_dir, "train.txt" )
+
+	with open( train_path, "w" ) as train_file:
+		train_file.write( train_str )
+
+	model_path = os.path.join( level_dir, "model.txt" )
+	weight_path = os.path.join( level_dir, "weight.txt" )
+
+	train_cmd = [ "svm_learn",
+	              train_path,
+	              model_path
+	            ]
+
+	fmri_tools.utils.run_cmd( train_cmd,
+	                          env = fmri_tools.utils.get_env(),
+	                          log_path = log_path
+	                        )
+
+	# extract weights
+	wgt_cmd = [ "svm2weight.pl",
+	            model_path
+	          ]
+
+	wgt = fmri_tools.utils.run_cmd( wgt_cmd,
+	                                env = fmri_tools.utils.get_env(),
+	                                log_path = "return"
+	                              )
+
+	wgt = np.array( wgt.splitlines() ).astype( "float" )
+
+	np.savetxt( weight_path, wgt )
+
+	# apply to test data
+	test_str = _get_svm_str( test_data, test_data_info )
+
+	test_path = os.path.join( level_dir, "test.txt" )
+
+	with open( test_path, "w" ) as test_file:
+		test_file.write( test_str )
+
+	pred_path = os.path.join( level_dir, "pred.txt" )
+
+	test_cmd = [ "svm_classify",
+	              test_path,
+	              model_path,
+	              pred_path
+	            ]
+
+	fmri_tools.utils.run_cmd( test_cmd,
+	                          env = fmri_tools.utils.get_env(),
+	                          log_path = log_path
+	                        )
+
+	pred = np.loadtxt( pred_path )
+
+	true_conds = []
+
+	for i_run in xrange( test_data_info.shape[ 0 ] ):
+		for i_block in xrange( test_data_info.shape[ 1 ] ):
+
+			ex_cond = test_data_info[ i_run, i_block ]
+
+			true_conds.append( ex_cond )
+
+	acc = np.sum( true_conds == np.sign( pred ) ) / len( pred ) * 100
+
+	return [ acc, wgt ]
+
+
+def _get_split_weights( split_dir, split_data, split_data_info, log_path ):
+	"""Returns the weights from a given RFE split"""
+
+	# learn SVM
+	train_str = _get_svm_str( split_data, split_data_info )
+
+	train_path = os.path.join( split_dir, "train.txt" )
+
+	with open( train_path, "w" ) as train_file:
+		train_file.write( train_str )
+
+	model_path = os.path.join( split_dir, "model.txt" )
+	weight_path = os.path.join( split_dir, "weight.txt" )
+
+	train_cmd = [ "svm_learn",
+	              train_path,
+	              model_path
+	            ]
+
+	fmri_tools.utils.run_cmd( train_cmd,
+	                          env = fmri_tools.utils.get_env(),
+	                          log_path = log_path
+	                        )
+
+	# extract weights
+	wgt_cmd = [ "svm2weight.pl",
+	            model_path
+	          ]
+
+	wgt = fmri_tools.utils.run_cmd( wgt_cmd,
+	                                env = fmri_tools.utils.get_env(),
+	                                log_path = "return"
+	                              )
+
+	wgt = np.array( wgt.splitlines() ).astype( "float" )
+
+	np.savetxt( weight_path, wgt )
+
+	return wgt
 
 
 def write_searchlight( paths, conf ):
@@ -468,6 +564,34 @@ def write_searchlight( paths, conf ):
 
 
 	os.chdir( start_dir )
+
+
+def _get_svm_str( blk_data, blk_data_info ):
+	"""Returns a string in SVMlight format"""
+
+	( n_runs, n_blocks, n_nodes ) = blk_data.shape
+
+	assert( blk_data_info.shape[ 0 ] == n_runs )
+	assert( blk_data_info.shape[ 1 ] == n_blocks )
+
+	svm_str = ""
+
+	for i_run in xrange( n_runs ):
+		for i_block in xrange( n_blocks ):
+
+			blk_cond = blk_data_info[ i_run, i_block ]
+
+			svm_str += "%+d" % blk_cond
+
+			for i_node in xrange( n_nodes ):
+
+				svm_str += " %d:%.12f" % ( i_node + 1,
+				                           blk_data[ i_run, i_block, i_node ]
+				                         )
+
+			svm_str += "\n"
+
+	return svm_str
 
 
 def _svm_classify( blk_data,

@@ -338,6 +338,9 @@ def _get_mvpa_paths( conf, paths ):
 
 	mvpa[ "base_dir" ] = mvpa_dir
 
+
+	mvpa[ "rfe_base_dir" ] = os.path.join( mvpa_dir, "rfe" )
+
 	filt_files = [ os.path.join( mvpa_dir,
 	                             "filt",
 	                             os.path.split( surf_file )[ 1 ].replace( "surf", "surf_filt" )
@@ -381,9 +384,7 @@ def _get_mvpa_paths( conf, paths ):
 	                                "%s_%s-nodes" % ( subj_id, id )
 	                              )
 
-	mvpa[ "acc" ] = os.path.join( mvpa_dir,
-	                              "%s_%s-acc" % ( subj_id, id )
-	                            )
+	mvpa[ "acc_base" ] = os.path.join( "%s_%s-acc" % ( subj_id, id ) )
 
 	mvpa[ "acc_mean" ] = os.path.join( mvpa_dir,
 	                                   "%s_%s-acc_mean" % ( subj_id, id )

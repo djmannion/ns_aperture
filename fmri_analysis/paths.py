@@ -386,6 +386,8 @@ def _get_mvpa_paths( conf, paths ):
 
 	mvpa[ "acc_base" ] = os.path.join( "%s_%s-acc" % ( subj_id, id ) )
 
+	mvpa[ "node_wgt_base" ] = os.path.join( "%s_%s-node_wgt" % ( subj_id, id ) )
+
 	mvpa[ "acc_mean" ] = os.path.join( mvpa_dir,
 	                                   "%s_%s-acc_mean" % ( subj_id, id )
 	                                 )

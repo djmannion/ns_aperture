@@ -60,7 +60,7 @@ def main():
 	               "info",
 	               "blk_data_xtr",
 	               "rfe_classify",
-	               "write_searchlight",
+	               "weight_maps",
 	               "raw_adj",
 	               "roi_tc",
 	               "svm_roi_xtr",
@@ -100,8 +100,8 @@ def main():
 	elif args.proc_step == "rfe_classify":
 		ns_aperture.fmri_analysis.mvpa.rfe_classify( paths, conf )
 
-	elif args.proc_step == "write_searchlight":
-		ns_aperture.fmri_analysis.mvpa.write_searchlight( paths, conf )
+	elif args.proc_step == "weight_maps":
+		ns_aperture.fmri_analysis.mvpa.weight_maps( paths, conf )
 
 	elif args.proc_step == "roi_tc":
 		ns_aperture.analysis.subj_analysis.roi_tc( paths, conf )

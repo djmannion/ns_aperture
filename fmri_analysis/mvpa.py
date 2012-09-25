@@ -623,6 +623,111 @@ def _get_split_weights( split_dir, split_data, split_data_info, log_path ):
 	return wgt
 
 
+def weight_maps( paths, conf ):
+	"""Writes the weight maps to datasets"""
+
+	for ( ( roi_name, _ ), parc_lbl ) in itertools.product( conf[ "ana" ][ "rois" ],
+	                                                        conf[ "ana" ][ "parc_lbl" ]
+	                                                      ):
+
+		roi_parc_dir = os.path.join( paths[ "mvpa" ][ "rfe_base_dir" ],
+		                             "%s_%s" % ( roi_name, parc_lbl )
+		                           )
+
+		os.chdir( roi_parc_dir )
+
+		n_folds = 5
+
+		for ( i_hemi, hemi ) in enumerate( [ "lh", "rh" ] ):
+
+			hemi_dsets = []
+
+			for i_fold in xrange( n_folds ):
+
+				fold_dir = os.path.join( roi_parc_dir, "fold%02d" % ( i_fold + 1 ) )
+
+				for i_level in xrange( conf[ "ana" ][ "rfe_levels" ] ):
+
+					level_dir = os.path.join( fold_dir, "rfe%02d" % ( i_level + 1 ) )
+
+					node_and_wgt_file = os.path.join( level_dir,
+					                                  "%s_%s_%s_fold_%02d.txt" % (
+					                                    paths[ "mvpa" ]["node_wgt_base" ],
+					                                    roi_name,
+					                                    parc_lbl,
+					                                    ( i_fold + 1 )
+					                                  )
+					                                )
+
+					wgt_etc = np.loadtxt( node_and_wgt_file )
+
+					wgt_etc_hemi = wgt_etc[ wgt_etc[ :, 1 ] == i_hemi, : ][ :, [ 0, 2 ] ]
+
+					node_file = os.path.join( level_dir, "nodes_%s.1D" % hemi )
+					np.savetxt( node_file, wgt_etc_hemi[ :, 0 ] )
+
+					weight_file = os.path.join( level_dir, "weights_%s.1D" % hemi )
+					np.savetxt( weight_file, wgt_etc_hemi[ :, 1 ] )
+
+					dset_file = os.path.join( level_dir, "dset_%s-full.niml.dset" % hemi )
+
+					conv_cmd = [ "ConvertDset",
+					             "-i_1D",
+					             "-input", weight_file,
+					             "-node_index_1D", node_file,
+					             "-o_niml",
+					             "-prefix", dset_file,
+					             "-pad_to_node", "%d" % conf[ "subj" ][ "node_k" ][ hemi ],
+					             "-overwrite"
+					           ]
+
+					fmri_tools.utils.run_cmd( conv_cmd,
+					                          env = fmri_tools.utils.get_env(),
+					                          log_path = paths[ "summ" ][ "log_file" ]
+					                        )
+
+					hemi_dsets.append( dset_file )
+
+			cat_file = os.path.join( roi_parc_dir,
+			                         "cat_weights_%s-full.niml.dset" % hemi
+			                       )
+
+			# cat them all together
+			cat_cmd = [ "3dTcat",
+			            "-overwrite",
+			            "-prefix", cat_file
+			          ]
+
+			cat_cmd.extend( hemi_dsets )
+
+			fmri_tools.utils.run_cmd( cat_cmd,
+			                          env = fmri_tools.utils.get_env(),
+			                          log_path = paths[ "summ" ][ "log_file" ]
+			                        )
+
+			mean_file = os.path.join( roi_parc_dir,
+			                          "%s_%s_%s_%s-full.niml.dset" % (
+			                            paths[ "mvpa" ][ "wgt_base" ],
+			                            roi_name,
+			                            parc_lbl,
+			                            hemi
+			                          )
+			                        )
+
+			mean_cmd = [ "3dMean",
+			             "-overwrite",
+			             "-prefix", mean_file
+			           ]
+
+			mean_cmd.extend( hemi_dsets )
+
+			fmri_tools.utils.run_cmd( mean_cmd,
+			                          env = fmri_tools.utils.get_env(),
+			                          log_path = paths[ "summ" ][ "log_file" ]
+			                        )
+
+
+
 def write_searchlight( paths, conf ):
 	"""Write the searchlight analysis to surface datasets"""
 

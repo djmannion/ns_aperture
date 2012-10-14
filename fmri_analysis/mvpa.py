@@ -10,7 +10,6 @@ import itertools
 
 import numpy as np
 import scipy.stats
-import progressbar
 
 import fmri_tools.utils
 
@@ -275,7 +274,7 @@ def blk_data_xtr( paths, conf ):
 		# parc_data is runs x nodes x time
 		parc_data = np.load( parc_data_file )
 
-		( n_runs, n_nodes, n_vols ) = parc_data.shape
+		( n_runs, n_nodes, _ ) = parc_data.shape
 		( _, n_blocks, _ ) = blk_data_info.shape
 
 		blk_data = np.empty( ( n_runs, n_blocks, n_nodes ) )
@@ -326,8 +325,6 @@ def rfe_classify( paths, conf ):
 	# blk_data_info is runs x blocks x details ( 0 = onset, 1 = cond )
 	blk_data_info = np.load( paths[ "mvpa" ][ "blk_data_info" ] )
 
-	svm_temp_dir = os.path.join( paths[ "mvpa" ][ "base_dir" ], "svm_temp" )
-
 	log_path = paths[ "mvpa" ][ "log_file" ]
 
 	# run *indices* providing the training data for each fold
@@ -362,7 +359,7 @@ def rfe_classify( paths, conf ):
 		# blk_data is runs x blocks x nodes
 		blk_data = np.load( blk_data_file )
 
-		( n_runs, n_blocks, n_nodes ) = blk_data.shape
+		( _, n_blocks, n_nodes ) = blk_data.shape
 
 		parc_info_file = "%s_%s_%s.npy" % ( paths[ "mvpa" ][ "parc_info" ],
 		                                    roi_name,
@@ -401,7 +398,7 @@ def rfe_classify( paths, conf ):
 
 			assert( train_data_info.shape == ( len( train_runs ), n_blocks ) )
 
-			( n_train_runs, n_train_blocks, n_train_nodes ) = train_data.shape
+			( n_train_runs, _, n_train_nodes ) = train_data.shape
 
 			# make a copy of the node indices to use for this fold
 			i_fold_nodes = i_nodes
@@ -412,8 +409,6 @@ def rfe_classify( paths, conf ):
 
 			test_data = blk_data[ test_runs, :, : ]
 			test_data_info = blk_data_info[ test_runs, :, 1 ]
-
-			( n_test_runs, n_test_blocks, n_test_nodes ) = test_data.shape
 
 			for i_level in xrange( conf[ "ana" ][ "rfe_levels" ] ):
 
@@ -455,6 +450,8 @@ def rfe_classify( paths, conf ):
 
 				test_data = test_data[ :, :, i_wgt[ n_to_cull: ] ]
 				n_test_nodes = test_data.shape[ -1 ]
+
+				assert( n_train_nodes == n_test_nodes )
 
 				# cull from the list of node indices
 				i_fold_nodes = i_fold_nodes[ i_wgt[ n_to_cull: ] ]
@@ -727,50 +724,6 @@ def weight_maps( paths, conf ):
 			                        )
 
 
-
-def write_searchlight( paths, conf ):
-	"""Write the searchlight analysis to surface datasets"""
-
-	start_dir = os.getcwd()
-
-	os.chdir( paths[ "mvpa" ][ "base_dir" ] )
-
-	for hemi in [ "lh", "rh" ]:
-
-		acc_txt_file = "%s-%s.txt" % ( paths[ "mvpa" ][ "acc" ], hemi )
-
-		# acc is nodes x folds
-		acc = np.loadtxt( acc_txt_file )
-
-		# average over folds
-		acc = np.mean( acc, axis = 1 )
-
-		acc_mean_file = "%s-%s.txt" % ( paths[ "mvpa" ][ "acc_mean" ], hemi )
-
-		np.savetxt( acc_mean_file, acc )
-
-		seed_node_file = "%s_%s.1D.dset" % ( paths[ "mvpa" ][ "nodes" ], hemi )
-
-		out_file = "%s-%s.niml.dset" % ( paths[ "mvpa" ][ "acc" ], hemi )
-
-		conv_cmd = [ "ConvertDset",
-		             "-o_niml",
-		             "-input", acc_mean_file,
-		             "-node_index_1D", "%s[0]" % seed_node_file,
-		             "-i_1D",
-		             "-overwrite",
-		             "-prefix", out_file
-		           ]
-
-		fmri_tools.utils.run_cmd( conv_cmd,
-		                          env = fmri_tools.utils.get_env(),
-		                          log_path = paths[ "summ" ][ "log_file" ]
-		                        )
-
-
-	os.chdir( start_dir )
-
-
 def _get_svm_str( blk_data, blk_data_info ):
 	"""Returns a string in SVMlight format"""
 
@@ -797,183 +750,3 @@ def _get_svm_str( blk_data, blk_data_info ):
 			svm_str += "\n"
 
 	return svm_str
-
-
-def _svm_classify( blk_data,
-                   blk_data_info,
-                   train_info,
-                   test_info,
-                   temp_dir,
-                   log_path
-                 ):
-	"""Helper function to run SVM classification"""
-
-	( n_runs, n_blocks, n_nodes ) = blk_data.shape
-
-	svm_runs = zip( train_info, test_info )
-
-	n_folds = len( svm_runs )
-
-	acc = np.empty( ( n_folds ) )
-	acc.fill( np.NAN )
-
-	for ( i_fold, ( train_runs, test_runs ) ) in enumerate( svm_runs ):
-
-		# check that there is no contamination of train and test sets
-		assert( set.isdisjoint( set( train_runs ), set( test_runs ) ) )
-
-		train_data = blk_data[ train_runs, :, : ]
-
-		( n_train_runs, n_train_blocks, n_train_nodes ) = train_data.shape
-
-		test_data = blk_data[ test_runs, :, : ]
-
-		( n_test_runs, n_test_blocks, n_test_nodes ) = test_data.shape
-
-		train_path = os.path.join( temp_dir, "train.txt" )
-
-		train_file = open( train_path, "w" )
-
-		for i_run in xrange( n_train_runs ):
-			for i_block in xrange( n_train_blocks ):
-
-				ex_cond = blk_data_info[ train_runs[ i_run ], i_block, 1 ]
-
-				ex_str = "%+d" % ex_cond
-
-				for i_node in xrange( n_train_nodes ):
-
-					ex_str += " %d:%.12f" % ( i_node + 1,
-					                          train_data[ i_run, i_block, i_node ]
-					                        )
-
-				train_file.write( "%s\n" % ex_str )
-
-		train_file.close()
-
-		model_path = os.path.join( temp_dir, "model.txt" )
-
-		train_cmd = [ "svm_learn",
-		              train_path,
-		              model_path
-		            ]
-
-		fmri_tools.utils.run_cmd( train_cmd,
-		                          env = fmri_tools.utils.get_env(),
-		                          log_path = log_path
-		                        )
-
-		test_path = os.path.join( temp_dir, "test.txt" )
-
-		test_file = open( test_path, "w" )
-
-		true_conds = []
-
-		for i_run in xrange( n_test_runs ):
-			for i_block in xrange( n_test_blocks ):
-
-				ex_cond = blk_data_info[ test_runs[ i_run ], i_block, 1 ]
-
-				true_conds.append( ex_cond )
-
-				ex_str = "%+d" % ex_cond
-
-				for i_node in xrange( n_test_nodes ):
-
-					ex_str += " %d:%.12f" % ( i_node + 1,
-					                          test_data[ i_run, i_block, i_node ]
-					                        )
-
-				test_file.write( "%s\n" % ex_str )
-
-		true_conds = np.array( true_conds )
-
-		test_file.close()
-
-		pred_path = os.path.join( temp_dir, "pred.txt" )
-
-		test_cmd = [ "svm_classify",
-		              test_path,
-		              model_path,
-		              pred_path
-		            ]
-
-		fmri_tools.utils.run_cmd( test_cmd,
-		                          env = fmri_tools.utils.get_env(),
-		                          log_path = log_path
-		                        )
-
-		pred = np.loadtxt( pred_path )
-
-		acc[ i_fold ] = np.sum( true_conds == np.sign( pred ) ) / len( pred ) * 100
-
-	return acc
-
-
-def svm_roi_loc_stat( paths, conf ):
-	"""Extract the timecourses for each node of each ROI"""
-
-	start_dir = os.getcwd()
-
-	os.chdir( paths[ "loc" ][ "base_dir" ] )
-
-	# lh, rh
-	stat_bricks = [ 2, 5 ]
-
-	for ( roi_name, roi_val ) in conf[ "ana" ][ "rois" ]:
-
-		hemi_data = []
-
-		for hemi in [ "lh", "rh" ]:
-
-			loc_file = "%s_%s_reml-full.niml.dset" % ( paths[ "loc" ][ "glm" ], hemi )
-			comb_file = "%s_%s-full.niml.dset" % ( paths[ "loc" ][ "stat" ], hemi )
-
-			# take the maximum of the two conjuction contrasts
-			stat_cmd = [ "3dcalc",
-			             "-a", "%s[%d]" % ( loc_file, stat_bricks[ 0 ] ),
-			             "-b", "%s[%d]" % ( loc_file, stat_bricks[ 1 ] ),
-			             "-expr", "max( a, b )",
-			             "-prefix", comb_file,
-			             "-overwrite"
-			           ]
-
-			fmri_tools.utils.run_cmd( stat_cmd,
-			                          env = fmri_tools.utils.get_env(),
-			                          log_path = paths[ "summ" ][ "log_file" ]
-			                        )
-
-			# the *full* ROI file
-			roi_file = "%s_%s-full.niml.dset" % ( paths[ "rois" ][ "dset" ], hemi )
-
-			out_file = os.path.join( paths[ "svm" ][ "base_dir" ], "temp.txt" )
-
-			xtr_cmd = [ "3dmaskdump",
-			            "-mask", roi_file,
-			            "-mrange", roi_val, roi_val,
-			            "-noijk",
-			            "-o", out_file,
-			            comb_file
-			          ]
-
-			fmri_tools.utils.run_cmd( xtr_cmd,
-			                          env = fmri_tools.utils.get_env(),
-			                          log_path = paths[ "summ" ][ "log_file" ]
-			                        )
-
-			out_data = np.loadtxt( out_file )
-
-			hemi_data.append( out_data )
-
-			os.remove( out_file )
-
-		hemi_data = np.concatenate( hemi_data ).T
-
-		#  x node
-		roi_data = np.array( hemi_data )
-
-		roi_data_file = "%s-%s.npy" % ( paths[ "svm" ][ "loc_stat" ], roi_name )
-
-		np.save( roi_data_file, roi_data )
-
-	os.chdir( start_dir )

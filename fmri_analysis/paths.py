@@ -180,14 +180,6 @@ def _get_log_paths( conf, paths ):
 	                                   "%s_ns_aperture_fmri_task_" % subj_id
 	                                 )
 
-	log[ "reg_A" ] = os.path.join( log_dir,
-	                               "%s_ns_aperture_reg_A.txt" % subj_id
-	                             )
-
-	log[ "reg_B" ] = os.path.join( log_dir,
-	                               "%s_ns_aperture_reg_B.txt" % subj_id
-	                             )
-
 	paths[ "log" ] = log
 
 	return paths
@@ -404,65 +396,6 @@ def _get_mvpa_paths( conf, paths ):
 	return paths
 
 
-def _get_svm_paths( conf, paths ):
-	"""Get the paths for the SVM analysis"""
-
-	subj_id = conf[ "subj" ][ "subj_id" ]
-	id = "ns_aperture_svm"
-
-	svm = {}
-
-	svm_dir = os.path.join( paths[ "study" ][ "subj_dir" ],
-	                        subj_id,
-	                        "svm"
-	                      )
-
-	svm[ "base_dir" ] = svm_dir
-
-	filt_files = [ os.path.join( svm_dir,
-	                             os.path.split( surf_file )[ 1 ].replace( "surf", "surf_filt" )
-	                           )
-	               for surf_file in paths[ "func" ][ "surf_files" ]
-	             ]
-
-	svm[ "filt_files" ] = filt_files[ :conf[ "subj" ][ "n_exp_runs" ] ]
-
-	svm[ "orig" ] = os.path.join( svm_dir,
-	                              "roi_orig",
-	                              "%s_%s-orig" % ( subj_id, id )
-	                            )
-
-	svm[ "loc_stat" ] = os.path.join( svm_dir,
-	                                  "roi_loc_stat",
-	                                  "%s_%s-loc_stat" % ( subj_id, id )
-	                                )
-
-	svm[ "z" ] = os.path.join( svm_dir,
-	                           "roi_z",
-	                           "%s_%s-z" % ( subj_id, id )
-	                         )
-
-	svm[ "summ" ] = os.path.join( svm_dir,
-	                              "roi_svm",
-	                              "%s_%s-svm_summ" % ( subj_id, id )
-	                            )
-
-	svm[ "run_info" ] = os.path.join( svm_dir,
-	                                  "%s_%s-run_info.npy" % ( subj_id, id )
-	                                )
-
-	svm[ "train_base" ] = "%s_%s-train_set" % ( subj_id, id )
-	svm[ "model_base" ] = "%s_%s-model" % ( subj_id, id )
-	svm[ "test_base" ] = "%s_%s-test_set" % ( subj_id, id )
-	svm[ "pred_base" ] = "%s_%s-pred" % ( subj_id, id )
-
-	svm[ "fold_base" ] = os.path.join( svm_dir, "roi_svm", "fold" )
-
-	paths[ "svm" ] = svm
-
-	return paths
-
-
 def get_subj_paths( conf ):
 	"""Get the path structure for a given subject"""
 
@@ -489,5 +422,25 @@ def get_subj_paths( conf ):
 	paths = _get_task_paths( conf, paths )
 
 	paths = _get_mvpa_paths( conf, paths )
+
+	return paths
+
+
+def get_group_paths( conf ):
+	"""Get the path structure for the group analysis"""
+
+	exp_id = conf[ "exp" ][ "id" ]
+
+	paths = {}
+
+	paths[ "study" ] = _get_study_paths()
+
+	paths[ "base_dir" ] = os.path.join( paths[ "study" ][ "base_dir" ],
+	                                    "group_data"
+	                                  )
+
+	paths[ "uni" ] = os.path.join( paths[ "base_dir" ],
+	                               "%s_group-uni.txt" % exp_id
+	                             )
 
 	return paths

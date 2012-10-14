@@ -238,7 +238,6 @@ def loc_parcellate( paths, conf ):
 
 			roi_stat = np.loadtxt( roi_stat_file )
 
-
 			# add a column of zeros that will hold the parcel number
 			roi_stat = np.hstack( ( roi_stat,
 			                        np.zeros( ( roi_stat.shape[ 0 ], 1 ) )

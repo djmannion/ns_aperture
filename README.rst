@@ -22,7 +22,7 @@ Prepare the filesystem
 
 1. Make the subject's directory structure::
 
-    mkdir -p sXXXX/{analysis/{exp,loc},fmap/f01,func/exp/run{01,02,03,04,05,06,07,08,09,10},func/loc/run{01,02},logs,reg}
+    mkdir -p sXXXX/{analysis/{exp,loc},fmap/f01,func/run{01,02,03,04,05,06,07,08,09,10,11,12},logs,rois,reg}
 
 2. Copy the subject's runtime logfiles to the ``logs`` directory.
 
@@ -37,13 +37,9 @@ Prepare the filesystem
 
 5. Make a local copy of the AFNI/SUMA base anatomicals (original and skull-stripped) that we can use for alignment::
 
-    mri_convert \
-       {$SUBJECTS_DIR}/{$SUBJ_ID}/SUMA/{$SUBJ_ID}_SurfVol+orig.BRIK \
+    3dcopy \
+       {$SUBJECTS_DIR}/{$SUBJ_ID}/SUMA/{$SUBJ_ID}_SurfVol+origK \
        reg/{$SUBJ_ID}_anat.nii
-
-    cp \
-      {$SUBJECTS_DIR}/{$SUBJ_ID}/SUMA/brainmask.nii \
-      reg/{$SUBJ_ID}_anat_stripped.nii
 
 
 Update the experiment information file
@@ -81,6 +77,7 @@ For example:
 
 .. note::
    ``node_k`` can be found by viewing the subject's pial ASCII surface and noting the first number on the second row.
+
 
 Pre-processing
 --------------

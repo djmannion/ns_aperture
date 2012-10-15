@@ -26,13 +26,9 @@ def _get_func_paths( conf, paths ):
 
 	func_paths = fmri_tools.paths.get_func_paths( func_dir,
 	                                              conf[ "subj" ][ "subj_id" ],
+	                                              conf[ "exp" ][ "id" ],
 	                                              conf[ "subj" ][ "n_runs" ],
-	                                              conf[ "exp" ][ "id" ]
 	                                            )
-
-	func_paths[ "surf_files" ] = [ orig_file.replace( "orig", "surf" )
-	                               for orig_file in func_paths[ "orig_files" ]
-	                             ]
 
 	paths[ "func" ] = func_paths
 
@@ -92,39 +88,18 @@ def _get_fmap_paths( conf, paths ):
 def _get_reg_paths( conf, paths ):
 	"Returns the paths for the session's registration with FreeSurfer anatomy"
 
+
 	reg_dir = os.path.join( paths[ "study" ][ "subj_dir" ],
 	                        conf[ "subj" ][ "subj_id" ],
 	                        "reg"
 	                      )
 
-	reg_paths = {}
+	reg_paths = fmri_tools.paths.get_reg_paths( reg_dir,
+	                                            conf[ "subj" ][ "subj_id" ],
+	                                            conf[ "exp" ][ "id" ]
+	                                          )
 
-	subj_id = conf[ "subj" ][ "subj_id" ]
-
-	reg_paths[ "anat" ] = os.path.join( reg_dir,
-	                                    "%s_anat+orig" % subj_id
-	                                  )
-
-	reg_paths[ "reg_anat" ] = os.path.join( reg_dir,
-	                                        "%s_reg_anat+orig" % subj_id
-	                                      )
-
-	surf_dir = os.path.join( os.environ[ "SUBJECTS_DIR" ],
-	                         subj_id,
-	                         "SUMA"
-	                       )
-
-	reg_paths[ "surf_anat" ] = os.path.join( surf_dir,
-	                                         "%s_SurfVol+orig" % subj_id
-	                                       )
-
-	reg_paths[ "spec" ] = os.path.join( surf_dir,
-	                                    "%s_" % subj_id
-	                                  )
-
-	reg_paths[ "flat" ] = os.path.join( reg_dir,
-	                                    "%s_flat_patch" % subj_id
-	                                  )
+	reg_paths[ "reg_file" ] = reg_paths[ "algn_file" ]
 
 	paths[ "reg" ] = reg_paths
 

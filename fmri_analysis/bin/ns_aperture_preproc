@@ -54,7 +54,7 @@ def main():
 	                  "correct",
 	                  "fieldmap",
 	                  "undistort",
-	                  "surf_reg",
+	                  "sess_reg",
 	                  "vol_to_surf"
 	                )
 
@@ -85,8 +85,8 @@ def main():
 	elif args.preproc_step == "undistort":
 		ns_aperture.fmri_analysis.preproc.undistort( paths, conf )
 
-	elif args.preproc_step == "surf_reg":
-		ns_aperture.fmri_analysis.preproc.surf_reg( paths, conf )
+	elif args.preproc_step == "sess_reg":
+		ns_aperture.fmri_analysis.preproc.sess_reg( paths, conf )
 
 	elif args.preproc_step == "vol_to_surf":
 		ns_aperture.fmri_analysis.preproc.vol_to_surf( paths, conf )

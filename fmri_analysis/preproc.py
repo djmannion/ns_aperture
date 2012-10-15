@@ -13,33 +13,19 @@ import fmri_tools.preproc, fmri_tools.utils
 def convert( paths, conf ):
 	"""Converts the functionals and fieldmaps from dicom to nifti"""
 
-	# functional DICOM files
-	dcm_files = [ os.path.join( dcm_dir, dcm_file )
-	              for ( dcm_dir, dcm_file ) in zip( paths[ "func" ][ "raw_dirs" ],
-	                                                conf[ "subj" ][ "func_dcm" ]
-	                                              )
-	            ]
+	raw_dirs = ( paths[ "func" ][ "raw_dirs" ] +
+	             paths[ "fmap" ][ "raw_mag_dirs" ] +
+	             paths[ "fmap" ][ "raw_ph_dirs" ]
+	           )
 
-	# add in the fieldmap DICOMs
-	dcm_files += [ os.path.join( paths[ "fmap" ][ "base_dir" ],
-	                             "f01",
-	                             "%s-raw" % im_type,
-	                             dcm_file
-	                           )
-	               for ( im_type, dcm_file ) in zip( [ "mag", "ph" ],
-	                                                 conf[ "subj" ][ "fmap_dcm" ]
-	                                               )
-	             ]
-
-	# aggregate the images paths
 	nii_files = ( paths[ "func" ][ "orig_files" ] +
 	              paths[ "fmap" ][ "mag_files" ] +
 	              paths[ "fmap" ][ "ph_files" ]
 	            )
 
-	for ( dcm_file, nii_file ) in zip( dcm_files, nii_files ):
+	for ( raw_dir, nii_file ) in zip( raw_dirs, nii_files ):
 
-		fmri_tools.preproc.dcm_to_nii( dcm_file,
+		fmri_tools.preproc.dcm_to_nii( raw_dir,
 		                               "%s.nii" % nii_file,
 		                               reorient_dim = conf[ "acq" ][ "ras" ],
 		                               log_path = paths[ "summ" ][ "log_file" ]
@@ -52,11 +38,8 @@ def convert( paths, conf ):
 	# check that they are all unique
 	assert( fmri_tools.utils.files_are_unique( full_nii_paths ) )
 
-	# files to go into the summary
-	summ_paths = paths[ "func" ][ "orig_files" ]
-
 	# make a summary image from the files
-	fmri_tools.preproc.gen_sess_summ_img( summ_paths,
+	fmri_tools.preproc.gen_sess_summ_img( paths[ "func" ][ "orig_files" ],
 	                                      paths[ "summ" ][ "orig_summ_file" ],
 	                                      log_path = paths[ "summ" ][ "log_file" ]
 	                                    )
@@ -71,24 +54,12 @@ def motion_correct( paths, conf ):
 
 	mc_base = "%s.nii[0]" % paths[ "func" ][ "orig_files" ][ i_mc_base ]
 
-	for ( orig_file, corr_file ) in zip( paths[ "func" ][ "orig_files" ],
-	                                     paths[ "func" ][ "corr_files" ]
-	                                   ):
-
-		mc_cmd = [ "3dvolreg",
-		           "-twopass",
-		           "-prefix", "%s.nii" % corr_file,
-		           "-overwrite",
-		           "-base", mc_base,
-		           "-zpad", "5",
-		           "-heptic",  # fourier can cause ringing artefacts
-		           "%s.nii" % orig_file
-		         ]
-
-		fmri_tools.utils.run_cmd( mc_cmd,
-		                          env = fmri_tools.utils.get_env(),
-		                          log_path = paths[ "summ" ][ "log_file" ]
-	                        )
+	fmri_tools.preproc.mot_correct( paths[ "func" ][ "orig_files" ],
+	                                paths[ "func" ][ "corr_files" ],
+	                                mc_base,
+	                                mc_path = paths[ "summ" ][ "mot_est_file" ],
+	                                log_path = paths[ "summ" ][ "log_file" ]
+	                              )
 
 	# make a summary image from the corrected files
 	fmri_tools.preproc.gen_sess_summ_img( paths[ "func" ][ "corr_files" ],
@@ -129,7 +100,8 @@ def undistort( paths, conf ):
 		                           func_uw[ i_run ],
 		                           conf[ "acq" ][ "dwell_ms" ],
 		                           conf[ "acq" ][ "ph_encode_dir" ],
-		                           log_path = paths[ "summ" ][ "log_file" ]
+		                           log_path = paths[ "summ" ][ "log_file" ],
+		                           pass_nocheck = False
 		                         )
 
 	# create a mean image of the unwarped data
@@ -146,42 +118,39 @@ def undistort( paths, conf ):
 
 
 
-def surf_reg( paths, conf ):
-	"""Coregisters an anatomical with the SUMA reference"""
+def sess_reg( paths, conf ):
+	"""Coregisters a within-session anatomical"""
 
-	base_anat = paths[ "reg" ][ "anat" ]
-	reg_anat = paths[ "reg" ][ "reg_anat" ]
+	# need to pass the algorithm three translation parameters to get it close
+	# to the mean functional
 
-	# use the mean to represent the functional images
-	base_func = "%s.nii" % paths[ "summ" ][ "mean_file" ]
+	par = []
 
-	coreg_cmd = [ "3dAllineate",
-	              "-base", base_func,
-	              "-source", base_anat,
-	              "-prefix", reg_anat,
-	              "-cost", "nmi",  # normalised mutual info cost function
-	              "-master", "SOURCE",
-	              "-maxrot", "15",
-	              "-overwrite",
-	              "-warp", "shift_rotate",  # only rigid transforms
-	              "-onepass",  # false minima if it is allowed to wander
-	              "-verb"
-	            ]
+	shft_max = 10
 
-	# pass the algorithm three translation parameters to get it close to the
-	# mean functional
 	for ( i_nudge, nudge_val ) in enumerate( conf[ "subj" ][ "nudge_vals" ] ):
 
-		coreg_cmd.extend( [ "-parini",
-		                    "%d" % ( i_nudge + 1 ),
-		                    "%.3f" % nudge_val
-		                  ]
-		                )
+		par.extend( [ "-parini",
+		              "%d" % ( i_nudge + 1 ),
+		              "%.3f" % nudge_val
+		            ]
+		          )
 
-	fmri_tools.utils.run_cmd( coreg_cmd,
-	                          env = fmri_tools.utils.get_env(),
-	                          log_path = paths[ "summ" ][ "log_file" ]
-	                        )
+		par.extend( [ "-parang",
+		              "%d" % ( i_nudge + 1 ),
+		              "%.3f" % ( nudge_val - shft_max ),
+		              "%.3f" % ( nudge_val + shft_max )
+		            ]
+		          )
+
+	fmri_tools.preproc.anat_reg( paths[ "reg" ][ "base_dir" ],
+	                             paths[ "reg" ][ "anat_file" ],
+	                             paths[ "reg" ][ "mean_file" ],
+	                             log_path = paths[ "summ" ][ "log_file" ],
+	                             extra_allineate_opts = " ".join( par ),
+	                             max_shft = None,
+	                             max_rot = 10
+	                           )
 
 
 def vol_to_surf( paths, _ ):
@@ -210,13 +179,15 @@ def vol_to_surf( paths, _ ):
 		for hemi in [ "lh", "rh" ]:
 
 			surf_cmd = [ "3dVol2Surf",
-			             "-spec", "%s%s.spec" % ( paths[ "reg" ][ "spec" ], hemi ),
+			             "-spec", "%s%s.spec" % ( paths[ "reg" ][ "spec_base" ],
+			                                      hemi
+			                                    ),
 			             "-surf_A", "smoothwm",
 			             "-surf_B", "pial",
 			             "-map_func", "ave",
 			             "-f_steps", "%d" % f_steps,
 			             "-f_index", f_index,
-			             "-sv", paths[ "reg" ][ "reg_anat" ],
+			             "-sv", "%s+orig" % paths[ "reg" ][ "reg_file" ],
 			             "-grid_parent", "%s.nii" % vol_file,
 			             "-out_niml", "%s_%s.niml.dset" % ( surf_file, hemi ),
 			             "-overwrite"

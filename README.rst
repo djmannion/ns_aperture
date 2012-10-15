@@ -22,7 +22,7 @@ Prepare the filesystem
 
 1. Make the subject's directory structure::
 
-    mkdir -p sXXXX/{analysis/{exp,loc},fmap/f01,func/run{01,02,03,04,05,06,07,08,09,10,11,12},logs,rois,reg}
+    mkdir -p sXXXX/{analysis/{exp,loc},fmap/f01,func/run{01,02,03,04,05,06,07,08,09,10,11,12},loc,logs,mvpa,reg,rois}
 
 2. Copy the subject's runtime logfiles to the ``logs`` directory.
 
@@ -35,10 +35,10 @@ Prepare the filesystem
     ln -s /labs/olmanlab/DICOM/YYYYMMDD/sXXXX/MR-SEyada mag-raw
     ln -s /labs/olmanlab/DICOM/YYYYMMDD/sXXXX/PH-SEyada ph-raw
 
-5. Make a local copy of the AFNI/SUMA base anatomicals (original and skull-stripped) that we can use for alignment::
+5. Make a local copy of the AFNI/SUMA base anatomical that we can use for alignment::
 
     3dcopy \
-       {$SUBJECTS_DIR}/{$SUBJ_ID}/SUMA/{$SUBJ_ID}_SurfVol+origK \
+       {$SUBJECTS_DIR}/{$SUBJ_ID}/SUMA/{$SUBJ_ID}_SurfVol+orig \
        reg/{$SUBJ_ID}_anat.nii
 
 
@@ -53,26 +53,17 @@ For example:
 
     sXXXX = { "subj_id" : "sXXXX",
               "acq_date" : "YYYYMMDD",
-              "n_runs" : 10,
+              "n_runs" : 12,
+              "n_exp_runs" : 10,
               "n_loc_runs" : 2,
               "n_fmaps" : 1,
+              "mot_base" : 7,
               "comments" : "anything unusual or noteworthy",
-              "run_st_mot_order" : ( ( 7, "exp" ),
-                                     ( 8, "exp" ),
-                                     ( 9, "exp" ),
-                                     ( 10, "exp" ),
-                                     ( 1, "loc" ),
-                                     ( 2, "loc" ),
-                                     ( 1, "exp" ),
-                                     ( 2, "exp" ),
-                                     ( 3, "exp" ),
-                                     ( 4, "exp" ),
-                                     ( 5, "exp" ),
-                                     ( 6, "exp" )
-                                   ),
-             "node_k" : { "lh" : 100000,
-                          "rh" : 110000
-                        }
+              "exp_runs" : [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ],
+              "loc_runs" : [ 11, 12 ],
+              "node_k" : { "lh" : 100000,
+                           "rh" : 110000
+                         }
             }
 
 .. note::
@@ -108,7 +99,7 @@ After execution, open up each NIFTI file and inspect for image quality and look 
 Correction
 ~~~~~~~~~~
 
-Applies a slice-timing and motion correction procedure::
+Applies a motion correction procedure::
 
     ns_aperture_proc sXXXX correct
 
@@ -147,20 +138,12 @@ To verify that the unwarping has worked correctly:
 Also, look at the session summary image produced and make sure that all looks good across the session.
 
 
-Trim
-~~~~
-
-Removes timepoints from the start and/or end of each timeseries, as specified in the config::
-
-    ns_aperture_proc SXXXX trim
-
-
 Coregistration
 ~~~~~~~~~~~~~~
 
-Follow the procedure described `here <http://visual-localiser-analysis-notes.readthedocs.org/en/latest/func.html#coregister-base-anatomy-to-functional-session>`__, substituting for the ``surf_reg`` command::
+::
 
-    ns_aperture_proc sXXXX surf_reg
+    ns_aperture_proc sXXXX sess_reg
 
 
 Volume to surface

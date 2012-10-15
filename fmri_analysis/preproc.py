@@ -126,7 +126,7 @@ def sess_reg( paths, conf ):
 
 	par = []
 
-	shft_max = 10
+	shft_max = 5
 
 	for ( i_nudge, nudge_val ) in enumerate( conf[ "subj" ][ "nudge_vals" ] ):
 

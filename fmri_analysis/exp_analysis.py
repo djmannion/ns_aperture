@@ -453,10 +453,3 @@ def group_agg( grp_paths, conf ):
 			i_roi += 2
 
 	np.savetxt( grp_paths[ "uni" ], uni_data )
-
-
-
-
-
-
-

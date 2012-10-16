@@ -22,7 +22,10 @@ Prepare the filesystem
 
 1. Make the subject's directory structure::
 
-    mkdir -p sXXXX/{analysis/{exp,loc},fmap/f01,func/run{01,02,03,04,05,06,07,08,09,10,11,12},loc,logs,mvpa,reg,rois}
+    mkdir -p sXXXX/{analysis/,fmap/f01,func/run{01,02,03,04,05,06,07,08,09,10,11,12},loc,logs,mvpa,reg,rois}
+    cd mvpa
+    mkdir -p {filt,data,rfe}
+    mkdir -p rfe/{v1_blnk,v1_stim,v2_blnk,v2_stim,v3_blnk,v3_stim}/fold{01,02,03,04,05}/rfe{01,02,03,04,05,06,07,08,09,10}/split{01,02,03,04}
 
 2. Copy the subject's runtime logfiles to the ``logs`` directory.
 

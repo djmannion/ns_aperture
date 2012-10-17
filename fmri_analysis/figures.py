@@ -1,11 +1,15 @@
 """
 """
 
+import os.path
+
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import numpy as np
 import scipy.stats
 
+import ns_aperture.config
+import ns_aperture.fmri_analysis.paths
 
 def _set_defaults():
 	"""Set some sane defaults for figures.
@@ -46,6 +50,215 @@ def _cleanup_fig( ax ):
 
 	ax.xaxis.set_ticks_position( "bottom" )
 	ax.yaxis.set_ticks_position( "left" )
+
+def plot_mvpa( paths, conf ):
+	"""MVPA analysis"""
+
+	params = { 'axes.labelsize': 12,
+	           'font.family' : 'Arial',
+	           'font.sans-serif' : 'Helvetica',
+	           'text.fontsize': 12,
+	           'legend.fontsize': 10,
+	           'xtick.labelsize': 8,
+	           'xtick.direction' : 'out',
+	           'xtick.major.size' : 2,
+	           'ytick.labelsize': 8,
+	           'ytick.direction' : 'out',
+	           'ytick.major.size' : 2
+	         }
+	
+	plt.rcParams.update( params )
+
+	plt.ioff()
+
+	fig = plt.figure()
+
+	fig.set_size_inches( 3.6, 2.5, forward = False )
+
+	ax = fig.gca()
+
+	ax.hold( True )
+
+	for ( i_roi, ( roi_name, _ ) ) in enumerate( conf[ "ana" ][ "rois" ] ):
+
+		roi_y = []
+
+		for subj_id in conf[ "all_subj" ]:
+
+			subj_conf = ns_aperture.config.get_conf( subj_id )
+			subj_paths = ns_aperture.fmri_analysis.paths.get_subj_paths( subj_conf )
+
+			subj_y = []
+
+			for roi_type in [ "stim", "blnk" ]:
+
+				acc_file = os.path.join( subj_paths[ "mvpa" ][ "rfe_base_dir" ],
+				                         "%s_%s" % ( roi_name, roi_type ),
+				                         "%s_%s_%s.txt" % ( subj_paths[ "mvpa" ][ "acc_base" ],
+				                                            roi_name,
+				                                            roi_type
+				                                          )
+				                       )
+
+				acc = np.loadtxt( acc_file )
+
+				# average over folds and levels
+				acc = np.mean( acc )
+
+				subj_y.append( acc )
+
+			roi_y.append( subj_y )
+
+		# subjects x 2
+		roi_y = np.array( roi_y )
+
+		stats = [ scipy.stats.ttest_1samp( roi_y[ :, i ], 50 )
+		          for i in xrange( 2 )
+		        ]
+
+		roi_std = np.std( roi_y, axis = 0 ) / np.sqrt( roi_y.shape[ 0 ] )
+
+		roi_mean = np.mean( roi_y, axis = 0 )
+
+		for i in xrange( 2 ):
+
+			if stats[ i ][ 1 ] < 0.05:
+				col = "b"
+			else:
+				col = "k"
+
+			if i == 0:
+				j = i_roi
+			else:
+				j = i_roi + 3
+
+			plt.plot( [ j ] * 2,
+			          [ roi_mean[ i ] - roi_std[ i ],
+			            roi_mean[ i ] + roi_std[ i ]
+			          ],
+			          color = col
+			        )
+
+			plt.scatter( j,
+			             roi_mean[ i ],
+			             facecolor = col, edgecolor = col
+			           )
+
+	plt.plot( [ -1, len( conf[ "ana" ][ "rois" ] ) * 2 ], [ 50, 50 ], "k--" )
+
+	_cleanup_fig( ax )
+
+	ax.set_ylim( [ 0, 100 ] )
+	ax.set_xlim( [ -1, len( conf[ "ana" ][ "rois" ] * 2 ) ] )
+
+	ax.set_ylabel( "Accuracy (%)" )
+	ax.set_xlabel( "ROI" )
+
+	ax.set_xticks( np.arange( 0, 6 ) )
+	ax.set_xticklabels( [ "V1", "V2", "V3", "V1", "V2", "V3" ] )
+
+	ax.set_yticks( [ 0, 25, 50, 75, 100 ] )
+
+#	plt.show()
+
+	plt.savefig( "/home/dmannion/ns_mvpa.svg" )
+
+
+def plot_uni( paths, conf ):
+	"""Univariate analysis"""
+
+	params = { 'axes.labelsize': 12,
+	           'font.family' : 'Arial',
+	           'font.sans-serif' : 'Helvetica',
+	           'text.fontsize': 12,
+	           'legend.fontsize': 10,
+	           'xtick.labelsize': 8,
+	           'xtick.direction' : 'out',
+	           'xtick.major.size' : 2,
+	           'ytick.labelsize': 8,
+	           'ytick.direction' : 'out',
+	           'ytick.major.size' : 2
+	         }
+	
+	plt.rcParams.update( params )
+
+	plt.ioff()
+
+	fig = plt.figure()
+
+	fig.set_size_inches( 3.6, 2.5, forward = False )
+
+	ax = fig.gca()
+
+	ax.hold( True )
+
+	for ( i_roi, ( roi_name, _ ) ) in enumerate( conf[ "ana" ][ "rois" ] ):
+
+		roi_y = []
+
+		for subj_id in conf[ "all_subj" ]:
+
+			subj_conf = ns_aperture.config.get_conf( subj_id )
+			subj_paths = ns_aperture.fmri_analysis.paths.get_subj_paths( subj_conf )
+
+			# psc is [ stim, blnk ]
+			psc = np.loadtxt( "%s_%s.txt" % ( subj_paths[ "rois" ][ "parc_psc" ],
+			                                  roi_name
+			                                )
+			                )
+
+			roi_y.append( psc )
+
+		# subjects x 2
+		roi_y = np.array( roi_y )
+
+		stats = [ scipy.stats.ttest_1samp( roi_y[ :, i ], 0 )
+		          for i in xrange( 2 )
+		        ]
+
+		roi_std = np.std( roi_y, axis = 0 ) / np.sqrt( roi_y.shape[ 0 ] )
+
+		roi_mean = np.mean( roi_y, axis = 0 )
+
+		for i in xrange( 2 ):
+
+			if stats[ i ][ 1 ] < 0.05:
+				col = "b"
+			else:
+				col = "k"
+
+			if i == 0:
+				j = i_roi
+			else:
+				j = i_roi + 3
+
+			plt.plot( [ j ] * 2,
+			          [ roi_mean[ i ] - roi_std[ i ],
+			            roi_mean[ i ] + roi_std[ i ]
+			          ],
+			          color = col
+			        )
+
+			plt.scatter( j,
+			             roi_mean[ i ],
+			             facecolor = col, edgecolor = col
+			           )
+
+	plt.plot( [ -1, len( conf[ "ana" ][ "rois" ] ) * 2 ], [ 0, 0 ], "k--" )
+
+	_cleanup_fig( ax )
+
+	ax.set_ylim( [ -0.35, 0.35 ] )
+	ax.set_xlim( [ -1, len( conf[ "ana" ][ "rois" ] * 2 ) ] )
+
+	ax.set_ylabel( "Coherent pref (psc)" )
+	ax.set_xlabel( "ROI" )
+
+	ax.set_xticks( np.arange( 0, 6 ) )
+	ax.set_xticklabels( [ "V1", "V2", "V3", "V1", "V2", "V3" ] )
+
+	plt.savefig( "/home/dmannion/ns_uni.svg" )
+
 
 
 def plot_vox_psc( paths, conf ):

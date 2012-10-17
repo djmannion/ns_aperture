@@ -269,6 +269,10 @@ def _get_roi_paths( conf, paths ):
 	                               "%s_%s-rois" % ( subj_id, exp_id )
 	                             )
 
+	rois[ "fov_dset" ] = os.path.join( rois[ "base_dir" ],
+	                                   "%s_%s-fov" % ( subj_id, exp_id )
+	                                 )
+
 	rois[ "psc" ] = os.path.join( rois[ "base_dir" ],
 	                              "%s_%s-psc" % ( subj_id, exp_id )
 	                            )
@@ -365,6 +369,13 @@ def _get_mvpa_paths( conf, paths ):
 	                                   "%s_%s-mvpa_log.txt" % ( subj_id, id )
 	                                 )
 
+	mvpa[ "wgt_fov" ] = os.path.join( mvpa_dir, "weights",
+	                                  "%s_%s-fov_wgt" % ( subj_id, id )
+	                                )
+
+	mvpa[ "wgt_ecc" ] = os.path.join( mvpa_dir, "weights",
+	                                  "%s_%s-ecc_wgt" % ( subj_id, id )
+	                                )
 
 	paths[ "mvpa" ] = mvpa
 

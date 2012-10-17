@@ -61,13 +61,7 @@ def main():
 	               "blk_data_xtr",
 	               "rfe_classify",
 	               "weight_maps",
-	               "raw_adj",
-	               "roi_tc",
-	               "svm_roi_xtr",
-	               "svm_info",
-	               "svm_roi_z",
-	               "svm_roi_loc_stat",
-	               "svm"
+	               "weight_dist"
 	             )
 
 	parser.add_argument( "proc_step",
@@ -103,23 +97,9 @@ def main():
 	elif args.proc_step == "weight_maps":
 		ns_aperture.fmri_analysis.mvpa.weight_maps( paths, conf )
 
-	elif args.proc_step == "roi_tc":
-		ns_aperture.analysis.subj_analysis.roi_tc( paths, conf )
+	elif args.proc_step == "weight_dist":
+		ns_aperture.fmri_analysis.mvpa.weight_dist( paths, conf )
 
-	elif args.proc_step == "svm_roi_xtr":
-		ns_aperture.fmri_analysis.subj_analysis.svm_roi_xtr( paths, conf )
-
-	elif args.proc_step == "svm_info":
-		ns_aperture.fmri_analysis.subj_analysis.svm_info( paths, conf )
-
-	elif args.proc_step == "svm_roi_z":
-		ns_aperture.fmri_analysis.subj_analysis.svm_roi_z( paths, conf )
-
-	elif args.proc_step == "svm_roi_loc_stat":
-		ns_aperture.fmri_analysis.subj_analysis.svm_roi_loc_stat( paths, conf )
-
-	elif args.proc_step == "svm":
-		ns_aperture.fmri_analysis.subj_analysis.svm( paths, conf )
 
 	else:
 		print "Not completed"

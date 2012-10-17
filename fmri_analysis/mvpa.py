@@ -649,7 +649,7 @@ def weight_maps( paths, conf ):
 
 					node_and_wgt_file = os.path.join( level_dir,
 					                                  "%s_%s_%s_fold_%02d.txt" % (
-					                                    paths[ "mvpa" ]["node_wgt_base" ],
+					                                    paths[ "mvpa" ][ "node_wgt_base" ],
 					                                    roi_name,
 					                                    parc_lbl,
 					                                    ( i_fold + 1 )
@@ -750,3 +750,163 @@ def _get_svm_str( blk_data, blk_data_info ):
 			svm_str += "\n"
 
 	return svm_str
+
+
+def weight_dist( paths, conf ):
+	"""a"""
+
+	# first, convert fovea ROI into a dataset
+	for hemi in [ "lh", "rh" ]:
+
+		dset_cmd = [ "ROI2dataset",
+		             "-overwrite",
+		             "-pad_to_node", "%d" % conf[ "subj" ][ "node_k" ][ hemi ],
+		             "-prefix", "%s_%s-full.niml.dset" % ( paths[ "rois" ][ "fov_dset" ],
+		                                                   hemi
+		                                                 ),
+		             "-input", os.path.join( paths[ "rois" ][ "base_dir" ],
+		                                     "%s_fov.1D.roi" % hemi
+		                                   )
+		           ]
+
+		fmri_tools.utils.run_cmd( dset_cmd,
+		                          env = fmri_tools.utils.get_env(),
+		                          log_path = paths[ "summ" ][ "log_file" ]
+		                        )
+
+		for ( roi_name, _ ) in conf[ "ana" ][ "rois" ]:
+
+			os.chdir( os.path.split( paths[ "mvpa" ][ "wgt_fov" ] )[ 0 ] )
+
+			roi_dir = os.path.join( paths[ "mvpa" ][ "rfe_base_dir" ],
+		                          "%s_blnk" % roi_name
+		                        )
+
+			wgt_file = os.path.join( roi_dir,
+			                         "%s_%s_blnk_%s-full.niml.dset" % (
+			                           paths[ "mvpa" ][ "wgt_base" ],
+			                           roi_name,
+			                           hemi
+			                         )
+			                       )
+
+			roi_file = "%s_%s-full.niml.dset" % ( paths[ "rois" ][ "fov_dset" ],
+			                                      hemi
+			                                    )
+
+			base_cmd = [ "3dcalc",
+			             "-overwrite",
+			             "-a", wgt_file,
+			             "-b", roi_file
+			           ]
+
+			fov_file = "%s_%s_%s-full.niml.dset" % ( paths[ "mvpa" ][ "wgt_fov" ],
+			                                         roi_name,
+			                                         hemi
+			                                       )
+
+			fov_cmd = list( base_cmd )
+			fov_cmd.extend( [ "-expr", "a*ispositive(b)",
+			                  "-prefix", fov_file
+			                ]
+			              )
+
+			fmri_tools.utils.run_cmd( fov_cmd,
+			                          env = fmri_tools.utils.get_env(),
+			                          log_path = paths[ "summ" ][ "log_file" ]
+			                        )
+
+			fov_txt = "%s_%s_%s.txt" % ( paths[ "mvpa" ][ "wgt_fov" ],
+			                             roi_name,
+			                             hemi
+			                           )
+
+			if os.path.exists( fov_txt ):
+				os.remove( fov_txt )
+
+			dump_cmd = [ "3dmaskdump",
+			             "-mask", fov_file,
+			             "-noijk",
+			             "-o", fov_txt,
+			             fov_file
+			           ]
+
+			fmri_tools.utils.run_cmd( dump_cmd,
+			                          env = fmri_tools.utils.get_env(),
+			                          log_path = paths[ "summ" ][ "log_file" ]
+			                        )
+
+			ecc_file = "%s_%s_%s-full.niml.dset" % ( paths[ "mvpa" ][ "wgt_ecc" ],
+			                                         roi_name,
+			                                         hemi
+			                                       )
+
+			ecc_cmd = list( base_cmd )
+			ecc_cmd.extend( [ "-expr", "a*not(ispositive(b))",
+			                  "-prefix", ecc_file
+			                ]
+			              )
+
+			fmri_tools.utils.run_cmd( ecc_cmd,
+			                          env = fmri_tools.utils.get_env(),
+			                          log_path = paths[ "summ" ][ "log_file" ]
+			                        )
+
+			ecc_txt = "%s_%s_%s.txt" % ( paths[ "mvpa" ][ "wgt_ecc" ],
+			                             roi_name,
+			                             hemi
+			                           )
+
+			if os.path.exists( ecc_txt ):
+				os.remove( ecc_txt )
+
+			dump_cmd = [ "3dmaskdump",
+			             "-mask", ecc_file,
+			             "-noijk",
+			             "-o", ecc_txt,
+			             ecc_file
+			           ]
+
+			fmri_tools.utils.run_cmd( dump_cmd,
+			                          env = fmri_tools.utils.get_env(),
+			                          log_path = paths[ "summ" ][ "log_file" ]
+			                        )
+
+
+	fov_data = []
+	ecc_data = []
+
+	for ( i_roi, ( roi_name, _ ) ) in enumerate( conf[ "ana" ][ "rois" ] ):
+
+		for ( i_hemi, hemi ) in enumerate( [ "lh", "rh" ] ):
+
+			f = np.loadtxt( "%s_%s_%s.txt" % ( paths[ "mvpa" ][ "wgt_fov" ],
+			                                   roi_name,
+			                                   hemi
+			                                 )
+			              )[ :, np.newaxis ]
+
+			h_f = np.ones( f.shape ) * i_hemi
+			r_f = np.ones( f.shape ) * i_roi
+
+			e = np.loadtxt( "%s_%s_%s.txt" % ( paths[ "mvpa" ][ "wgt_ecc" ],
+			                                   roi_name,
+			                                   hemi
+			                                 )
+			              )[ :, np.newaxis ]
+
+			h_e = np.ones( e.shape ) * i_hemi
+			r_e = np.ones( e.shape ) * i_roi
+
+			fov_data.append( np.hstack( ( f, r_f, h_f ) ) )
+			ecc_data.append( np.hstack( ( e, r_e, h_e ) ) )
+
+	fov_data = np.vstack( fov_data )
+	ecc_data = np.vstack( ecc_data )
+
+	np.savetxt( "%s.txt" % paths[ "mvpa" ][ "wgt_fov" ], fov_data )
+	np.savetxt( "%s.txt" % paths[ "mvpa" ][ "wgt_ecc" ], ecc_data )
+
+
+
+

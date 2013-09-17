@@ -1,0 +1,103 @@
+#! /usr/bin/env python2
+
+"""Runs an analysis step for a subject in the ns_aperture fMRI experiment"""
+
+import argparse
+import logging
+import sys
+
+import ns_aperture.config, ns_aperture.paths
+import ns_aperture.analysis.analysis
+
+
+def main():
+	"""Execution function"""
+
+	desc = "Runs an analysis step for a subject in the ns_aperture fMRI experiment"
+
+	eg = """
+	Example usage:
+	  run motion correction on subject s1000:
+	    ns_aperture_preproc s1000 correct
+	
+	Steps:
+	  glm : run the GLM
+	
+	"""
+
+	# use this formatter so we can supply our own indentation
+	fmt = argparse.RawDescriptionHelpFormatter
+
+	parser = argparse.ArgumentParser( description = desc,
+	                                  epilog = eg,
+	                                  formatter_class = fmt,
+	                                )
+
+	parser.add_argument( "subj_id",
+	                     help = "Subject identifier"
+	                   )
+
+	proc_steps = ( "design_prep",
+	               "glm",
+	               "beta_to_psc",
+	               "patch_dump",
+	               "image_resp",
+	               "vec_resp",
+	               "subj_regress"
+	             )
+
+	parser.add_argument( "proc_step",
+	                     choices = proc_steps,
+	                     help = "Processing step"
+	                   )
+
+	args = parser.parse_args()
+
+	# load the experiment / subject info
+	conf = ns_aperture.config.get_conf( args.subj_id )
+	paths = ns_aperture.paths.get_subj_paths( conf )
+
+	logger = logging.getLogger()
+	logger.setLevel( logging.INFO )
+
+	log_str = "%(name)s, %(asctime)s, (%(levelname)s)\n-----\n%(message)s\n"
+	log_fmt = logging.Formatter( log_str )
+
+	file_log = logging.FileHandler( paths.log.full() )
+	file_log.setFormatter( log_fmt )
+
+	logger.addHandler( file_log )
+
+	scr_log = logging.StreamHandler( sys.stdout )
+	scr_log.setLevel( logging.INFO )
+	scr_log.setFormatter( log_fmt )
+
+	logger.addHandler( scr_log )
+
+	if args.proc_step = "design_prep":
+		ns_aperture.analysis.analysis.design_prep( conf, paths )
+
+	elif args.proc_step == "glm":
+		ns_aperture.analysis.analysis.glm( conf, paths )
+
+	elif args.proc_step == "beta_to_psc":
+		ns_aperture.analysis.analysis.beta_to_psc( conf, paths )
+
+	elif args.proc_step == "patch_dump":
+		ns_aperture.analysis.analysis.patch_dump( conf, paths )
+
+	elif args.proc_step == "image_resp":
+		ns_aperture.analysis.analysis.image_resp( conf, paths )
+
+	elif args.proc_step == "vec_resp":
+		ns_aperture.analysis.analysis.vec_resp( conf, paths )
+
+	elif args.proc_step == "subj_regress":
+		ns_aperture.analysis.analysis.subj_regress( conf, paths )
+
+	else:
+		print "Not implemented"
+
+
+if __name__ == "__main__":
+	main()

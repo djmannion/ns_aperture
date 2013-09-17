@@ -217,7 +217,7 @@ def _get_ana_conf( conf ):
 	# p threshold for the localiser
 	ana_conf.loc_p = 0.01
 
-	ana_conf.poly_ord = "A"
+	ana_conf.poly_ord = "a"
 
 	ana_conf.hrf_model = "SPMG1({t:0f})".format( t = conf.exp.block_len_s )
 

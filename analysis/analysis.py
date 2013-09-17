@@ -83,22 +83,22 @@ def glm( conf, paths, group_surf = False ):
 
 	os.chdir( paths.ana.base.full() )
 
+	exp_surfs = [ paths.func.surfs[ i - 1 ] for i in conf.subj.exp_runs ]
+
 	for hemi in [ "lh", "rh" ]:
 
-		hemi_ext = "_{h:s}".format( h = hemi )
+		if group_surf:
+			hemi_ext = "-group_{h:s}".format( h = hemi )
+		else:
+			hemi_ext = "_{h:s}".format( h = hemi )
 
 		glm_cmd = [ "3dDeconvolve",
 		            "-input"
 		          ]
 
-		if group_surf:
-			surf_paths = [ surf_path.full( "-group_{h:s}-full.niml.dset".format( h = hemi ) )
-			               for surf_path in paths.func.surfs
-			             ]
-		else:
-			surf_paths = [ surf_path.full( "_{h:s}-full.niml.dset".format( h = hemi ) )
-			               for surf_path in paths.func.surfs
-			             ]
+		surf_paths = [ surf_path.full( "_{h:s}-full.niml.dset".format( h = hemi ) )
+		               for surf_path in exp_surfs
+		             ]
 
 		glm_cmd.extend( surf_paths )
 
@@ -115,7 +115,7 @@ def glm( conf, paths, group_surf = False ):
 		                  "-stim_times", "1",
 		                                 paths.ana.stim_times.full( ".txt" ),
 		                                 conf.ana.hrf_model,
-		                  "-gltsym", "SYM: +coh",
+		                  "-gltsym", "'SYM: +coh'",
 		                  "-glt_label", "1", "coh_gt"
 		                ]
 		              )

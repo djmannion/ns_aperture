@@ -223,6 +223,8 @@ def _get_ana_conf( conf ):
 
 	ana_conf.hrf_corr_vol = 3
 
+	ana_conf.smooth_fwhm = "2.5"
+
 	return ana_conf
 
 

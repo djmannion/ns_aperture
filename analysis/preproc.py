@@ -179,18 +179,35 @@ def vol_to_surf( conf, paths, group_surf = False ):
 
 			fmri_tools.utils.run_cmd( " ".join( surf_cmd ) )
 
-			# convert to full
-			if group_surf:
-				full_path = surf_file.full( "-group_{h:s}-full.niml.dset".format( h = hemi ) )
-				node_str = "ld141"
-			else:
-				full_path = surf_file.full( "_{h:s}-full.niml.dset".format( h = hemi ) )
-				node_str = "{n:d}".format( n = conf.subj.node_k[ hemi ] )
-
-			fmri_tools.utils.sparse_to_full( in_dset = surf_path,
-			                                 out_dset = full_path,
-			                                 pad_node = node_str
-			                               )
-
 	os.chdir( start_dir )
 
+
+def smooth_surfs( conf, paths ):
+
+	logger = logging.getLogger( __name__ )
+	logger.info( "Smoothing group surfaces..." )
+
+	start_dir = os.getcwd()
+
+	for run_num in conf.subj.exp_runs:
+
+		surf_file = paths.func.surfs[ run_num - 1 ]
+		run_dir = paths.func.runs[ run_num - 1 ]
+
+		os.chdir( run_dir.full() )
+
+		for hemi in [ "lh", "rh" ]:
+
+			spec_file = paths.reg.group_spec.full( "_{hemi:s}.spec".format( hemi = hemi ) )
+			surf_path = surf_file.full( "-group_{h:s}.niml.dset".format( h = hemi ) )
+			smooth_path = surf_file.full( "-smooth-group_{h:s}.niml.dset".format( h = hemi ) )
+
+			fmri_tools.preproc.surf_smooth( in_surf = surf_path,
+			                                out_surf = smooth_path,
+			                                spec_path = spec_file,
+			                                target_fwhm = conf.ana.smooth_fwhm,
+			                                surf_A = "std.141.lh.smoothwm.asc",
+			                                surf_B = "std.141.lh.pial.asc"
+			                              )
+
+	os.chdir( start_dir )

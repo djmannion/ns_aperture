@@ -1,4 +1,3 @@
-"Configuration for the natural scenes through apertures fMRI experiment."
 
 
 import numpy as np
@@ -220,7 +219,7 @@ def _get_ana_conf( conf ):
 
 	ana_conf.poly_ord = "A"
 
-	ana_conf.hrf_model = "SPMG1({t:d})".format( t = conf.exp.block_len_s )
+	ana_conf.hrf_model = "SPMG1({t:0f})".format( t = conf.exp.block_len_s )
 
 	ana_conf.hrf_corr_vol = 3
 
@@ -268,9 +267,9 @@ def _get_subj_conf( subj_id = None ):
 	s1021.comments = ""
 	s1021.mask_SI = 90
 
-	s1021.extra_al_params = [ "-parang", "1", "-12", "-2",
-	                          "-parang", "2", "14", "24",
-	                          "-parang", "3", "20", "37",
+	s1021.extra_al_params = [ "-parang", "1", "-9", "1",
+	                          "-parang", "2", "9", "19",
+	                          "-parang", "3", "40", "54",
 	                          "-maxrot", "10",
 	                          "-source_automask+2",
 	                          "-nocmass"

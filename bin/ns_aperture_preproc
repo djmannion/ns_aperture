@@ -46,7 +46,8 @@ def main():
 	                  "fieldmap",
 	                  "mc_unwarp",
 	                  "sess_reg",
-	                  "vol_to_surf"
+	                  "vol_to_surf",
+	                  "vol_to_group_surf"
 	                )
 
 	parser.add_argument( "preproc_step",
@@ -90,6 +91,9 @@ def main():
 
 	elif args.preproc_step == "vol_to_surf":
 		ns_aperture.analysis.preproc.vol_to_surf( conf, paths )
+
+	elif args.preproc_step == "vol_to_group_surf":
+		ns_aperture.analysis.preproc.vol_to_surf( conf, paths, True )
 
 	else:
 		print "Not implemented"

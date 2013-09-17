@@ -33,6 +33,7 @@ def get_subj_paths( conf ):
 
 	paths.ana = _get_ana_paths( conf, paths )
 	paths.loc = _get_loc_paths( conf, paths )
+	paths.log = _get_log_paths( conf, paths )
 
 	# add the group spec to the reg
 	paths.reg.group_spec = fmri_tools.paths.Path( paths.reg.spec.dir(),
@@ -63,6 +64,24 @@ def _get_loc_paths( conf, paths ):
 	return loc
 
 
+def _get_log_paths( conf, paths ):
+	"""Get the paths for the logfiles"""
+
+	log = fmri_tools.paths.PathsHandler()
+
+	subj_id = conf.subj.subj_id
+	exp_id = conf.exp.id
+
+	file_base = "{subj_id:s}_{exp_id:s}-".format( subj_id = subj_id, exp_id = exp_id )
+
+	log.base = paths.base / "logs"
+
+	log.seq = log.base + ( file_base + "_fmri_seq" )
+	log.task = log.base + ( file_base + "_fmri_task" )
+
+	return log
+
+
 def _get_ana_paths( conf, paths ):
 	"""Get the paths for the analysis"""
 
@@ -86,6 +105,8 @@ def _get_ana_paths( conf, paths ):
 
 	ana.vl = ana.base + ( file_base + "vis_loc_rois" )
 	ana.mask = ana.base + ( file_base + "mask" )
+
+	ana.cens = ana.base + ( "censor" )
 
 	return ana
 

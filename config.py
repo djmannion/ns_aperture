@@ -180,7 +180,7 @@ def _get_acq_conf():
 	# how to reshape the data to be in +RAS convention
 	# subsequent commands are relative to the data AFTER this operation
 	# see docs for how to determine these
-	acq_conf.ras = ( "-x", "-z", "-y" )
+	acq_conf.reshape_to_RAS = ( "-x", "-z", "-y" )
 
 	# phase encode direction, according to the data's internal axes
 	acq_conf.ph_encode_dir = "z"
@@ -190,6 +190,8 @@ def _get_acq_conf():
 	acq_conf.fugue_params = [ "--median" ]
 
 	acq_conf.vox_size = "1.5"
+
+	acq_conf.vol_base = 72
 
 	# TE difference in the fieldmaps
 	acq_conf.delta_te_ms = 1.02

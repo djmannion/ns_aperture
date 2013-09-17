@@ -39,6 +39,7 @@ def main():
 
 	proc_steps = ( "design_prep",
 	               "glm",
+	               "glm_group",
 	               "beta_to_psc",
 	               "patch_dump",
 	               "image_resp",
@@ -79,6 +80,9 @@ def main():
 
 	elif args.proc_step == "glm":
 		ns_aperture.analysis.analysis.glm( conf, paths )
+
+	elif args.proc_step == "glm_group":
+		ns_aperture.analysis.analysis.glm( conf, paths, True )
 
 	elif args.proc_step == "beta_to_psc":
 		ns_aperture.analysis.analysis.beta_to_psc( conf, paths )

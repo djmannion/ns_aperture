@@ -6,6 +6,7 @@ apertures fMRI experiment.
 from __future__ import division
 
 import os, os.path
+import logging
 
 import numpy as np
 
@@ -65,104 +66,85 @@ def design_prep( conf, paths ):
 	np.savetxt( paths.ana.cens.full( ".txt" ), cens, fmt = "%d" )
 
 
-def glm( paths, conf ):
+def glm( conf, paths, group_surf = False ):
 	"""Experiment GLM"""
+
+	logger = logging.getLogger( __name__ )
+	logger.info( "Running GLM..." )
+
+	n_vols_per_block = int( conf.exp.block_len_s / conf.acq.tr_s )
+	n_vols = int( conf.exp.run_len_s / conf.acq.tr_s )
+	cens_str = "*:0-{n:d}".format( n = n_vols_per_block - 1 )
+	cens_str += " *:{p:d}-{n:d}".format( p = n_vols - n_vols_per_block,
+	                                     n = n_vols - 1
+	                                   )
 
 	start_dir = os.getcwd()
 
-	os.chdir( paths[ "ana" ][ "base_dir" ] )
-
-	n_cond = 3
-
-	hrf_model = conf[ "ana" ][ "hrf_model" ]
-
-	stim_files = [ "%s%d.txt" % ( paths[ "ana" ][ "time_files" ],
-	                              cond_num
-	                            )
-	               for cond_num in np.arange( 1, n_cond + 1 )
-	             ]
-
-	stim_labels = [ "coh", "Scoh", "Snoncoh" ]
+	os.chdir( paths.ana.base.full() )
 
 	for hemi in [ "lh", "rh" ]:
+
+		hemi_ext = "_{h:s}".format( h = hemi )
 
 		glm_cmd = [ "3dDeconvolve",
 		            "-input"
 		          ]
 
-		i_surf_files = np.array( conf[ "subj" ][ "exp_runs" ] ).astype( "int" ) - 1
+		if group_surf:
+			surf_paths = [ surf_path.full( "-group_{h:s}-full.niml.dset".format( h = hemi ) )
+			               for surf_path in paths.func.surfs
+			             ]
+		else:
+			surf_paths = [ surf_path.full( "_{h:s}-full.niml.dset".format( h = hemi ) )
+			               for surf_path in paths.func.surfs
+			             ]
 
-		surf_files = [ paths[ "func" ][ "surf_files" ][ i_surf ]
-		               for i_surf in i_surf_files
-		             ]
+		glm_cmd.extend( surf_paths )
 
-		glm_cmd.extend( [ "%s_%s.niml.dset" % ( surf_file, hemi )
-		                  for surf_file in surf_files
-		                ]
-		              )
-
-		glm_cmd.extend( [ "-force_TR", "%.3f" % conf[ "acq" ][ "tr_s" ],
-		                  "-polort", "-1",  # we pass our own below
-		                  "-ortvec", paths[ "ana" ][ "bl_poly" ], "poly",
+		glm_cmd.extend( [ "-force_TR", "{tr:.3f}".format( tr = conf.acq.tr_s ),
+		                  "-polort", conf.ana.poly_ord,
 		                  "-local_times",
-		                  "-censor", paths[ "ana" ][ "cens" ],
+		                  "-CENSORTR", cens_str,
 		                  "-xjpeg", "exp_design.png",
 		                  "-x1D", "exp_design",
-		                  "-x1D_stop",
 		                  "-overwrite",
-		                  "-num_stimts", "%d" % n_cond
+		                  "-x1D_stop",  # want to use REML, so don't bother running
+		                  "-num_stimts", "1",
+		                  "-stim_label", "1", "coh",
+		                  "-stim_times", "1",
+		                                 paths.ana.stim_times.full( ".txt" ),
+		                                 conf.ana.hrf_model,
+		                  "-gltsym", "SYM: +coh",
+		                  "-glt_label", "1", "coh_gt"
 		                ]
 		              )
 
-		for i_stim in xrange( n_cond ):
-
-			glm_cmd.extend( [ "-stim_label",
-			                  "%d" % ( i_stim + 1 ),
-			                  stim_labels[ i_stim ]
-			                ]
-			              )
-
-			glm_cmd.extend( [ "-stim_times",
-			                  "%d" % ( i_stim + 1 ),
-			                  stim_files[ i_stim ],
-			                  hrf_model
-			                ]
-			              )
-
-		# run the GLM
-		fmri_tools.utils.run_cmd( glm_cmd,
-		                          env = fmri_tools.utils.get_env(),
-		                          log_path = paths[ "summ" ][ "log_file" ]
-		                        )
+		# run this first GLM
+		fmri_tools.utils.run_cmd( " ".join( glm_cmd ) )
 
 		# delete the annoying command file that 3dDeconvolve writes
 		os.remove( "Decon.REML_cmd" )
 
-		glm_file = "%s_%s.niml.dset" % ( paths[ "ana" ][ "glm" ], hemi )
-		beta_file = "%s_%s.niml.dset" % ( paths[ "ana" ][ "beta" ], hemi )
+		beta_file = paths.ana.beta.file( hemi_ext + "-full.niml.dset" )
+		buck_file = paths.ana.glm.file( hemi_ext + "-full.niml.dset" )
 
 		reml_cmd = [ "3dREMLfit",
 		             "-matrix", "exp_design.xmat.1D",
-		             "-tout",
-		             "-Rbuck", glm_file,
 		             "-Rbeta", beta_file,
+		             "-tout",
+		             "-Rbuck", buck_file,
 		             "-overwrite",
 		             "-input"
 		           ]
 
-		reml_cmd.append( " ".join( [ "%s_%s.niml.dset" % ( surf_file, hemi )
-		                             for surf_file in surf_files
-		                           ]
-		                         )
-		               )
+		reml_cmd.append( "'" + " ".join( surf_paths ) + "'" )
 
 		# run the proper GLM
-		fmri_tools.utils.run_cmd( reml_cmd,
-		                          env = fmri_tools.utils.get_env(),
-		                          log_path = paths[ "summ" ][ "log_file" ]
-		                        )
+		fmri_tools.utils.run_cmd( " ".join( reml_cmd ) )
 
 	os.chdir( start_dir )
+
 
 
 def beta_to_psc( paths, conf ):

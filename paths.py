@@ -31,10 +31,13 @@ def get_subj_paths( conf ):
 	                                            n_runs = conf.subj.n_runs
 	                                          )
 
-	paths.logs = _get_log_paths( conf, paths )
-
 	paths.ana = _get_ana_paths( conf, paths )
 	paths.loc = _get_loc_paths( conf, paths )
+
+	# add the group spec to the reg
+	paths.reg.group_spec = fmri_tools.paths.Path( paths.reg.spec.dir(),
+	                                              "std.141." + conf.subj.subj_id
+	                                            )
 
 	return paths
 

@@ -31,7 +31,7 @@ def convert( conf, paths ):
 		# reorient
 		fmri_tools.preproc.reorient_img( in_path = img_path.full( ".nii" ),
 		                                 out_path = img_path.full( ".nii" ),
-		                                 reorient_str = conf.reshape_to_RAS
+		                                 reorient_str = conf.acq.reshape_to_RAS
 		                               )
 
 	# check that they are all unique
@@ -106,7 +106,7 @@ def mc_unwarp( conf, paths ):
 	                              dwell_ms = conf.acq.dwell_ms,
 	                              uw_direction_fsl = conf.acq.ph_encode_dir,
 	                              uw_direction_afni = conf.acq.ph_enc_afni,
-	                              voxel_size = conf.acq.vol_size,
+	                              voxel_size = conf.acq.vox_size,
 	                              i_vol_base = conf.acq.vol_base,
 	                              i_run_base = conf.subj.mot_base - 1,
 	                              fugue_params = conf.acq.fugue_params
@@ -140,7 +140,7 @@ def sess_reg( conf, paths ):
 
 
 
-def vol_to_surf( conf, paths ):
+def vol_to_surf( conf, paths, group_surf = False ):
 	"""Converts the functional volume-based images to SUMA surfaces."""
 
 	logger = logging.getLogger( __name__ )
@@ -157,13 +157,12 @@ def vol_to_surf( conf, paths ):
 
 		for hemi in [ "lh", "rh" ]:
 
-			spec_file = paths.reg.spec.full( "_{hemi:s}.spec".format( hemi = hemi ) )
-
-			# replace the subject ID with what FreeSurfer/SUMA considers the subject
-			# ID to be
-			spec_file = spec_file.replace( conf.subj.subj_id, conf.subj.fs_subj_id )
-
-			surf_path = surf_file.full( "_{h:s}.niml.dset".format( h = hemi ) )
+			if group_surf:
+				spec_file = paths.reg.group_spec.full( "_{hemi:s}.spec".format( hemi = hemi ) )
+				surf_path = surf_file.full( "-group_{h:s}.niml.dset".format( h = hemi ) )
+			else:
+				spec_file = paths.reg.spec.full( "_{hemi:s}.spec".format( hemi = hemi ) )
+				surf_path = surf_file.full( "_{h:s}.niml.dset".format( h = hemi ) )
 
 			surf_cmd = [ "3dVol2Surf",
 			             "-spec", spec_file,
@@ -181,9 +180,13 @@ def vol_to_surf( conf, paths ):
 			fmri_tools.utils.run_cmd( " ".join( surf_cmd ) )
 
 			# convert to full
-			full_path = surf_file.full( "_{h:s}-full.niml.dset".format( h = hemi ) )
+			if group_surf:
+				full_path = surf_file.full( "-group_{h:s}-full.niml.dset".format( h = hemi ) )
+				node_str = "ld141"
+			else:
+				full_path = surf_file.full( "_{h:s}-full.niml.dset".format( h = hemi ) )
+				node_str = "{n:d}".format( n = conf.subj.node_k[ hemi ] )
 
-			node_str = "{n:d}".format( n = conf.subj.node_k[ hemi ] )
 			fmri_tools.utils.sparse_to_full( in_dset = surf_path,
 			                                 out_dset = full_path,
 			                                 pad_node = node_str

@@ -74,7 +74,7 @@ def main():
 
 	logger.addHandler( scr_log )
 
-	if args.proc_step = "design_prep":
+	if args.proc_step == "design_prep":
 		ns_aperture.analysis.analysis.design_prep( conf, paths )
 
 	elif args.proc_step == "glm":

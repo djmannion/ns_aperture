@@ -183,6 +183,7 @@ def vol_to_surf( conf, paths, group_surf = False ):
 
 
 def smooth_surfs( conf, paths ):
+	"Smooth the surfaces for group analysis"
 
 	logger = logging.getLogger( __name__ )
 	logger.info( "Smoothing group surfaces..." )
@@ -206,8 +207,9 @@ def smooth_surfs( conf, paths ):
 			                                out_surf = smooth_path,
 			                                spec_path = spec_file,
 			                                target_fwhm = conf.ana.smooth_fwhm,
-			                                surf_A = "std.141.lh.smoothwm.asc",
-			                                surf_B = "std.141.lh.pial.asc"
+			                                surf_A = "std.141." + hemi + ".smoothwm.asc",
+			                                surf_B = "std.141." + hemi + ".pial.asc"
 			                              )
 
 	os.chdir( start_dir )
+

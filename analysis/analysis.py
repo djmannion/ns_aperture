@@ -96,9 +96,14 @@ def glm( conf, paths, group_surf = False ):
 		            "-input"
 		          ]
 
-		surf_paths = [ surf_path.full( "_{h:s}-full.niml.dset".format( h = hemi ) )
-		               for surf_path in exp_surfs
-		             ]
+		if group_surf:
+			surf_paths = [ surf_path.full( "-smooth{h:s}.niml.dset".format( h = hemi_ext ) )
+			               for surf_path in exp_surfs
+			             ]
+		else:
+			surf_paths = [ surf_path.full( "{h:s}.niml.dset".format( h = hemi_ext ) )
+			               for surf_path in exp_surfs
+			             ]
 
 		glm_cmd.extend( surf_paths )
 
@@ -126,8 +131,8 @@ def glm( conf, paths, group_surf = False ):
 		# delete the annoying command file that 3dDeconvolve writes
 		os.remove( "Decon.REML_cmd" )
 
-		beta_file = paths.ana.beta.file( hemi_ext + "-full.niml.dset" )
-		buck_file = paths.ana.glm.file( hemi_ext + "-full.niml.dset" )
+		beta_file = paths.ana.beta.file( hemi_ext + ".niml.dset" )
+		buck_file = paths.ana.glm.file( hemi_ext + ".niml.dset" )
 
 		reml_cmd = [ "3dREMLfit",
 		             "-matrix", "exp_design.xmat.1D",

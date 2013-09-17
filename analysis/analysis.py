@@ -24,7 +24,7 @@ def design_prep( conf, paths ):
 
 	for run_num in conf.subj.exp_runs:
 
-		run_seq = np.load( paths.log.seq( "_{n:d}.npy".format( n = run_num ) ) )
+		run_seq = np.load( paths.exp_log.seq.full( "_{n:d}.npy".format( n = run_num ) ) )
 
 		( n_evt, _ ) = run_seq.shape
 
@@ -60,9 +60,9 @@ def design_prep( conf, paths ):
 
 	assert( np.sum( cens == 0 ) == ( n_vols_per_block * 2 ) )
 
-	cens = np.tile( cens, conf.subj.n_exp_runs )
+	cens = np.tile( cens[ :, np.newaxis ], conf.subj.n_exp_runs ).T
 
-	np.savetxt( paths.ana.cens.full( ".txt" ), cens )
+	np.savetxt( paths.ana.cens.full( ".txt" ), cens, fmt = "%d" )
 
 
 def glm( paths, conf ):

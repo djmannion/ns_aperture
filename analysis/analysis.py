@@ -70,7 +70,7 @@ def design_prep( conf, paths ):
 	np.savetxt( paths.ana.cens.full( ".txt" ), cens, fmt = "%d" )
 
 
-def glm( conf, paths, group_surf = False ):
+def glm( conf, paths, std_surf = False ):
 	"""Experiment GLM"""
 
 	logger = logging.getLogger( __name__ )
@@ -91,8 +91,8 @@ def glm( conf, paths, group_surf = False ):
 
 	for hemi in [ "lh", "rh" ]:
 
-		if group_surf:
-			hemi_ext = "-group_{h:s}".format( h = hemi )
+		if std_surf:
+			hemi_ext = "-std_{h:s}".format( h = hemi )
 		else:
 			hemi_ext = "_{h:s}".format( h = hemi )
 
@@ -100,7 +100,7 @@ def glm( conf, paths, group_surf = False ):
 		            "-input"
 		          ]
 
-		if group_surf:
+		if std_surf:
 			surf_paths = [ surf_path.full( "-smooth{h:s}.niml.dset".format( h = hemi_ext ) )
 			               for surf_path in exp_surfs
 			             ]
@@ -151,6 +151,21 @@ def glm( conf, paths, group_surf = False ):
 
 		# run the proper GLM
 		fmri_tools.utils.run_cmd( " ".join( reml_cmd ) )
+
+		if std_surf:
+
+			in_dsets = [ beta_file, buck_file ]
+			out_dsets = [ paths.ana.beta.file( hemi_ext + "-full.niml.dset" ),
+			              paths.ana.glm.file( hemi_ext + "-full.niml.dset" )
+			            ]
+
+			for ( in_dset, out_dset ) in zip( in_dsets, out_dsets ):
+				# convert the beta and glm files to full
+				fmri_tools.utils.sparse_to_full( in_dset = in_dset,
+				                                 out_dset = out_dset,
+				                                 pad_node = "ld141"
+				                               )
+
 
 	os.chdir( start_dir )
 

@@ -7,7 +7,79 @@ import fmri_tools.utils
 import ns_aperture.config, ns_aperture.paths
 
 
+def coh_test( conf, paths ):
+	"Tests the coherence GLM"
+
+	os.chdir( paths.coh_test.dir() )
+
+	subj_ids = conf.all_subj.subj.keys()
+
+	os.chdir( paths.base.dir() )
+
+	for hemi in [ "lh", "rh" ]:
+
+		hemi_ext = "-std_{h:s}".format( h = hemi )
+
+		# first, make a mask from the overlapping regions
+		cmd = [ "3dcalc" ]
+
+		for ( letter, subj_id ) in zip( string.letters, subj_ids ):
+
+			subj_conf = ns_aperture.config.get_conf( subj_id )
+			subj_paths = ns_aperture.paths.get_subj_paths( subj_conf )
+
+			cmd.extend( [ "-" + letter,
+			              subj_paths.ana.glm.full( hemi_ext + "-full.niml.dset" )
+			            ]
+			          )
+
+		expr = "1*and("
+		expr += ",".join( [ "notzero(" + x + ")"
+		                    for x in string.letters[ :len( subj_ids ) ]
+		                  ]
+		                )
+		expr += ")"
+
+		cmd.extend( [ "-expr", "'" + expr + "'" ] )
+
+		cmd.extend( [ "-prefix",
+		              paths.mask.file( hemi_ext + "-full.niml.dset" )
+		            ]
+		          )
+
+		cmd.append( "-overwrite" )
+
+		fmri_tools.utils.run_cmd( " ".join( cmd ) )
+
+		# brick in the beta file corresponding to the coherent regressor
+		beta_brick = "30"
+
+
+		cmd = [ "3dttest++", "-setA" ]
+
+		subj_ids = conf.all_subj.subj.keys()
+
+		for subj_id in subj_ids:
+
+			subj_conf = ns_aperture.config.get_conf( subj_id )
+			subj_paths = ns_aperture.paths.get_subj_paths( subj_conf )
+
+			beta_path = subj_paths.ana.beta.full( hemi_ext + "-full.niml.dset" )
+
+			cmd.append( "'" + beta_path + "[" + beta_brick + "]'" )
+
+		cmd.extend( [ "-prefix", paths.coh_test.file( hemi_ext + "-full.niml.dset" ),
+		              "-mask", paths.mask.file( hemi_ext + "-full.niml.dset" ),
+		              "-overwrite"
+		            ]
+		          )
+
+		fmri_tools.utils.run_cmd( " ".join( cmd ) )
+
+
+
 def avg_phase_surfs( conf, paths ):
+	"Averages the wedge maps across subjects"
 
 	subj_ids = conf.all_subj.subj.keys()
 
@@ -160,7 +232,7 @@ def avg_phase_surfs( conf, paths ):
 
 		# combine the angle and snr
 		cmd = [ "3dbucket",
-		        "-prefix", paths.wedge_angle.file( "-angle-" + hemi + "-full.niml.dset" ),
+		        "-prefix", paths.wedge_angle.file( "-" + hemi + "-full.niml.dset" ),
 		        "-overwrite",
 		        paths.wedge_coef.file( "-" + hemi + "-full.niml.dset" ),
 		        paths.wedge_coef.file( "-snr-" + hemi + "-full.niml.dset" )

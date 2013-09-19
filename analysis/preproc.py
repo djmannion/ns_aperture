@@ -140,7 +140,7 @@ def sess_reg( conf, paths ):
 
 
 
-def vol_to_surf( conf, paths, group_surf = False ):
+def vol_to_surf( conf, paths, std_surf = False ):
 	"""Converts the functional volume-based images to SUMA surfaces."""
 
 	logger = logging.getLogger( __name__ )
@@ -157,9 +157,9 @@ def vol_to_surf( conf, paths, group_surf = False ):
 
 		for hemi in [ "lh", "rh" ]:
 
-			if group_surf:
-				spec_file = paths.reg.group_spec.full( "_{hemi:s}.spec".format( hemi = hemi ) )
-				surf_path = surf_file.full( "-group_{h:s}.niml.dset".format( h = hemi ) )
+			if std_surf:
+				spec_file = paths.reg.std_spec.full( "_{hemi:s}.spec".format( hemi = hemi ) )
+				surf_path = surf_file.full( "-std_{h:s}.niml.dset".format( h = hemi ) )
 			else:
 				spec_file = paths.reg.spec.full( "_{hemi:s}.spec".format( hemi = hemi ) )
 				surf_path = surf_file.full( "_{h:s}.niml.dset".format( h = hemi ) )
@@ -199,9 +199,9 @@ def smooth_surfs( conf, paths ):
 
 		for hemi in [ "lh", "rh" ]:
 
-			spec_file = paths.reg.group_spec.full( "_{hemi:s}.spec".format( hemi = hemi ) )
-			surf_path = surf_file.full( "-group_{h:s}.niml.dset".format( h = hemi ) )
-			smooth_path = surf_file.full( "-smooth-group_{h:s}.niml.dset".format( h = hemi ) )
+			spec_file = paths.reg.std_spec.full( "_{hemi:s}.spec".format( hemi = hemi ) )
+			surf_path = surf_file.full( "-std_{h:s}.niml.dset".format( h = hemi ) )
+			smooth_path = surf_file.full( "-smooth-std_{h:s}.niml.dset".format( h = hemi ) )
 
 			fmri_tools.preproc.surf_smooth( in_surf = surf_path,
 			                                out_surf = smooth_path,

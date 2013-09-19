@@ -36,9 +36,9 @@ def get_subj_paths( conf ):
 	paths.exp_log = _get_exp_log_paths( conf, paths )
 
 	# add the group spec to the reg
-	paths.reg.group_spec = fmri_tools.paths.Path( paths.reg.spec.dir(),
-	                                              "std.141." + conf.subj.subj_id
-	                                            )
+	paths.reg.std_spec = fmri_tools.paths.Path( paths.reg.spec.dir(),
+	                                            "std.141." + conf.subj.subj_id
+	                                          )
 
 	return paths
 
@@ -127,6 +127,10 @@ def get_group_paths( conf ):
 
 	grp.wedge_coef = grp.base + ( file_base + "wedge_coef" )
 	grp.wedge_angle = grp.base + ( file_base + "wedge_angle" )
+
+	grp.coh_test = grp.base + ( file_base + "coh_test" )
+
+	grp.mask = grp.base + ( file_base + "mask" )
 
 	return grp
 

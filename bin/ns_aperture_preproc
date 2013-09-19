@@ -47,7 +47,7 @@ def main():
 	                  "mc_unwarp",
 	                  "sess_reg",
 	                  "vol_to_surf",
-	                  "vol_to_group_surf",
+	                  "vol_to_surf_std",
 	                  "smooth"
 	                )
 
@@ -93,7 +93,7 @@ def main():
 	elif args.preproc_step == "vol_to_surf":
 		ns_aperture.analysis.preproc.vol_to_surf( conf, paths )
 
-	elif args.preproc_step == "vol_to_group_surf":
+	elif args.preproc_step == "vol_to_surf_std":
 		ns_aperture.analysis.preproc.vol_to_surf( conf, paths, True )
 
 	elif args.preproc_step == "smooth":

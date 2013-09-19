@@ -108,6 +108,9 @@ def _get_ana_paths( conf, paths ):
 
 	ana.cens = ana.base + ( "censor" )
 
+	ana.wedge_coef = ana.base + ( file_base + "wedge_coef" )
+	ana.wedge_snr = ana.base + ( file_base + "snr" )
+
 	return ana
 
 
@@ -116,9 +119,14 @@ def get_group_paths( conf ):
 
 	grp = fmri_tools.paths.PathsHandler()
 
-	grp.base = fmri_tools.paths.Path( "/labs/olmanlab/Data7T/NatSceneApertures/group_data" )
+	grp.base = fmri_tools.paths.Path( "/labs/olmanlab/Data7T/NatSceneAperture/group_data" )
 
-	file_base = "ns_apertures"
+	file_base = "ns_aperture-"
+
+	grp.log = grp.base + ( file_base + "log.log" )
+
+	grp.wedge_coef = grp.base + ( file_base + "wedge_coef" )
+	grp.wedge_angle = grp.base + ( file_base + "wedge_angle" )
 
 	return grp
 

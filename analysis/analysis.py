@@ -43,8 +43,12 @@ def design_prep( conf, paths ):
 				cond = int( run_seq[ i_evt, seq_info[ "block_type" ] ] )
 
 				# don't want to model non-coherent blocks
-				if ( cond == 1 ):
+				if ( cond == 0 ):
 					cond_file.write( "{x:.03f} ".format( x = start_time_s ) )
+
+					assert ( run_seq[ i_evt, seq_info[ "img_id_L" ] ] ==
+					         run_seq[ i_evt, seq_info[ "img_id_R" ] ]
+					       )
 
 		cond_file.write( "\n" )
 

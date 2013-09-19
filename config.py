@@ -243,10 +243,11 @@ def _get_subj_conf( subj_id = None ):
 	s1000.loc_runs = [ 11, 12 ]
 	s1000.comments = ""
 	s1000.mask_SI = 90
+	s1000.vis_loc_date = "20111212"
 
-	s1000.extra_al_params = [ "-parang", "1", "-12", "-2",
-	                          "-parang", "2", "14", "24",
-	                          "-parang", "3", "20", "37",
+	s1000.extra_al_params = [ "-parang", "1", "-6", "4",
+	                          "-parang", "2", "11", "21",
+	                          "-parang", "3", "23", "33",
 	                          "-maxrot", "10",
 	                          "-source_automask+2",
 	                          "-nocmass"
@@ -268,6 +269,7 @@ def _get_subj_conf( subj_id = None ):
 	s1021.loc_runs = [ 11, 12 ]
 	s1021.comments = ""
 	s1021.mask_SI = 90
+	s1021.vis_loc_date = "20111212"
 
 	s1021.extra_al_params = [ "-parang", "1", "-9", "1",
 	                          "-parang", "2", "9", "19",
@@ -293,10 +295,11 @@ def _get_subj_conf( subj_id = None ):
 	s1011.loc_runs = [ 11, 12 ]
 	s1011.comments = ""
 	s1011.mask_SI = 90
+	s1011.vis_loc_date = "20121219"
 
-	s1011.extra_al_params = [ "-parang", "1", "-12", "-2",
-	                          "-parang", "2", "14", "24",
-	                          "-parang", "3", "20", "37",
+	s1011.extra_al_params = [ "-parang", "1", "-4", "6",
+	                          "-parang", "2", "5", "15",
+	                          "-parang", "3", "21", "31",
 	                          "-maxrot", "10",
 	                          "-source_automask+2",
 	                          "-nocmass"
@@ -318,10 +321,11 @@ def _get_subj_conf( subj_id = None ):
 	s1032.loc_runs = [ 11, 12 ]
 	s1032.comments = "Visible motion in last run (loc)"
 	s1032.mask_SI = 90
+	s1032.vis_loc_date = "20120203"
 
-	s1032.extra_al_params = [ "-parang", "1", "-12", "-2",
-	                          "-parang", "2", "14", "24",
-	                          "-parang", "3", "20", "37",
+	s1032.extra_al_params = [ "-parini", "1", "13", #"18",
+	                          "-parini", "2", "29", #"34",
+	                          "-parini", "3", "22",# "27",
 	                          "-maxrot", "10",
 	                          "-source_automask+2",
 	                          "-nocmass"
@@ -343,10 +347,11 @@ def _get_subj_conf( subj_id = None ):
 	s1008.loc_runs = [ 11, 12 ]
 	s1008.comments = ""
 	s1008.mask_SI = 90
+	s1008.vis_loc_date = "20111214"
 
-	s1008.extra_al_params = [ "-parang", "1", "-12", "-2",
-	                          "-parang", "2", "14", "24",
-	                          "-parang", "3", "20", "37",
+	s1008.extra_al_params = [ "-parang", "1", "0", "14",
+	                          "-parang", "2", "11", "21",
+	                          "-parang", "3", "0", "10",
 	                          "-maxrot", "10",
 	                          "-source_automask+2",
 	                          "-nocmass"

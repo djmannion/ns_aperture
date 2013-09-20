@@ -208,7 +208,10 @@ def smooth_surfs( conf, paths ):
 			                                spec_path = spec_file,
 			                                target_fwhm = conf.ana.smooth_fwhm,
 			                                surf_A = "std.141." + hemi + ".smoothwm.asc",
-			                                surf_B = "std.141." + hemi + ".pial.asc"
+			                                surf_B = "std.141." + hemi + ".pial.asc",
+			                                extra_params = [ "-sigma",
+			                                                 conf.ana.smooth_sigma
+			                                               ]
 			                              )
 
 	os.chdir( start_dir )

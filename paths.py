@@ -130,7 +130,13 @@ def get_group_paths( conf ):
 
 	grp.coh_test = grp.base + ( file_base + "coh_test" )
 
-	grp.mask = grp.base + ( file_base + "mask" )
+	grp.surf_mask = grp.base + ( file_base + "mask" )
+	grp.rep_vol_mask = grp.base + ( file_base + "rep_vol_mask" )
+
+	grp.clust_sim = grp.base / "cluster_sim" + "sim"
+	grp.clust_script = grp.base / "cluster_sim" + "script"
+
+
 
 	return grp
 

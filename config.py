@@ -223,7 +223,12 @@ def _get_ana_conf( conf ):
 
 	ana_conf.hrf_corr_vol = 3
 
-	ana_conf.smooth_fwhm = "3.0"
+	ana_conf.smooth_fwhm = "2.5"
+	ana_conf.smooth_sigma = "1.0"
+
+	ana_conf.rep_subj_id = "s1021"
+
+	ana_conf.p_height_thr = 0.01
 
 	return ana_conf
 

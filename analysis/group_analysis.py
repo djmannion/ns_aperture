@@ -77,6 +77,73 @@ def coh_test( conf, paths ):
 		fmri_tools.utils.run_cmd( " ".join( cmd ) )
 
 
+def cluster_sim( conf, paths ):
+	"Generates a FWE cluster threshold"
+
+	subj_ids = conf.all_subj.subj.keys()
+
+	for hemi in [ "lh", "rh" ]:
+
+		hemi_ext = "-std_" + hemi + "-full.niml.dset"
+
+		# first, generate a group mask - the nodes that are common to all subjects
+
+		# gather a list of the surfaces
+		surfs = []
+
+		for subj_id in subj_ids:
+
+			subj_conf = ns_aperture.config.get_conf( subj_id )
+			subj_paths = ns_aperture.paths.get_subj_paths( subj_conf )
+
+			subj_surf = subj_paths.ana.glm.full( hemi_ext + "[0]" )
+
+			surfs.append( subj_surf )
+
+		mask_surf = paths.surf_mask.full( hemi_ext )
+
+		fmri_tools.utils.group_surf_mask( surf_paths = surfs,
+		                                  mask_path = mask_surf
+		                                )
+
+		# then, back project to a volume
+
+		rep_subj_conf = ns_aperture.config.get_conf( conf.ana.rep_subj_id )
+		rep_subj_paths = ns_aperture.paths.get_subj_paths( rep_subj_conf )
+
+		rep_spec = rep_subj_paths.reg.std_spec.full( "_" + hemi + ".spec" )
+		rep_ref = rep_subj_paths.reg.anat_reg.full( "+orig" )
+		rep_vol_mask = paths.rep_vol_mask.full( "_" + hemi + "+orig" )
+
+		cmd = [ "3dSurf2Vol",
+		        "-spec", rep_spec,
+		        "-surf_A", "smoothwm",
+		        "-surf_B", "pial",
+		        "-sdata", mask_surf,
+		        "-grid_parent", rep_subj_paths.reg.mean.full( "+orig" ),
+		        "-sv", rep_ref,
+		        "-map_func", "max",
+		        "-prefix", rep_vol_mask,
+		        "-overwrite"
+		      ]
+
+		fmri_tools.utils.run_cmd( " ".join( cmd ) )
+
+		# finally, run the cluster sim
+
+		script_path = paths.clust_script.full( "_" + hemi + ".sh" )
+
+		fmri_tools.utils.cluster_sim( spec_path = rep_spec,
+		                              mask_path = rep_vol_mask,
+		                              ref_path = rep_ref,
+		                              results_dir = paths.clust_sim.full( "_" + hemi ),
+		                              script_path = script_path,
+		                              pvals = [ conf.ana.p_height_thr ],
+		                              blur = conf.ana.smooth_fwhm,
+		                              sigma = conf.ana.smooth_sigma,
+		                              verbosity = 2
+		                            )
+
 
 def avg_phase_surfs( conf, paths ):
 	"Averages the wedge maps across subjects"

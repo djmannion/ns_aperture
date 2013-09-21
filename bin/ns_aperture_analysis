@@ -40,6 +40,8 @@ def main():
 	proc_steps = ( "design_prep",
 	               "glm",
 	               "glm_std",
+	               "loc_design_prep",
+	               "loc_glm_std",
 	               "beta_to_psc",
 	               "patch_dump",
 	               "image_resp",
@@ -83,6 +85,12 @@ def main():
 
 	elif args.proc_step == "glm_std":
 		ns_aperture.analysis.analysis.glm( conf, paths, True )
+
+	elif args.proc_step == "loc_design_prep":
+		ns_aperture.analysis.analysis.loc_design_prep( conf, paths )
+
+	elif args.proc_step == "loc_glm_std":
+		ns_aperture.analysis.analysis.loc_glm( conf, paths, True )
 
 	elif args.proc_step == "beta_to_psc":
 		ns_aperture.analysis.analysis.beta_to_psc( conf, paths )

@@ -57,6 +57,7 @@ def _get_loc_paths( conf, paths ):
 	                                              exp_id = exp_id
 	                                            )
 
+	loc.time_files = loc.base + ( file_base + "time_files" )
 	loc.glm = loc.base + ( file_base + "glm" )
 	loc.beta = loc.base + ( file_base + "beta" )
 	loc.mask = loc.base + ( file_base + "mask" )
@@ -108,8 +109,8 @@ def _get_ana_paths( conf, paths ):
 
 	ana.cens = ana.base + ( "censor" )
 
-	ana.wedge_coef = ana.base + ( file_base + "wedge_coef" )
-	ana.wedge_snr = ana.base + ( file_base + "snr" )
+	ana.coef = ana.base + ( file_base + "coef" )
+	ana.snr = ana.base + ( file_base + "snr" )
 
 	return ana
 
@@ -125,8 +126,8 @@ def get_group_paths( conf ):
 
 	grp.log = grp.base + ( file_base + "log.log" )
 
-	grp.wedge_coef = grp.base + ( file_base + "wedge_coef" )
-	grp.wedge_angle = grp.base + ( file_base + "wedge_angle" )
+	grp.coef = grp.base + ( file_base + "coef" )
+	grp.angle = grp.base + ( file_base + "angle" )
 
 	grp.coh_test = grp.base + ( file_base + "coh_test" )
 
@@ -136,7 +137,8 @@ def get_group_paths( conf ):
 	grp.clust_sim = grp.base / "cluster_sim" + "sim"
 	grp.clust_script = grp.base / "cluster_sim" + "script"
 
-
+	grp.loc = grp.base / "loc"
+	grp.loc_test = grp.loc + ( file_base + "loc_test" )
 
 	return grp
 

@@ -12,7 +12,7 @@ import numpy as np
 
 import fmri_tools.utils
 
-import ns_aperture.fmri.exp
+import ns_aperture.fmri.exp, ns_aperture.fmri.loc
 
 
 def design_prep( conf, paths ):
@@ -157,6 +157,196 @@ def glm( conf, paths, std_surf = False ):
 			in_dsets = [ beta_file, buck_file ]
 			out_dsets = [ paths.ana.beta.file( hemi_ext + "-full.niml.dset" ),
 			              paths.ana.glm.file( hemi_ext + "-full.niml.dset" )
+			            ]
+
+			for ( in_dset, out_dset ) in zip( in_dsets, out_dsets ):
+				# convert the beta and glm files to full
+				fmri_tools.utils.sparse_to_full( in_dset = in_dset,
+				                                 out_dset = out_dset,
+				                                 pad_node = "ld141"
+				                               )
+
+
+	os.chdir( start_dir )
+
+
+def loc_design_prep( conf, paths ):
+	"""Prepares the designs for GLM analysis"""
+
+	seq_info = ns_aperture.fmri.loc.get_seq_ind()
+
+	# L /R
+	n_cond = 2
+
+	cond_files = [ open( "%s_%d.txt" % ( paths.loc.time_files,
+	                                    cond_num
+	                                  ),
+	                     "w"
+	                   )
+	                   for cond_num in np.arange( 1, n_cond + 1 )
+	             ]
+
+	loc_ord = ( "AB", "BA" )
+
+	for i_run in xrange( conf.subj.n_loc_runs ):
+
+		run_times = []
+		run_conds = []
+
+		run_seq = ns_aperture.fmri.loc.get_seq( conf, loc_ord[ i_run ] )
+
+		( n_evt, _ ) = run_seq.shape
+
+		for i_evt in xrange( n_evt ):
+
+			curr_block_num = run_seq[ i_evt, seq_info[ "block_num" ] ]
+			prev_block_num = run_seq[ i_evt - 1, seq_info[ "block_num" ] ]
+
+			is_transition = ( curr_block_num != prev_block_num )
+
+			if is_transition:
+
+				start_time_s = run_seq[ i_evt, seq_info[ "time_s" ] ]
+
+				cond = int( run_seq[ i_evt, seq_info[ "block_type" ] ] )
+
+				# 0 = blank
+				if cond > 0:
+					run_times.append( start_time_s )
+					run_conds.append( cond - 1 )
+
+		run_times = np.array( run_times )
+		run_conds = np.array( run_conds )
+
+		for i_cond in xrange( n_cond ):
+
+			i_evt_cond = np.where( run_conds == i_cond )[ 0 ]
+
+			if i_evt_cond.size == 0:
+				cond_files[ i_cond ].write( "*" )
+			else:
+				_ = [ cond_files[ i_cond ].write( "%.5f\t" % evt_time )
+				      for evt_time in run_times[ i_evt_cond ]
+				    ]
+
+			cond_files[ i_cond ].write( "\n" )
+
+	_ = [ cond_file.close() for cond_file in cond_files ]
+
+
+def loc_glm( conf, paths, std_surf = False ):
+	"""Loclaiser GLM"""
+
+	logger = logging.getLogger( __name__ )
+	logger.info( "Running localiser GLM..." )
+
+	block_len_s = int( conf.exp.loc_run_len_s / conf.exp.loc_n_blocks )
+	n_vols_per_block = int( block_len_s / conf.acq.tr_s )
+	n_vols = int( conf.exp.loc_run_full_len_s / conf.acq.tr_s )
+	n_pre_vols = int( conf.exp.loc_pre_len_s / conf.acq.tr_s )
+	cens_str = "*:0-{n:d}".format( n = n_pre_vols - 1 )
+
+	n_cond = 2
+
+	hrf_model = "SPMG1({n:d})".format( n = block_len_s )
+
+	stim_files = [ "%s_%d.txt" % ( paths.loc.time_files,
+	                              cond_num
+	                            )
+	               for cond_num in np.arange( 1, n_cond + 1 )
+	             ]
+
+	stim_labels = ( "L", "R" )
+
+
+	start_dir = os.getcwd()
+
+	os.chdir( paths.loc.base.full() )
+
+	exp_surfs = [ paths.func.surfs[ i - 1 ] for i in conf.subj.loc_runs ]
+
+	for hemi in [ "lh", "rh" ]:
+
+		if std_surf:
+			hemi_ext = "-std_{h:s}".format( h = hemi )
+		else:
+			hemi_ext = "_{h:s}".format( h = hemi )
+
+		glm_cmd = [ "3dDeconvolve",
+		            "-input"
+		          ]
+
+		if std_surf:
+			surf_paths = [ surf_path.full( "-smooth{h:s}.niml.dset".format( h = hemi_ext ) )
+			               for surf_path in exp_surfs
+			             ]
+		else:
+			surf_paths = [ surf_path.full( "{h:s}.niml.dset".format( h = hemi_ext ) )
+			               for surf_path in exp_surfs
+			             ]
+
+		glm_cmd.extend( surf_paths )
+
+		glm_cmd.extend( [ "-force_TR", "{tr:.3f}".format( tr = conf.acq.tr_s ),
+		                  "-polort", conf.ana.poly_ord,
+		                  "-local_times",
+		                  "-CENSORTR", cens_str,
+		                  "-xjpeg", "exp_design.png",
+		                  "-x1D", "exp_design",
+		                  "-overwrite",
+		                  "-x1D_stop",  # want to use REML, so don't bother running
+		                  "-num_stimts", "2"
+		                ]
+		              )
+
+		for i_stim in xrange( n_cond ):
+
+			glm_cmd.extend( [ "-stim_label",
+			                  "%d" % ( i_stim + 1 ),
+			                  stim_labels[ i_stim ]
+			                ]
+			              )
+
+			glm_cmd.extend( [ "-stim_times",
+			                  "%d" % ( i_stim + 1 ),
+			                  stim_files[ i_stim ],
+			                  hrf_model
+			                ]
+			              )
+
+		glm_cmd.extend( [ "-gltsym", "'SYM: +L +R'", "-glt_label", "1", "both",
+		                  "-gltsym", "'SYM: +L -R'", "-glt_label", "2", "lGTr"
+		                ]
+		              )
+
+		# run this first GLM
+		fmri_tools.utils.run_cmd( " ".join( glm_cmd ) )
+
+		# delete the annoying command file that 3dDeconvolve writes
+		os.remove( "Decon.REML_cmd" )
+
+		beta_file = paths.loc.beta.file( hemi_ext + ".niml.dset" )
+		buck_file = paths.loc.glm.file( hemi_ext + ".niml.dset" )
+
+		reml_cmd = [ "3dREMLfit",
+		             "-matrix", "exp_design.xmat.1D",
+		             "-Rbeta", beta_file,
+		             "-tout",
+		             "-Rbuck", buck_file,
+		             "-overwrite",
+		             "-input"
+		           ]
+
+		reml_cmd.append( "'" + " ".join( surf_paths ) + "'" )
+
+		# run the proper GLM
+		fmri_tools.utils.run_cmd( " ".join( reml_cmd ) )
+
+		if std_surf:
+
+			in_dsets = [ beta_file, buck_file ]
+			out_dsets = [ paths.loc.beta.file( hemi_ext + "-full.niml.dset" ),
+			              paths.loc.glm.file( hemi_ext + "-full.niml.dset" )
 			            ]
 
 			for ( in_dset, out_dset ) in zip( in_dsets, out_dsets ):

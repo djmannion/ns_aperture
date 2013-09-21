@@ -302,13 +302,13 @@ def get_seq( conf, order ):
 
 	"""
 
-	block_seq = get_block_seq( order, conf[ "exp" ][ "loc_n_blocks" ] )
+	block_seq = get_block_seq( order, conf.exp.loc_n_blocks )
 
 	seq_ind = get_seq_ind()
 
-	n_evt = ( conf[ "stim" ][ "loc_rev_rate_hz" ] *
-	          ( conf[ "exp" ][ "loc_run_full_len_s" ] -
-	            conf[ "exp" ][ "loc_pre_len_s" ]
+	n_evt = ( conf.stim.loc_rev_rate_hz *
+	          ( conf.exp.loc_run_full_len_s -
+	            conf.exp.loc_pre_len_s
 	          )
 	        )
 
@@ -323,13 +323,13 @@ def get_seq( conf, order ):
 
 	for i_evt in xrange( int( n_evt ) ):
 
-		time_s = i_evt * ( 1.0 / conf[ "stim" ][ "loc_rev_rate_hz" ] )
+		time_s = i_evt * ( 1.0 / conf.stim.loc_rev_rate_hz )
 
-		time_s += conf[ "exp" ][ "loc_pre_len_s" ]
+		time_s += conf.exp.loc_pre_len_s
 
 		i_block = np.floor( i_evt *
-		                    ( 1.0 / conf[ "stim" ][ "loc_rev_rate_hz" ] ) /
-		                    conf[ "exp" ][ "block_len_s" ]
+		                    ( 1.0 / conf.stim.loc_rev_rate_hz ) /
+		                    conf.exp.block_len_s
 		                  )
 
 		block_type = block_seq[ i_block ]

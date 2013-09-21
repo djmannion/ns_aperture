@@ -190,7 +190,7 @@ def smooth_surfs( conf, paths ):
 
 	start_dir = os.getcwd()
 
-	for run_num in conf.subj.exp_runs:
+	for run_num in xrange( conf.subj.n_runs ):
 
 		surf_file = paths.func.surfs[ run_num - 1 ]
 		run_dir = paths.func.runs[ run_num - 1 ]

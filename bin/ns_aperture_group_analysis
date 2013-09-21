@@ -33,11 +33,11 @@ def main():
 	                                  formatter_class = fmt,
 	                                )
 
-	proc_steps = ( "wedge_avg",
+	proc_steps = ( "ret_std",
 	               "coh_test",
 	               "glm_group",
 	               "clust_sim",
-	               "patch_dump",
+	               "loc_test",
 	               "image_resp",
 	               "vec_resp",
 	               "subj_regress"
@@ -71,8 +71,8 @@ def main():
 
 	logger.addHandler( scr_log )
 
-	if args.proc_step == "wedge_avg":
-		ns_aperture.analysis.group_analysis.avg_phase_surfs( conf, paths )
+	if args.proc_step == "ret_std":
+		ns_aperture.analysis.group_analysis.ret_std( conf, paths )
 
 	elif args.proc_step == "coh_test":
 		ns_aperture.analysis.group_analysis.coh_test( conf, paths )
@@ -83,8 +83,8 @@ def main():
 	elif args.proc_step == "clust_sim":
 		ns_aperture.analysis.group_analysis.cluster_sim( conf, paths )
 
-	elif args.proc_step == "patch_dump":
-		ns_aperture.analysis.analysis.patch_dump( conf, paths )
+	elif args.proc_step == "loc_test":
+		ns_aperture.analysis.group_analysis.loc_test( conf, paths )
 
 	elif args.proc_step == "image_resp":
 		ns_aperture.analysis.analysis.image_resp( conf, paths )

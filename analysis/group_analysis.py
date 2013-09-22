@@ -2,6 +2,8 @@
 import os.path
 import string
 
+import numpy as np
+
 import fmri_tools.utils
 
 import ns_aperture.config, ns_aperture.paths
@@ -329,4 +331,50 @@ def loc_test( conf, paths ):
 		          )
 
 		fmri_tools.utils.run_cmd( " ".join( cmd ) )
+
+
+def mvpa_node_prep( conf, paths ):
+	"Prepare the searchlight info for each node"
+
+	rep_subj_conf = ns_aperture.config.get_conf( conf.ana.rep_subj_id )
+	rep_subj_paths = ns_aperture.paths.get_subj_paths( rep_subj_conf )
+
+	for hemi in [ "lh", "rh" ]:
+
+		seed_nodes = np.loadtxt( rep_subj_paths.mvpa.nodes.full( "_" + hemi + ".txt" ) )
+
+		surf_path = ( paths.avg / "SUMA" ).full( "std.141." + hemi + ".smoothwm.asc" )
+
+		with open( paths.sl_info.full( "_" + hemi + ".txt" ), "w" ) as node_file:
+
+			for seed_node in seed_nodes:
+
+				# save the seed node to a file
+				np.savetxt( paths.sl_seed.full( ".txt" ), [ seed_node ], "%d" )
+
+				cmd = [ "ROIgrow",
+				        "-i", surf_path,
+				        "-roi_nodes", paths.sl_seed.full( ".txt" ),
+				        "-lim", "{r:.2f}".format( r = conf.ana.sl_r ),
+				        "-prefix", paths.sl_disk.full( ".1D" ),
+				        "-overwrite"
+				      ]
+
+				fmri_tools.utils.run_cmd( " ".join( cmd ) )
+
+				sl_nodes = np.loadtxt( paths.sl_disk.full( ".1D" ) )
+
+				sl_nodes = np.concatenate( ( [ seed_node ], sl_nodes ) )
+				sl_nodes = np.unique( sl_nodes )
+
+				seed_str = ( "\t".join( [ "{n:.0f}".format( n = sl_node )
+				                          for sl_node in sl_nodes
+				                        ]
+				                      ) +
+				             "\n"
+				           )
+
+				node_file.write( seed_str )
+
+
 

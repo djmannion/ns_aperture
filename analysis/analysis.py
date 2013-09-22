@@ -9,6 +9,7 @@ import os, os.path
 import logging
 
 import numpy as np
+import scipy.stats
 
 import fmri_tools.utils
 
@@ -370,6 +371,22 @@ def mvpa_prep( conf, paths ):
 
 	grp_paths = ns_aperture.paths.get_group_paths( conf )
 
+	# starts with a coherent block, but the first block is discarded so actually
+	# begins with a non-coherent block
+	cond_info = np.repeat( np.tile( [ -1, +1 ],
+	                                int( conf.ana.mvpa_blocks / 2 )
+	                              )[ np.newaxis, : ],
+	                       conf.subj.n_exp_runs,
+	                       axis = 0
+	                     )
+
+	# flip alternate runs
+	cond_info[ 1::2, : ] = cond_info[ 1::2, ::-1 ]
+
+	cond_path = paths.mvpa.cond_info.full( ".txt" )
+
+	np.savetxt( cond_path, cond_info, "%d" )
+
 	for hemi in [ "lh", "rh" ]:
 
 		data = np.empty( ( conf.ana.n_common_nodes[ hemi ],
@@ -413,7 +430,7 @@ def mvpa_prep( conf, paths ):
 
 				nodes = run_data[ :, 0 ]
 				node_path = paths.mvpa.nodes.full( "_" + hemi + ".txt" )
-				np.savetxt( node_path, nodes )
+				np.savetxt( node_path, nodes, "%d" )
 
 			# just check that the nodes are all the same across runs
 			assert np.all( nodes == run_data[ :, 0 ] )
@@ -431,21 +448,12 @@ def mvpa_prep( conf, paths ):
 				                                     axis = 1
 				                                   )
 
+
+		# z-score
+		data = scipy.stats.zscore( data, axis = 2 )
+
 		data_path = paths.mvpa.data.full( "_" + hemi + ".npy" )
 
 		np.save( data_path, data )
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 

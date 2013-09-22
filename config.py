@@ -235,6 +235,8 @@ def _get_ana_conf( conf ):
 	ana_conf.block_len_vol = int( conf.exp.block_len_s / conf.acq.tr_s )
 	ana_conf.i_start_hrf_corr = ana_conf.block_len_vol + ana_conf.hrf_corr_vol
 
+	ana_conf.sl_r = 5
+
 	ana_conf.n_common_nodes = { "lh" : 44697, "rh" : 39020 }
 
 	return ana_conf

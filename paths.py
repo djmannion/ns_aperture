@@ -139,6 +139,8 @@ def _get_mvpa_paths( conf, paths ):
 	file_base = "{subj_id:s}_{exp_id:s}-".format( subj_id = subj_id, exp_id = exp_id )
 
 	mvpa.nodes = mvpa.base + ( file_base + "nodes" )
+	mvpa.data = mvpa.base + ( file_base + "data" )
+	mvpa.cond_info = mvpa.base + ( file_base + "cond_info" )
 
 	return mvpa
 
@@ -153,6 +155,8 @@ def get_group_paths( conf ):
 
 	grp.log = grp.base + ( file_base + "log.log" )
 
+	grp.avg = grp.base / "ns_aperture_avg"
+
 	grp.coef = grp.base + ( file_base + "coef" )
 	grp.angle = grp.base + ( file_base + "angle" )
 
@@ -166,6 +170,11 @@ def get_group_paths( conf ):
 
 	grp.loc = grp.base / "loc"
 	grp.loc_test = grp.loc + ( file_base + "loc_test" )
+
+	grp.sl_info = ( grp.base / "mvpa" ) + ( file_base + "sl_info" )
+	grp.sl_seed = ( grp.base / "mvpa" ) + ( file_base + "sl_seed" )
+	grp.sl_disk = ( grp.base / "mvpa" ) + ( file_base + "sl_disk" )
+
 
 	return grp
 

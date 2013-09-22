@@ -48,7 +48,9 @@ def main():
 	                  "sess_reg",
 	                  "vol_to_surf",
 	                  "vol_to_surf_std",
-	                  "smooth"
+	                  "smooth",
+	                  "filter_tc",
+	                  "surf_mask"
 	                )
 
 	parser.add_argument( "preproc_step",
@@ -98,6 +100,12 @@ def main():
 
 	elif args.preproc_step == "smooth":
 		ns_aperture.analysis.preproc.smooth_surfs( conf, paths )
+
+	elif args.preproc_step == "filter_tc":
+		ns_aperture.analysis.preproc.filter_tc( conf, paths )
+
+	elif args.preproc_step == "surf_mask":
+		ns_aperture.analysis.preproc.surf_mask( conf, paths )
 
 	else:
 		print "Not implemented"

@@ -34,6 +34,17 @@ def get_subj_paths( conf ):
 	paths.ana = _get_ana_paths( conf, paths )
 	paths.loc = _get_loc_paths( conf, paths )
 	paths.exp_log = _get_exp_log_paths( conf, paths )
+	paths.mvpa = _get_mvpa_paths( conf, paths )
+
+	# add the filtered func type
+	paths.func.filts = [ orig + orig.file().replace( "orig", "filt" )
+	                     for orig in paths.func.origs
+	                   ]
+
+	# add the mask
+	paths.summ.mask = ( paths.summ.base +
+	                    paths.summ.mean.file().replace( "mean", "mask" )
+	                  )
 
 	# add the group spec to the reg
 	paths.reg.std_spec = fmri_tools.paths.Path( paths.reg.spec.dir(),
@@ -114,6 +125,22 @@ def _get_ana_paths( conf, paths ):
 
 	return ana
 
+
+def _get_mvpa_paths( conf, paths ):
+	"""Get the paths for the MVPA analysis"""
+
+	mvpa = fmri_tools.paths.PathsHandler()
+
+	mvpa.base = paths.base / "mvpa"
+
+	subj_id = conf.subj.subj_id
+	exp_id = conf.exp.id
+
+	file_base = "{subj_id:s}_{exp_id:s}-".format( subj_id = subj_id, exp_id = exp_id )
+
+	mvpa.nodes = mvpa.base + ( file_base + "nodes" )
+
+	return mvpa
 
 
 def get_group_paths( conf ):

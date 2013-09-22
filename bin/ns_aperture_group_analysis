@@ -33,7 +33,8 @@ def main():
 	                                  formatter_class = fmt,
 	                                )
 
-	proc_steps = ( "ret_std",
+	proc_steps = ( "group_mask",
+	               "ret_std",
 	               "coh_test",
 	               "glm_group",
 	               "clust_sim",
@@ -71,7 +72,10 @@ def main():
 
 	logger.addHandler( scr_log )
 
-	if args.proc_step == "ret_std":
+	if args.proc_step == "group_mask":
+		ns_aperture.analysis.group_analysis.group_mask( conf, paths )
+
+	elif args.proc_step == "ret_std":
 		ns_aperture.analysis.group_analysis.ret_std( conf, paths )
 
 	elif args.proc_step == "coh_test":

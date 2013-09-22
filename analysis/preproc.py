@@ -216,3 +216,67 @@ def smooth_surfs( conf, paths ):
 
 	os.chdir( start_dir )
 
+
+def filter_tc( conf, paths ):
+	"Filter the surface timeseries for MVPA analyses"
+
+	logger = logging.getLogger( __name__ )
+	logger.info( "Filtering timeseries..." )
+
+	# minus 1 because exp_runs is 1 based
+	surfs = [ paths.func.surfs[ i_surf - 1 ] for i_surf in conf.subj.exp_runs ]
+	filts = [ paths.func.filts[ i_surf - 1 ] for i_surf in conf.subj.exp_runs ]
+
+	for hemi in [ "lh", "rh" ]:
+
+		for ( surf, filt ) in zip( surfs, filts ):
+
+			os.chdir( filt.dir() )
+
+			surf_path = surf.file( "-std_{h:s}.niml.dset".format( h = hemi ) )
+			filt_path = filt.file( "-std_{h:s}.niml.dset".format( h = hemi ) )
+
+			filt_cmd = [ "3dDetrend",
+			             "-prefix", filt_path,
+			             "-polort", conf.ana.mvpa_filt_ord,
+			             "-overwrite",
+			             surf_path
+			           ]
+
+			fmri_tools.utils.run_cmd( " ".join( filt_cmd ) )
+
+			# pad to full because it needs to be combined with the group mask
+
+			full_filt_path = filt.file( "-std_{h:s}-full.niml.dset".format( h = hemi ) )
+
+			fmri_tools.utils.sparse_to_full( filt_path,
+			                                 full_filt_path,
+			                                 pad_node = "ld141"
+			                               )
+
+
+def surf_mask( conf, paths ):
+	"Creates a mask of all nodes nonzero in all runs"
+
+	logger = logging.getLogger( __name__ )
+	logger.info( "Creating surface masks..." )
+
+	for hemi in [ "lh", "rh" ]:
+
+		surfs = [ surf.full( "-std_{h:s}.niml.dset[0]".format( h = hemi ) )
+		          for surf in paths.func.surfs
+		        ]
+
+		mask_path = paths.summ.mask.full( "-std_{h:s}.niml.dset".format( h = hemi ) )
+
+		fmri_tools.utils.group_surf_mask( surf_paths = surfs,
+		                                  mask_path = mask_path
+		                                )
+
+		full_mask_path = paths.summ.mask.full( "-std_{h:s}-full.niml.dset".format( h = hemi ) )
+
+		fmri_tools.utils.sparse_to_full( mask_path,
+		                                 full_mask_path,
+		                                 pad_node = "ld141"
+		                               )
+

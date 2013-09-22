@@ -360,207 +360,92 @@ def loc_glm( conf, paths, std_surf = False ):
 	os.chdir( start_dir )
 
 
+def mvpa_prep( conf, paths ):
+	"Prepare the structures for MVPA analysis"
 
-def beta_to_psc( paths, conf ):
-	"""Convert the GLM beta weights into units of percent signal change"""
+	# Needs:
+	#  1. List of node indices for each hemisphere
+	#  2. Block summary data for each node, run, and block for each hemisphere
+	#  3. Condition info for each run and block
 
-	# this is the index in the beta file for the data we want to convert
-	beta_brick = "0"
-
-	start_dir = os.getcwd()
-
-	os.chdir( paths[ "ana" ][ "base_dir" ] )
+	grp_paths = ns_aperture.paths.get_group_paths( conf )
 
 	for hemi in [ "lh", "rh" ]:
 
-		# dataset holding the beta weights
-		beta_file = "%s_%s.niml.dset" % ( paths[ "ana" ][ "beta" ], hemi )
-
-		# design matrix file
-		mat_file = os.path.join( paths[ "ana" ][ "base_dir" ],
-		                         "exp_design.xmat.1D"
-		                       )
-
-		# baseline timecourse dataset, to write
-		bltc_file = "%s_%s.niml.dset" % ( paths[ "ana" ][ "bltc" ], hemi )
-
-		# generate an average baseline timecourse
-		bl_cmd = [ "3dSynthesize",
-		           "-cbucket", beta_file,
-		           "-matrix", mat_file,
-		           "-cenfill", "none",  # this is important
-		           "-select", "poly",  # only use the polynomials
-		           "-prefix", bltc_file,
-		           "-overwrite"
-		         ]
-
-		fmri_tools.utils.run_cmd( bl_cmd,
-		                          env = fmri_tools.utils.get_env(),
-		                          log_path = paths[ "summ" ][ "log_file" ]
-		                        )
-
-		# baseline (point-estimate) dataset, to write
-		bl_file = "%s_%s.niml.dset" % ( paths[ "ana" ][ "bl" ], hemi )
-
-		# average baseline timecourse across time
-		avg_cmd = [ "3dTstat",
-		            "-mean",
-		            "-overwrite",
-		            "-prefix", bl_file,
-		            bltc_file
-		          ]
-
-		fmri_tools.utils.run_cmd( avg_cmd,
-		                          env = fmri_tools.utils.get_env(),
-		                          log_path = paths[ "summ" ][ "log_file" ]
-		                        )
-
-		# dataset to hold the percent signal change, to write
-		psc_file = "%s_%s.niml.dset" % ( paths[ "ana" ][ "psc" ], hemi )
-
-		# the input beta file, with sub-brick selector
-		beta_sel = "%s[%s]" % ( beta_file, beta_brick )
-
-		# check that the label is as expected
-		beta_label = fmri_tools.utils.get_dset_label( beta_sel )
-		assert( beta_label == [ "coh#0" ] )
-
-		# compute psc
-		# from http://afni.nimh.nih.gov/sscc/gangc/TempNorm.html
-		psc_cmd = [ "3dcalc",
-		            "-fscale",
-		            "-a", bl_file,
-		            "-b", beta_sel,
-		            "-expr", "100 * b/a * step (1- abs(b/a))",
-		            "-prefix", psc_file,
-		            "-overwrite"
-		          ]
-
-		fmri_tools.utils.run_cmd( psc_cmd,
-		                          env = fmri_tools.utils.get_env(),
-		                          log_path = paths[ "summ" ][ "log_file" ]
-		                        )
-
-		# convert to full
-		full_psc_file = "%s_%s-full" % ( paths[ "ana" ][ "psc" ], hemi )
-
-		pad_node = "%d" % conf[ "subj" ][ "node_k" ][ hemi ]
-
-		fmri_tools.utils.sparse_to_full( psc_file,
-		                                 full_psc_file,
-		                                 pad_node = pad_node,
-		                                 log_path = paths[ "summ" ][ "log_file" ],
-		                                 overwrite = True
-		                               )
-
-	os.chdir( start_dir )
-
-
-def roi_xtr( paths, conf ):
-	"""Extract PSC and statistics data from ROIs"""
-
-	os.chdir( paths[ "rois" ][ "base_dir" ] )
-
-	for ( roi_name, _ ) in conf[ "ana" ][ "rois" ]:
-
-		for hemi in [ "lh", "rh" ]:
-
-			# the *full* localiser mask file
-			loc_mask_file = "%s_%s_%s-full.niml.dset" % ( paths[ "loc" ][ "roi_parc" ],
-			                                              roi_name,
-			                                              hemi
-			                                            )
-
-			roi_psc_file = "%s_%s_%s.txt" % ( paths[ "rois" ][ "psc" ],
-			                                  roi_name,
-			                                  hemi
-			                                )
-
-			# 3dmaskdump won't overwrite, so need to manually remove any prior file
-			if os.path.exists( roi_psc_file ):
-				os.remove( roi_psc_file )
-
-			# our input dataset
-			data_file = "%s_%s-full.niml.dset" % ( paths[ "ana" ][ "psc" ],
-			                                       hemi
-			                                     )
-
-			# use the ROI file to mask the input dataset
-			xtr_cmd = [ "3dmaskdump",
-			            "-mask", loc_mask_file,
-			            "-noijk",
-			            "-o", roi_psc_file,
-			            data_file,
-			            loc_mask_file
-			          ]
-
-			fmri_tools.utils.run_cmd( xtr_cmd,
-			                          env = fmri_tools.utils.get_env(),
-			                          log_path = paths[ "summ" ][ "log_file" ]
-			                        )
-
-
-def roi_mean( paths, conf ):
-	"""Average nodes within each parcel of each ROI"""
-
-	os.chdir( paths[ "rois" ][ "base_dir" ] )
-
-	for ( roi_name, _ ) in conf[ "ana" ][ "rois" ]:
-
-		psc = np.vstack( [ np.loadtxt( "%s_%s_%s.txt" % ( paths[ "rois" ][ "psc" ],
-		                                                  roi_name,
-		                                                  hemi
-		                                                )
-		                             )
-		                   for hemi in [ "lh", "rh" ]
-		                 ]
+		data = np.empty( ( conf.ana.n_common_nodes[ hemi ],
+		                   len( conf.subj.exp_runs ),
+		                   conf.ana.mvpa_blocks
+		                 )
 		               )
+		data.fill( np.NAN )
 
-		parc_mean = np.empty( len( conf[ "ana" ][ "i_parc" ] ) )
-		parc_mean.fill( np.NAN )
+		mask_path = grp_paths.surf_mask.full( "-std_" + hemi + "-full.niml.dset" )
 
-		for ( i_parc, parc_ind ) in enumerate( conf[ "ana" ][ "i_parc" ] ):
+		for ( i_run, run_num ) in enumerate( conf.subj.exp_runs ):
 
-			# psc array indices as those with a parcel number equal to any in the
-			# list
-			i_parc_psc = np.any( [ psc[ :, 1 ] == k
-			                       for k in parc_ind
-			                     ],
-			                     axis = 0
-			                   )
+			# extract the data
+			surf = paths.func.filts[ run_num - 1 ]
 
-			parc_mean[ i_parc ] = np.mean( psc[ i_parc_psc, 0 ] )
+			os.chdir( surf.dir() )
 
-		np.savetxt( "%s_%s.txt" % ( paths[ "rois" ][ "parc_psc" ],
-		                            roi_name
-		                          ),
-		            parc_mean
-		          )
+			surf_file = surf.file( "-std_{h:s}-full.niml.dset".format( h = hemi ) )
+
+			out_file = surf.file( "-std_{h:s}-full.txt".format( h = hemi ) )
+
+			if os.path.exists( out_file ):
+				os.remove( out_file )
+
+			cmd = [ "3dmaskdump",
+			        "-mask", mask_path,
+			        "-index",
+			        "-noijk",
+			        "-nozero",
+			        "-o", out_file,
+			        surf_file
+			      ]
+
+			fmri_tools.utils.run_cmd( " ".join( cmd ) )
+
+			run_data = np.loadtxt( out_file )
+
+			# only need to save the nodes once
+			if i_run == 0:
+
+				nodes = run_data[ :, 0 ]
+				node_path = paths.mvpa.nodes.full( "_" + hemi + ".txt" )
+				np.savetxt( node_path, nodes )
+
+			# just check that the nodes are all the same across runs
+			assert np.all( nodes == run_data[ :, 0 ] )
+
+			# chop out the nodes
+			run_data = run_data[ :, 1: ]
+
+			for i_block in xrange( conf.ana.mvpa_blocks ):
+
+				i_start = conf.ana.block_len_vol * i_block + conf.ana.i_start_hrf_corr
+
+				i_block_vols = np.arange( i_start, i_start + conf.ana.block_len_vol )
+
+				data[ :, i_run, i_block ] = np.mean( run_data[ :, i_block_vols ],
+				                                     axis = 1
+				                                   )
+
+		data_path = paths.mvpa.data.full( "_" + hemi + ".npy" )
+
+		np.save( data_path, data )
 
 
-def group_agg( grp_paths, conf ):
-	"""Aggregate the univariate analyses across subjects"""
 
-	n_subj = len( conf[ "all_subj" ] )
 
-	n_rois = len( conf[ "ana" ][ "rois" ] ) * len( conf[ "ana" ][ "i_parc" ] )
 
-	uni_data = np.empty( n_subj, n_rois )
-	uni_data.fill( np.NAN )
 
-	for ( i_subj, subj_id ) in conf[ "all_subj" ]:
 
-		subj_conf = ns_aperture.config.get_conf( subj_id )
-		subj_paths = ns_aperture.fmri_analysis.paths.get_subj_paths( subj_conf )
 
-		i_roi = 0
 
-		for ( roi_name, _ ) in conf[ "ana" ][ "rois" ]:
 
-			roi_psc = np.loadtxt( paths[ "rois" ][ "parc_psc" ], roi_name )
 
-			uni_data[ i_subj, i_roi:( i_roi + 2 ) ] = roi_psc
 
-			i_roi += 2
 
-	np.savetxt( grp_paths[ "uni" ], uni_data )
+
+

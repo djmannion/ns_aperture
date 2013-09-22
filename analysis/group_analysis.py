@@ -3,6 +3,7 @@ import os.path
 import string
 
 import numpy as np
+import progressbar
 
 import fmri_tools.utils
 
@@ -114,6 +115,7 @@ def cluster_sim( conf, paths ):
 		                              pvals = [ conf.ana.p_height_thr ],
 		                              blur = conf.ana.smooth_fwhm,
 		                              sigma = conf.ana.smooth_sigma,
+		                              ref_surf = "midway",
 		                              verbosity = 2
 		                            )
 
@@ -343,11 +345,19 @@ def mvpa_node_prep( conf, paths ):
 
 		seed_nodes = np.loadtxt( rep_subj_paths.mvpa.nodes.full( "_" + hemi + ".txt" ) )
 
-		surf_path = ( paths.avg / "SUMA" ).full( "std.141." + hemi + ".smoothwm.asc" )
+		surf_path = ( paths.avg / "SUMA" ).full( "std.141." + hemi + ".midway.asc" )
+
+		pbar = progressbar.ProgressBar( widgets = [ progressbar.Percentage(),
+		                                            progressbar.Bar()
+		                                          ],
+		                                maxval = seed_nodes.shape[ 0 ]
+		                              ).start()
 
 		with open( paths.sl_info.full( "_" + hemi + ".txt" ), "w" ) as node_file:
 
-			for seed_node in seed_nodes:
+			for ( i_node, seed_node ) in enumerate( seed_nodes ):
+
+				pbar.update( i_node )
 
 				# save the seed node to a file
 				np.savetxt( paths.sl_seed.full( ".txt" ), [ seed_node ], "%d" )
@@ -360,7 +370,7 @@ def mvpa_node_prep( conf, paths ):
 				        "-overwrite"
 				      ]
 
-				fmri_tools.utils.run_cmd( " ".join( cmd ) )
+				fmri_tools.utils.run_cmd( " ".join( cmd ), log_stdout = False )
 
 				sl_nodes = np.loadtxt( paths.sl_disk.full( ".1D" ) )
 
@@ -376,5 +386,5 @@ def mvpa_node_prep( conf, paths ):
 
 				node_file.write( seed_str )
 
-
+		pbar.finish()
 

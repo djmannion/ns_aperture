@@ -1,5 +1,3 @@
-from __future__ import division
-
 import os, os.path
 import logging
 
@@ -207,8 +205,7 @@ def smooth_surfs( conf, paths ):
 			                                out_surf = smooth_path,
 			                                spec_path = spec_file,
 			                                target_fwhm = conf.ana.smooth_fwhm,
-			                                surf_A = "std.141." + hemi + ".smoothwm.asc",
-			                                surf_B = "std.141." + hemi + ".pial.asc",
+			                                surf = "std.141." + hemi + ".midway.asc",
 			                                extra_params = [ "-sigma",
 			                                                 conf.ana.smooth_sigma
 			                                               ]

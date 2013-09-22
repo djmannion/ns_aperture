@@ -457,3 +457,44 @@ def mvpa_prep( conf, paths ):
 		np.save( data_path, data )
 
 
+def mvpa( conf, paths ):
+	"Runs the MVPA analysis"
+
+	group_paths = ns_aperture.paths.get_group_paths()
+
+	cond_info = np.loadtxt( paths.mvpa.cond_info.full( ".txt" ), np.int )
+
+	for hemi in [ "lh", "rh" ]:
+
+		# nodes x runs x blocks
+		data = np.load( paths.mvpa.data.full( "_" + hemi + ".npy" )
+
+		seed_nodes = np.loadtxt( paths.mvpa.nodes.full( "_" + hemi + ".txt" ),
+		                         np.int
+		                       )
+
+		acc = np.empty( ( data.shape[ 0 ] ) )
+		acc.fill( np.NAN )
+
+		with open( group_paths.sl_info.full( "_" + hemi + ".txt" ), "r" ) as sl_info:
+
+			for ( i_seed, ( seed_node, node_line ) ) in enumerate( zip( seed_nodes, sl_info.readlines() ) ):
+
+				nodes = [ int( x ) for x in node_line.splitlines().split( "\t" ) ]
+
+				assert seed_node in nodes
+
+				i_nodes = [ np.where( seed_nodes == sl_node )[ 0 ][ 0 ]
+				            for sl_node in nodes
+				          ]
+
+				acc[ i_seed ] = _classify( data[ i_nodes, ... ], cond_info )
+
+
+		# save acc
+
+		# convert to full niml
+
+
+
+

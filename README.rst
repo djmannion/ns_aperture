@@ -4,28 +4,18 @@
 Analysis code for natural scenes aperture experiment
 ====================================================
 
-Requirements
-============
+Preprocessing
+=============
 
-- Python >= 2.7
-- numpy
-- matplotlib
-- scipy
-- fmri_tools (`http://www.bitbucket.org/djmannion/fmri_tools <http://www.bitbucket.org/djmannion/fmri_tools/>`_)
+Subject-level
+-------------
 
-
-Processing stages
-=================
-
-Prepare the filesystem
-----------------------
+Filesystem
+~~~~~~~~~~
 
 1. Make the subject's directory structure::
 
-    mkdir -p sXXXX/{analysis/,fmap/f01,func/run{01,02,03,04,05,06,07,08,09,10,11,12},loc,logs,mvpa,reg,rois}
-    cd mvpa
-    mkdir -p {filt,data,rfe}
-    mkdir -p rfe/{v1_blnk,v1_stim,v2_blnk,v2_stim,v3_blnk,v3_stim}/fold{01,02,03,04,05}/rfe{01,02,03,04,05,06,07,08,09,10}/split{01,02,03,04}
+    mkdir -p sXXXX/{analysis/,fmap,func/run{01,02,03,04,05,06,07,08,09,10,11,12},loc_analysis,logs,mvpa,reg}
 
 2. Copy the subject's runtime logfiles to the ``logs`` directory.
 
@@ -42,93 +32,34 @@ Prepare the filesystem
 
     3dcopy \
        {$SUBJECTS_DIR}/{$SUBJ_ID}/SUMA/{$SUBJ_ID}_SurfVol+orig \
-       reg/{$SUBJ_ID}_anat.nii
+       reg/{$SUBJ_ID}_ns_aperture-anat+orig
 
-
-Update the experiment information file
---------------------------------------
-
-Edit ``get_subj_conf`` within ``ns_aperture/config.py`` and add the new subject's information.
-
-For example:
-
-.. code-block:: python
-
-    sXXXX = { "subj_id" : "sXXXX",
-              "acq_date" : "YYYYMMDD",
-              "n_runs" : 12,
-              "n_exp_runs" : 10,
-              "n_loc_runs" : 2,
-              "n_fmaps" : 1,
-              "mot_base" : 7,
-              "comments" : "anything unusual or noteworthy",
-              "exp_runs" : [ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 ],
-              "loc_runs" : [ 11, 12 ],
-              "node_k" : { "lh" : 100000,
-                           "rh" : 110000
-                         }
-            }
-
-.. note::
-   ``node_k`` can be found by viewing the subject's pial ASCII surface and noting the first number on the second row.
-
-
-Pre-processing
---------------
-
-Most of the pre-processing is done with the command ``ns_aperture_proc``.
-For help on using this script, run::
-
-    ns_aperture_proc --help
-
-Typical usage is::
-
-    ns_aperture_proc sXXXX stage
-
-where ``sXXXX`` is the subject ID and ``stage`` is the preprocessing stage (see below).
-
-The stages are as follows:
 
 Conversion
 ~~~~~~~~~~
 
 Converts from the raw scanner format to a set of 4D NIFTI files::
 
-    ns_aperture_proc sXXXX convert
+    ns_aperture_preproc sXXXX convert
 
 After execution, open up each NIFTI file and inspect for image quality and look at the summary image to see how much movement there was.
 
 
-Correction
-~~~~~~~~~~
-
-Applies a motion correction procedure::
-
-    ns_aperture_proc sXXXX correct
-
-After execution, open up the summary NIFTI file to check that most of the motion has been removed.
-You can also inspect the saved motion correction estimates to see how much movement there was.
-
-
-Fieldmaps
-~~~~~~~~~
+Fieldmap preparation
+~~~~~~~~~~~~~~~~~~~~
 
 Prepares the fieldmap::
 
-    ns_aperture_proc SXXXX fieldmap
+    ns_aperture_preproc SXXXX fieldmap
 
 
-Unwarping
-~~~~~~~~~
+Correction
+~~~~~~~~~~
+Applies a motion and distortion correction procedure::
 
-Before running, need to make a symbolic link in each functional run directory to that run's fieldmap. For example::
+    ns_aperture_preproc sXXXX mc_unwarp
 
-    ln -s ../../fmap/f01/sXXXX_ns_aperture_fmap_01-fmap.nii sXXXX_ns_aperture_run_01-fmap.nii
-
-Then, to use the fieldmaps to unwarp the functional images to remove the spatial distortion::
-
-    ns_aperture_proc sXXXX undistort
-
+After execution, open up the summary NIFTI file to check that most of the motion has been removed.
 To verify that the unwarping has worked correctly:
 
 * Run ``fslview``.
@@ -138,62 +69,110 @@ To verify that the unwarping has worked correctly:
 * Add the undistorted image as an overlay, and hide the uncorrected image.
 * Toggle the visibility of the undistorted image, and verify that the geometry now aligns well with that of the fieldmap's magnitude image.
 
-Also, look at the session summary image produced and make sure that all looks good across the session.
 
 
-Coregistration
-~~~~~~~~~~~~~~
+Anatomical registration
+~~~~~~~~~~~~~~~~~~~~~~~
 
-::
-
-    ns_aperture_proc sXXXX sess_reg
-
-
-Volume to surface
-~~~~~~~~~~~~~~~~~
-
+Surface projection
+~~~~~~~~~~~~~~~~~~
 Projects the functional images to the cortical surface::
 
-    ns_aperture_proc sXXXX vol_to_surf
+    ns_aperture_preproc sXXXX vol_to_surf
 
+
+Smoothing
+~~~~~~~~~
+
+Temporal filtering
+~~~~~~~~~~~~~~~~~~
+
+Mask creation
+~~~~~~~~~~~~~
+
+Group-level
+-----------
+
+Mask creation
+~~~~~~~~~~~~~
+
+Cluster simulation
+~~~~~~~~~~~~~~~~~~
+
+Retinotopy
+~~~~~~~~~~
+
+Searchlight preparation
+~~~~~~~~~~~~~~~~~~~~~~~
+
+
+Univariate experiment analysis
+==============================
+
+
+Subject-level
+-------------
+
+Design preparation
+~~~~~~~~~~~~~~~~~~
+Computes the experimental design from the logfiles::
+
+    ns_aperture_analysis sXXXX design_prep
+
+GLM
+~~~
+
+Group-level
+-----------
+
+Height threshold
+~~~~~~~~~~~~~~~~
+
+Cluster threshold
+~~~~~~~~~~~~~~~~~
+
+
+Univariate localiser analysis
+=============================
+
+
+Subject-level
+-------------
 
 Design preparation
 ~~~~~~~~~~~~~~~~~~
 
-Computes the experimental design from the logfiles::
+GLM
+~~~
 
-    ns_aperture_proc sXXXX design_prep
+Group-level
+-----------
 
+Height threshold
+~~~~~~~~~~~~~~~~
 
-Subject-level analysis
-----------------------
-
-Localiser analysis
-~~~~~~~~~~~~~~~~~~
-
-Runs a GLM on the localiser data, extracts ``q`` (FDR) values, and creates a thresholded ROI mask::
-
-    ns_aperture_proc sXXXX loc_glm
+Cluster threshold
+~~~~~~~~~~~~~~~~~
 
 
-Experiment analysis
-~~~~~~~~~~~~~~~~~~~
+Multivariate analysis
+=====================
 
-Runs a GLM on the experiment data::
+Subject-level
+-------------
 
-    ns_aperture_proc sXXXX exp_glm
+Design and data preparation
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+Classification
+~~~~~~~~~~~~~~
 
-Datafile list
-=============
+Group-level
+-----------
 
-Pre-processing
---------------
+Height threshold
+~~~~~~~~~~~~~~~~
 
+Cluster threshold
+~~~~~~~~~~~~~~~~~
 
-Subject-level analysis
-----------------------
-
-
-Group-level analysis
---------------------

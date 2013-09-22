@@ -55,22 +55,23 @@ def main():
 	conf = ns_aperture.config.get_conf()
 	paths = ns_aperture.paths.get_group_paths( conf )
 
-	logger = logging.getLogger()
-	logger.setLevel( logging.INFO )
+	if args.proc_step != "mvpa_node_prep":
+		logger = logging.getLogger()
+		logger.setLevel( logging.INFO )
 
-	log_str = "%(name)s, %(asctime)s, (%(levelname)s)\n-----\n%(message)s\n"
-	log_fmt = logging.Formatter( log_str )
+		log_str = "%(name)s, %(asctime)s, (%(levelname)s)\n-----\n%(message)s\n"
+		log_fmt = logging.Formatter( log_str )
 
-	file_log = logging.FileHandler( paths.log.full() )
-	file_log.setFormatter( log_fmt )
+		file_log = logging.FileHandler( paths.log.full() )
+		file_log.setFormatter( log_fmt )
 
-	logger.addHandler( file_log )
+		logger.addHandler( file_log )
 
-	scr_log = logging.StreamHandler( sys.stdout )
-	scr_log.setLevel( logging.INFO )
-	scr_log.setFormatter( log_fmt )
+		scr_log = logging.StreamHandler( sys.stdout )
+		scr_log.setLevel( logging.INFO )
+		scr_log.setFormatter( log_fmt )
 
-	logger.addHandler( scr_log )
+		logger.addHandler( scr_log )
 
 	if args.proc_step == "group_mask":
 		ns_aperture.analysis.group_analysis.group_mask( conf, paths )

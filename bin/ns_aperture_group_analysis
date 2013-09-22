@@ -39,7 +39,7 @@ def main():
 	               "glm_group",
 	               "clust_sim",
 	               "loc_test",
-	               "image_resp",
+	               "mvpa_node_prep",
 	               "vec_resp",
 	               "subj_regress"
 	             )
@@ -90,8 +90,8 @@ def main():
 	elif args.proc_step == "loc_test":
 		ns_aperture.analysis.group_analysis.loc_test( conf, paths )
 
-	elif args.proc_step == "image_resp":
-		ns_aperture.analysis.analysis.image_resp( conf, paths )
+	elif args.proc_step == "mvpa_node_prep":
+		ns_aperture.analysis.group_analysis.mvpa_node_prep( conf, paths )
 
 	elif args.proc_step == "vec_resp":
 		ns_aperture.analysis.analysis.vec_resp( conf, paths )

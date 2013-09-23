@@ -55,23 +55,8 @@ def design_prep( conf, paths ):
 
 	cond_file.close()
 
-	n_vols = int( conf.exp.run_len_s / conf.acq.tr_s )
 
-	cens = np.ones( n_vols )
-
-	n_vols_per_block = int( conf.exp.block_len_s / conf.acq.tr_s )
-
-	cens[ :n_vols_per_block ] = 0
-	cens[ -n_vols_per_block: ] = 0
-
-	assert( np.sum( cens == 0 ) == ( n_vols_per_block * 2 ) )
-
-	cens = np.tile( cens[ :, np.newaxis ], conf.subj.n_exp_runs ).T
-
-	np.savetxt( paths.ana.cens.full( ".txt" ), cens, fmt = "%d" )
-
-
-def glm( conf, paths, std_surf = False ):
+def glm( conf, paths, std_surf = True ):
 	"""Experiment GLM"""
 
 	logger = logging.getLogger( __name__ )
@@ -235,7 +220,7 @@ def loc_design_prep( conf, paths ):
 	_ = [ cond_file.close() for cond_file in cond_files ]
 
 
-def loc_glm( conf, paths, std_surf = False ):
+def loc_glm( conf, paths, std_surf = True ):
 	"""Loclaiser GLM"""
 
 	logger = logging.getLogger( __name__ )
@@ -467,7 +452,7 @@ def mvpa( conf, paths ):
 	for hemi in [ "lh", "rh" ]:
 
 		# nodes x runs x blocks
-		data = np.load( paths.mvpa.data.full( "_" + hemi + ".npy" )
+		data = np.load( paths.mvpa.data.full( "_" + hemi + ".npy" ) )
 
 		seed_nodes = np.loadtxt( paths.mvpa.nodes.full( "_" + hemi + ".txt" ),
 		                         np.int

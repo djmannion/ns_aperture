@@ -107,6 +107,13 @@ def cluster_sim( conf, paths ):
 
 		script_path = paths.clust_script.full( "_" + hemi + ".sh" )
 
+		rep_subj_conf = ns_aperture.config.get_conf( conf.ana.rep_subj_id )
+		rep_subj_paths = ns_aperture.paths.get_subj_paths( rep_subj_conf )
+
+		rep_spec = rep_subj_paths.reg.std_spec.full( "_" + hemi + ".spec" )
+		rep_ref = rep_subj_paths.reg.anat_reg.full( "+orig" )
+		rep_vol_mask = paths.rep_vol_mask.full( "_" + hemi + "+orig" )
+
 		fmri_tools.utils.cluster_sim( spec_path = rep_spec,
 		                              mask_path = rep_vol_mask,
 		                              ref_path = rep_ref,
@@ -115,7 +122,7 @@ def cluster_sim( conf, paths ):
 		                              pvals = [ conf.ana.p_height_thr ],
 		                              blur = conf.ana.smooth_fwhm,
 		                              sigma = conf.ana.smooth_sigma,
-		                              ref_surf = "midway",
+		                              stop_after_script = True,
 		                              verbosity = 2
 		                            )
 

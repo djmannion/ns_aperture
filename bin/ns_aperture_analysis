@@ -39,14 +39,9 @@ def main():
 
 	proc_steps = ( "design_prep",
 	               "glm",
-	               "glm_std",
 	               "loc_design_prep",
-	               "loc_glm_std",
-	               "mvpa_prep",
-	               "patch_dump",
-	               "image_resp",
-	               "vec_resp",
-	               "subj_regress"
+	               "loc_glm",
+	               "mvpa_prep"
 	             )
 
 	parser.add_argument( "proc_step",
@@ -83,29 +78,14 @@ def main():
 	elif args.proc_step == "glm":
 		ns_aperture.analysis.analysis.glm( conf, paths )
 
-	elif args.proc_step == "glm_std":
-		ns_aperture.analysis.analysis.glm( conf, paths, True )
-
 	elif args.proc_step == "loc_design_prep":
 		ns_aperture.analysis.analysis.loc_design_prep( conf, paths )
 
-	elif args.proc_step == "loc_glm_std":
+	elif args.proc_step == "loc_glm":
 		ns_aperture.analysis.analysis.loc_glm( conf, paths, True )
 
 	elif args.proc_step == "mvpa_prep":
 		ns_aperture.analysis.analysis.mvpa_prep( conf, paths )
-
-	elif args.proc_step == "patch_dump":
-		ns_aperture.analysis.analysis.patch_dump( conf, paths )
-
-	elif args.proc_step == "image_resp":
-		ns_aperture.analysis.analysis.image_resp( conf, paths )
-
-	elif args.proc_step == "vec_resp":
-		ns_aperture.analysis.analysis.vec_resp( conf, paths )
-
-	elif args.proc_step == "subj_regress":
-		ns_aperture.analysis.analysis.subj_regress( conf, paths )
 
 	else:
 		print "Not implemented"

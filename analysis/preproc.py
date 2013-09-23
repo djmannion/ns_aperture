@@ -138,7 +138,7 @@ def sess_reg( conf, paths ):
 
 
 
-def vol_to_surf( conf, paths, std_surf = False ):
+def vol_to_surf( conf, paths, std_surf = True ):
 	"""Converts the functional volume-based images to SUMA surfaces."""
 
 	logger = logging.getLogger( __name__ )

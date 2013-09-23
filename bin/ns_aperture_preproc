@@ -95,9 +95,6 @@ def main():
 	elif args.preproc_step == "vol_to_surf":
 		ns_aperture.analysis.preproc.vol_to_surf( conf, paths )
 
-	elif args.preproc_step == "vol_to_surf_std":
-		ns_aperture.analysis.preproc.vol_to_surf( conf, paths, True )
-
 	elif args.preproc_step == "smooth":
 		ns_aperture.analysis.preproc.smooth_surfs( conf, paths )
 

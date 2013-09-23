@@ -156,6 +156,35 @@ def glm( conf, paths, std_surf = True ):
 	os.chdir( start_dir )
 
 
+def coh_clust_summ( conf, paths ):
+	"Summarise the significant cluster activation"
+
+	group_conf = ns_aperture.config.get_conf()
+	group_paths = ns_aperture.paths.get_group_paths( group_conf )
+
+	os.chdir( paths.ana.base.full() )
+
+	for hemi in [ "lh", "rh" ]:
+
+		hemi_ext = "-std_{h:s}".format( h = hemi )
+
+		beta_path = paths.ana.glm.file( hemi_ext + "-full.niml.dset'[3]'" )
+
+		out_path = paths.ana.clust.file( hemi_ext + ".txt" )
+
+		clust_path = group_paths.coh_clust.full( hemi_ext + "-full.niml.dset" )
+
+		cmd = [ "3dmaskdump",
+		        "-mask", clust_path,
+		        "-noijk",
+		        "-o", out_path,
+		        beta_path
+		      ]
+
+		fmri_tools.utils.run_cmd( " ".join( cmd ) )
+
+
+
 def loc_design_prep( conf, paths ):
 	"""Prepares the designs for GLM analysis"""
 

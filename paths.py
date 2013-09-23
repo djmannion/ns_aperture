@@ -37,7 +37,7 @@ def get_subj_paths( conf ):
 	paths.mvpa = _get_mvpa_paths( conf, paths )
 
 	# add the filtered func type
-	paths.func.filts = [ orig + orig.file().replace( "orig", "filt" )
+	paths.func.filts = [ orig + orig.file().replace( "orig", "surf-filt" )
 	                     for orig in paths.func.origs
 	                   ]
 
@@ -157,8 +157,8 @@ def get_group_paths( conf ):
 
 	grp.avg = grp.base / "ns_aperture_avg"
 
-	grp.coef = grp.base + ( file_base + "coef" )
-	grp.angle = grp.base + ( file_base + "angle" )
+	grp.coef = ( grp.base / "ret" ) + ( file_base + "coef" )
+	grp.angle = ( grp.base / "ret" ) + ( file_base + "angle" )
 
 	grp.coh_test = grp.base + ( file_base + "coh_test" )
 

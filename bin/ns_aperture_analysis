@@ -41,6 +41,7 @@ def main():
 	               "glm",
 	               "loc_design_prep",
 	               "loc_glm",
+	               "coh_clust_summ",
 	               "mvpa_prep"
 	             )
 
@@ -83,6 +84,9 @@ def main():
 
 	elif args.proc_step == "loc_glm":
 		ns_aperture.analysis.analysis.loc_glm( conf, paths, True )
+
+	elif args.proc_step == "coh_clust_summ":
+		ns_aperture.analysis.analysis.coh_clust_summ( conf, paths )
 
 	elif args.proc_step == "mvpa_prep":
 		ns_aperture.analysis.analysis.mvpa_prep( conf, paths )

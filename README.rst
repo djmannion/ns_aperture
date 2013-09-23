@@ -208,6 +208,14 @@ Estimate the GLM::
     ns_aperture_analysis sXXXX glm
 
 
+Cluster summary
+~~~~~~~~~~~~~~~
+
+After the group-level clustering has been done, run::
+
+    ns_aperture_analysis sXXXX coh_clust_summ
+
+
 Group-level
 -----------
 
@@ -222,7 +230,18 @@ Runs a one-sample t-test on the subject beta weights::
 Cluster threshold
 ~~~~~~~~~~~~~~~~~
 
-TODO
+To apply the cluster threshold::
+
+    ns_aperture_group_analysis coh_clust
+
+
+Cluster summary
+~~~~~~~~~~~~~~~
+
+To print out a summary of the cluster beta statistics::
+
+    ns_aperture_group_analysis coh_effect_size
+
 
 
 Univariate localiser analysis

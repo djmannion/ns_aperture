@@ -111,17 +111,12 @@ def _get_ana_paths( conf, paths ):
 	ana.glm = ana.base + ( file_base + "glm" )
 	ana.beta = ana.base + ( file_base + "beta" )
 
-	ana.bltc = ana.base + ( file_base + "bltc" )
-	ana.bl = ana.base + ( file_base + "bl" )
-	ana.psc = ana.base + ( file_base + "psc" )
-
-	ana.vl = ana.base + ( file_base + "vis_loc_rois" )
 	ana.mask = ana.base + ( file_base + "mask" )
-
-	ana.cens = ana.base + ( "censor" )
 
 	ana.coef = ana.base + ( file_base + "coef" )
 	ana.snr = ana.base + ( file_base + "snr" )
+
+	ana.clust = ana.base + ( file_base + "clust" )
 
 	return ana
 
@@ -161,6 +156,7 @@ def get_group_paths( conf ):
 	grp.angle = ( grp.base / "ret" ) + ( file_base + "angle" )
 
 	grp.coh_test = grp.base + ( file_base + "coh_test" )
+	grp.coh_clust = grp.base + ( file_base + "coh_clust" )
 
 	grp.surf_mask = grp.base + ( file_base + "mask" )
 	grp.rep_vol_mask = grp.base + ( file_base + "rep_vol_mask" )
@@ -170,6 +166,7 @@ def get_group_paths( conf ):
 
 	grp.loc = grp.base / "loc"
 	grp.loc_test = grp.loc + ( file_base + "loc_test" )
+	grp.loc_clust = grp.loc + ( file_base + "loc_clust" )
 
 	grp.sl_info = ( grp.base / "mvpa" ) + ( file_base + "sl_info" )
 	grp.sl_seed = ( grp.base / "mvpa" ) + ( file_base + "sl_seed" )

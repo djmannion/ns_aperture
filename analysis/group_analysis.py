@@ -127,6 +127,106 @@ def cluster_sim( conf, paths ):
 		                            )
 
 
+def cluster( conf, paths, dt ):
+	"Applies the cluster threshold"
+
+	for hemi in [ "lh", "rh" ]:
+
+		hemi_ext = "-std_{h:s}".format( h = hemi )
+
+		sim_path = os.path.join( paths.clust_sim.full( "_" + hemi ),
+		                         "z.max.area." + str( conf.ana.p_height_thr )
+		                       )
+
+		min_area = fmri_tools.utils.get_clust_thresh( sim_path )
+
+		spec_path = ( paths.avg / "SUMA" ).full( "std.141.ns_aperture_avg_" + hemi + ".spec" )
+
+		if dt == "coh":
+
+			surf_path = paths.coh_test.full( hemi_ext + "-full.niml.dset" )
+			surf_brick = 0
+
+			clust_base = paths.coh_clust.full( hemi_ext + "-full.niml.dset" )
+			thresh = 4.604
+			abs_thresh = True
+			thresh_brick = 1
+
+			clust_base_path = paths.coh_clust
+
+		elif dt == "loc":
+
+			surf_path = paths.loc_test.full( hemi_ext + "-full.niml.dset" )
+			surf_brick = 0
+
+			clust_base = paths.loc_clust.full( hemi_ext + "-full.niml.dset" )
+			thresh = 2.78
+			abs_thresh = False
+			thresh_brick = 1
+
+		elif dt == "acc":
+
+			pass
+
+		fmri_tools.utils.surf_cluster( surf_path = surf_path,
+		                               surf_brick = surf_brick,
+		                               spec_path = spec_path,
+		                               clust_path = clust_base,
+		                               thresh = thresh,
+		                               abs_thresh = abs_thresh,
+		                               thresh_brick = thresh_brick,
+		                               min_area = min_area,
+		                               ref_surf = "midway"
+		                             )
+
+		clust_ext = "-full_Clustered_e1_a" + str( min_area ) + ".niml.dset"
+		clust_path = clust_base_path.full( hemi_ext + clust_ext )
+
+		full_clust = clust_base_path.full( hemi_ext + "-full.niml.dset" )
+
+		fmri_tools.utils.sparse_to_full( clust_path, full_clust, "ld141" )
+
+
+
+def coh_effect_size( conf, paths ):
+	"Calculates the effect size (avg beta / std beta ) of the coh cluster"
+
+	subj_ids = conf.all_subj.subj.keys()
+
+	data = np.empty( ( len( subj_ids ), 2 ) )
+	data.fill( np.NAN )
+
+	for ( i_subj, subj_id ) in enumerate( subj_ids ):
+
+		subj_conf = ns_aperture.config.get_conf( subj_id )
+		subj_paths = ns_aperture.paths.get_subj_paths( subj_conf )
+
+		for ( i_hemi, hemi ) in enumerate(  [ "lh", "rh" ] ):
+
+			beta_path = subj_paths.ana.clust.full( "-std_{h:s}.txt".format( h = hemi ) )
+
+			subj_beta = np.loadtxt( beta_path )
+
+			data[ i_subj, i_hemi ] = np.mean( subj_beta )
+
+	data = np.mean( data, axis = 1 )
+
+	print data
+
+	mean = np.mean( data )
+	sd = np.std( data, ddof = 1 )
+	se = sd / np.sqrt( len( data ) )
+
+	g1 = mean / sd
+
+
+	print "Mean: " + str( mean )
+	print "SE: " + str( se )
+	print "g1: " + str( g1 )
+
+
+
+
 def ret_std( conf, paths ):
 	"Averages the ring and wedge maps across subjects"
 

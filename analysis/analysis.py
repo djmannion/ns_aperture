@@ -10,6 +10,8 @@ import logging
 
 import numpy as np
 import scipy.stats
+import svmlight
+import progressbar
 
 import fmri_tools.utils
 
@@ -474,7 +476,8 @@ def mvpa_prep( conf, paths ):
 def mvpa( conf, paths ):
 	"Runs the MVPA analysis"
 
-	group_paths = ns_aperture.paths.get_group_paths()
+	group_conf = ns_aperture.config.get_conf()
+	group_paths = ns_aperture.paths.get_group_paths( group_conf )
 
 	cond_info = np.loadtxt( paths.mvpa.cond_info.full( ".txt" ), np.int )
 
@@ -490,24 +493,110 @@ def mvpa( conf, paths ):
 		acc = np.empty( ( data.shape[ 0 ] ) )
 		acc.fill( np.NAN )
 
+		pbar = progressbar.ProgressBar( widgets = [ progressbar.Percentage(),
+		                                            progressbar.Bar()
+		                                          ],
+		                                maxval = seed_nodes.shape[ 0 ]
+		                              ).start()
+
 		with open( group_paths.sl_info.full( "_" + hemi + ".txt" ), "r" ) as sl_info:
 
-			for ( i_seed, ( seed_node, node_line ) ) in enumerate( zip( seed_nodes, sl_info.readlines() ) ):
+			for ( i_seed, ( seed_node, node_line ) ) in enumerate( zip(seed_nodes, sl_info.readlines() ) ):
 
-				nodes = [ int( x ) for x in node_line.splitlines().split( "\t" ) ]
+				pbar.update( i_seed )
+
+				nodes = [ int( x ) for x in node_line.splitlines()[ 0 ].split( "\t" ) ]
 
 				assert seed_node in nodes
 
-				i_nodes = [ np.where( seed_nodes == sl_node )[ 0 ][ 0 ]
-				            for sl_node in nodes
-				          ]
+				i_nodes = []
 
-				acc[ i_seed ] = _classify( data[ i_nodes, ... ], cond_info )
+				for sl_node in nodes:
+					i = np.where( seed_nodes == sl_node )[ 0 ]
+					if len( i ) > 0:
+						assert len( i ) == 1
+						i_nodes.append( i[ 0 ] )
 
+				if len( i_nodes ) > 0:
+					acc[ i_seed ] = _classify( data[ i_nodes, ... ], cond_info )
 
 		# save acc
+		acc_path = paths.mvpa.acc.full( "_" + hemi + ".txt" )
+		np.save( acc_path, acc )
+
+		pbar.finish()
+
+		os.chdir( paths.mvpa.base.full() )
 
 		# convert to full niml
+		cmd = [ "ConvertDset",
+		        "-i_1D", "-input", acc_path,
+		        "-node_index_1D", paths.mvpa.nodes.full( "_" + hemi + ".txt" ),
+		        "-o_niml", "-prefix", paths.mvpa.acc.full( "_" + hemi + ".niml.dset" ),
+		        "-pad_to_node", "ld141",
+		        "-overwrite"
+		      ]
+
+		fmri_tools.utils.run_cmd( " ".join( cmd ) )
+
+
+def _classify( data, cond_info ):
+	"Runs a single classification"
+
+	( n_runs, n_blocks ) = cond_info.shape
+
+	acc = np.empty( ( n_runs ) )
+	acc.fill( np.NAN )
+
+	for i_test_run in xrange( n_runs ):
+
+		# exclude the test run from the training set
+		i_train = np.setdiff1d( np.arange( n_runs ), [ i_test_run ] )
+
+		train_data = _format_data( data[ :, i_train, : ],
+		                           cond_info[ i_train, : ]
+		                         )
+
+		model = svmlight.learn( train_data,
+		                        type = "classification",
+		                        kernel = "linear"
+		                      )
+
+		test_data = _format_data( data[ :, [ i_test_run ], : ],
+		                          cond_info[ [ i_test_run ], : ]
+		                        )
+
+		pred = svmlight.classify( model, test_data )
+
+		f_acc = ( float( ( np.sign( pred ) == cond_info[ i_test_run, : ] ).sum() ) /
+		          len( pred ) * 100.0
+		        )
+
+		acc[ i_test_run ] = f_acc
+
+	assert np.sum( np.isnan( acc ) ) == 0
+
+	return np.mean( acc )
+
+
+def _format_data( data, cond_info ):
+
+	f_data = []
+
+	for i_run in xrange( data.shape[ 1 ] ):
+		for i_block in xrange( data.shape[ 2 ] ):
+
+			eg_data = []
+
+			for i_node in xrange( data.shape[ 0 ] ):
+
+				eg_data.extend( [ ( i_node + 1, data[ i_node, i_run, i_block ] ) ] )
+
+			f_data.append( ( cond_info[ i_run, i_block ], eg_data ) )
+
+	return f_data
+
+
 
 
 

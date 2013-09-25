@@ -42,7 +42,8 @@ def main():
 	               "loc_design_prep",
 	               "loc_glm",
 	               "coh_clust_summ",
-	               "mvpa_prep"
+	               "mvpa_prep",
+	               "mvpa"
 	             )
 
 	parser.add_argument( "proc_step",
@@ -90,6 +91,9 @@ def main():
 
 	elif args.proc_step == "mvpa_prep":
 		ns_aperture.analysis.analysis.mvpa_prep( conf, paths )
+
+	elif args.proc_step == "mvpa":
+		ns_aperture.analysis.analysis.mvpa( conf, paths )
 
 	else:
 		print "Not implemented"

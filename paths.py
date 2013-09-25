@@ -136,6 +136,7 @@ def _get_mvpa_paths( conf, paths ):
 	mvpa.nodes = mvpa.base + ( file_base + "nodes" )
 	mvpa.data = mvpa.base + ( file_base + "data" )
 	mvpa.cond_info = mvpa.base + ( file_base + "cond_info" )
+	mvpa.acc = mvpa.base + ( file_base + "acc" )
 
 	return mvpa
 

@@ -5,7 +5,7 @@ import string
 import numpy as np
 import progressbar
 
-import fmri_tools.utils
+import fmri_tools.utils, fmri_tools.preproc
 
 import ns_aperture.config, ns_aperture.paths
 
@@ -164,9 +164,21 @@ def cluster( conf, paths, dt ):
 			abs_thresh = False
 			thresh_brick = 1
 
+			clust_base_path = paths.loc_clust
+
 		elif dt == "acc":
 
-			pass
+			hemi_ext = "_" + hemi
+
+			surf_path = paths.acc.full( "_" + hemi + ".niml.dset" )
+			surf_brick = 0
+
+			clust_base = paths.acc_clust.full( "_" + hemi + "-full.niml.dset" )
+			thresh = 3.7469  # p < 0.02
+			abs_thresh = False
+			thresh_brick = 1
+
+			clust_base_path = paths.acc_clust
 
 		fmri_tools.utils.surf_cluster( surf_path = surf_path,
 		                               surf_brick = surf_brick,
@@ -211,8 +223,6 @@ def coh_effect_size( conf, paths ):
 
 	data = np.mean( data, axis = 1 )
 
-	print data
-
 	mean = np.mean( data )
 	sd = np.std( data, ddof = 1 )
 	se = sd / np.sqrt( len( data ) )
@@ -224,6 +234,67 @@ def coh_effect_size( conf, paths ):
 	print "SE: " + str( se )
 	print "g1: " + str( g1 )
 
+
+def vis_loc_std( conf, paths ):
+	"Analyses LOC and hMT localisers across subjects"
+
+	subj_ids = conf.all_subj.subj.keys()
+
+	os.chdir( paths.vis_loc.dir() )
+
+	for hemi in [ "lh", "rh" ]:
+
+		for dt in [ "obj", "motion" ]:
+
+			glm_paths = []
+
+			for subj_id in subj_ids:
+
+				subj_conf = ns_aperture.config.get_conf( subj_id )
+				subj_paths = ns_aperture.paths.get_subj_paths( subj_conf )
+
+				# workaround for s1011, who had wedges collected in a separate session
+				if ( subj_id == "s1011" ):
+					vis_loc_date = "20111214"
+				else:
+					vis_loc_date = subj_conf.subj.vis_loc_date
+
+				vis_loc_dir = os.path.join( "/labs/olmanlab/FsVisLoc",
+				                            subj_id,
+				                            vis_loc_date,
+				                            "dt",
+				                            dt
+				                          )
+
+
+				glm_path = os.path.join( vis_loc_dir,
+				                         ( subj_id + "_vis_loc_" + vis_loc_date +
+				                           "_" + dt + "-glm-std_" + hemi + ".niml.dset"
+				                         )
+				                       )
+
+				glm_full_path = os.path.join( vis_loc_dir,
+				                              ( subj_id + "_vis_loc_" + vis_loc_date +
+				                                "_" + dt + "-glm-std_" + hemi + "-full.niml.dset"
+				                              )
+				                            )
+
+				fmri_tools.utils.sparse_to_full( glm_path, glm_full_path, "ld141" )
+
+				glm_paths.append( glm_full_path )
+
+
+			cmd = [ "3dttest++", "-setA" ]
+
+			cmd.extend( glm_paths )
+
+			cmd.extend( [ "-prefix", paths.vis_loc.file( "-" + dt + "-std_" + hemi + "-full.niml.dset" ),
+			              "-mask", paths.surf_mask.full( "-std_" + hemi + "-full.niml.dset" ),
+			              "-overwrite"
+			            ]
+			          )
+
+			fmri_tools.utils.run_cmd( " ".join( cmd ) )
 
 
 
@@ -495,3 +566,75 @@ def mvpa_node_prep( conf, paths ):
 
 		pbar.finish()
 
+
+def mvpa_test( conf, paths ):
+	"Tests the mvpa accuracies"
+
+	os.chdir( paths.coh_test.dir() )
+
+	subj_ids = conf.all_subj.subj.keys()
+
+	os.chdir( paths.base.dir() )
+
+	for hemi in [ "lh", "rh" ]:
+
+		continue
+		hemi_ext = "-std_{h:s}".format( h = hemi )
+
+		test_paths = []
+
+		subj_ids = conf.all_subj.subj.keys()
+
+		for subj_id in subj_ids:
+
+			subj_conf = ns_aperture.config.get_conf( subj_id )
+			subj_paths = ns_aperture.paths.get_subj_paths( subj_conf )
+
+			orig_mvpa_path = subj_paths.mvpa.acc.full( "_" + hemi + ".niml.dset" )
+			mvpa_path = subj_paths.mvpa.acc.full( "-smooth_" + hemi + ".niml.dset" )
+			spec_file = subj_paths.reg.std_spec.full( "_" + hemi + ".spec" )
+
+			blur_path = subj_paths.func.surfs[ 0 ].full( "-std_" + hemi + ".niml.dset" )
+
+			fmri_tools.preproc.surf_smooth( in_surf = orig_mvpa_path,
+			                                out_surf = mvpa_path,
+			                                spec_path = spec_file,
+			                                target_fwhm = conf.ana.smooth_fwhm,
+			                                surf = "std.141." + hemi + ".midway.asc",
+			                                blur_master = blur_path,
+			                                extra_params = [ "-sigma",
+			                                                 conf.ana.smooth_sigma
+			                                               ]
+			                              )
+
+			# now to subtract 50
+			os.chdir( subj_paths.mvpa.acc.dir() )
+
+			rel_acc_path = subj_paths.mvpa.acc.full( "-smooth_rel_" + hemi + ".niml.dset" )
+
+			cmd = [ "3dcalc",
+			        "-a", mvpa_path,
+			        "-expr", "a-50",
+			        "-prefix", rel_acc_path,
+			        "-overwrite"
+			      ]
+
+			fmri_tools.utils.run_cmd( " ".join( cmd ) )
+
+			test_paths.append( rel_acc_path )
+
+		# t-test
+
+		os.chdir( paths.acc.dir() )
+
+		cmd = [ "3dttest++", "-setA" ]
+
+		cmd.extend( test_paths )
+
+		cmd.extend( [ "-prefix", paths.acc.full( "_" + hemi + ".niml.dset" ) ] )
+
+		cmd.append( "-overwrite" )
+
+		fmri_tools.utils.run_cmd( " ".join( cmd ) )
+
+	cluster( conf, paths, "acc" )

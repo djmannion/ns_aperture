@@ -522,7 +522,7 @@ def mvpa( conf, paths ):
 
 		# save acc
 		acc_path = paths.mvpa.acc.full( "_" + hemi + ".txt" )
-		np.save( acc_path, acc )
+		np.savetxt( acc_path, acc )
 
 		pbar.finish()
 

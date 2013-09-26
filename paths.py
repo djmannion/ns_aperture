@@ -155,6 +155,7 @@ def get_group_paths( conf ):
 
 	grp.coef = ( grp.base / "ret" ) + ( file_base + "coef" )
 	grp.angle = ( grp.base / "ret" ) + ( file_base + "angle" )
+	grp.vis_loc = ( grp.base / "ret" ) + ( file_base + "vis_loc" )
 
 	grp.coh_test = grp.base + ( file_base + "coh_test" )
 	grp.coh_clust = grp.base + ( file_base + "coh_clust" )
@@ -172,6 +173,9 @@ def get_group_paths( conf ):
 	grp.sl_info = ( grp.base / "mvpa" ) + ( file_base + "sl_info" )
 	grp.sl_seed = ( grp.base / "mvpa" ) + ( file_base + "sl_seed" )
 	grp.sl_disk = ( grp.base / "mvpa" ) + ( file_base + "sl_disk" )
+
+	grp.acc = ( grp.base / "mvpa" ) + ( file_base + "acc" )
+	grp.acc_clust = ( grp.base / "mvpa" ) + ( file_base + "acc_clust" )
 
 
 	return grp

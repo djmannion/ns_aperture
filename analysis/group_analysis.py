@@ -578,7 +578,6 @@ def mvpa_test( conf, paths ):
 
 	for hemi in [ "lh", "rh" ]:
 
-		continue
 		hemi_ext = "-std_{h:s}".format( h = hemi )
 
 		test_paths = []
@@ -596,12 +595,15 @@ def mvpa_test( conf, paths ):
 
 			blur_path = subj_paths.func.surfs[ 0 ].full( "-std_" + hemi + ".niml.dset" )
 
+			mask_nodes = subj_paths.mvpa.nodes.full( "_" + hemi + ".txt" )
+
 			fmri_tools.preproc.surf_smooth( in_surf = orig_mvpa_path,
 			                                out_surf = mvpa_path,
 			                                spec_path = spec_file,
 			                                target_fwhm = conf.ana.smooth_fwhm,
 			                                surf = "std.141." + hemi + ".midway.asc",
 			                                blur_master = blur_path,
+			                                mask_node_path = mask_nodes,
 			                                extra_params = [ "-sigma",
 			                                                 conf.ana.smooth_sigma
 			                                               ]

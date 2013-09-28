@@ -188,7 +188,8 @@ def cluster( conf, paths, dt ):
 		                               abs_thresh = abs_thresh,
 		                               thresh_brick = thresh_brick,
 		                               min_area = min_area,
-		                               ref_surf = "midway"
+		                               ref_surf = "midway",
+		                               save_roi_dset = True
 		                             )
 
 		clust_ext = "-full_Clustered_e1_a" + str( min_area ) + ".niml.dset"
@@ -401,7 +402,7 @@ def ret_std( conf, paths ):
 			cmd = [ "3dcalc",
 			        "-a", paths.coef.file( "-" + dt + "-sin-" + hemi + "-full.niml.dset" ),
 			        "-b", paths.coef.file( "-" + dt + "-cos-" + hemi + "-full.niml.dset" ),
-			        "-expr", "'mod(mod(atan2(-a,b)*(180/PI)+360,360),360)'",
+			        "-expr", "'mod(mod(atan2(a,b)*(180/PI)+360,360),360)'",
 			        "-prefix", paths.coef.file( "-" + dt + "-" + hemi + "-full.niml.dset" ),
 			        "-overwrite"
 			      ]
@@ -640,3 +641,4 @@ def mvpa_test( conf, paths ):
 		fmri_tools.utils.run_cmd( " ".join( cmd ) )
 
 	cluster( conf, paths, "acc" )
+

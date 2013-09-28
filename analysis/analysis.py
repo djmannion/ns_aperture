@@ -501,7 +501,7 @@ def mvpa( conf, paths ):
 
 		with open( group_paths.sl_info.full( "_" + hemi + ".txt" ), "r" ) as sl_info:
 
-			for ( i_seed, ( seed_node, node_line ) ) in enumerate( zip(seed_nodes, sl_info.readlines() ) ):
+			for ( i_seed, ( seed_node, node_line ) ) in enumerate( zip( seed_nodes, sl_info.readlines() ) ):
 
 				pbar.update( i_seed )
 
@@ -597,7 +597,48 @@ def _format_data( data, cond_info ):
 	return f_data
 
 
+def write_searchlight( conf, paths, node_num, hemi, base_path ):
+	"Debugging script to make sure searchlights look as expected"
+
+	group_conf = ns_aperture.config.get_conf()
+	group_paths = ns_aperture.paths.get_group_paths( group_conf )
+
+	( base_dir, base_file ) = os.path.split( base_path )
+
+	os.chdir( base_dir )
+
+	node_found = False
+
+	node_list = np.loadtxt( paths.mvpa.nodes.full( "_" + hemi + ".txt" ) )
+
+	with open( group_paths.sl_info.full( "_" + hemi + ".txt" ), "r" ) as sl_info:
+
+		for ( seed_node, node_line ) in zip( node_list, sl_info.readlines() ):
+
+			if seed_node != node_num:
+				continue
+
+			nodes = [ int( x ) for x in node_line.splitlines()[ 0 ].split( "\t" ) ]
+
+			node_found = True
+
+			nodes_path = base_file + "-nodes.txt"
+
+			np.savetxt( nodes_path, nodes, fmt = "%d" )
+
+			data_path = base_file + "-data.txt"
+
+			np.savetxt( data_path, np.ones( len( nodes ) ), fmt = "%d" )
+
+			cmd = [ "ConvertDset",
+			        "-i_1D", "-input", data_path,
+			        "-node_index_1D", nodes_path,
+			        "-o_niml", "-prefix", base_file + "-searchlight.niml.dset",
+			        "-overwrite"
+			      ]
+
+			fmri_tools.utils.run_cmd( " ".join( cmd ) )
 
 
-
-
+	if not node_found:
+		print "Error: node not found"

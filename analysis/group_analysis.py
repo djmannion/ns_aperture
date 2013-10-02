@@ -282,7 +282,7 @@ def vis_loc_std( conf, paths ):
 
 				fmri_tools.utils.sparse_to_full( glm_path, glm_full_path, "ld141" )
 
-				glm_paths.append( glm_full_path )
+				glm_paths.append( glm_full_path + "[3]" )
 
 
 			cmd = [ "3dttest++", "-setA" ]

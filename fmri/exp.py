@@ -67,9 +67,9 @@ def run( subj_id, run_num, order ):
 
 	# initialise the display window
 	win = psychopy.visual.Window( ( 1024, 768 ),
-	                              monitor = conf[ "acq" ][ "monitor_name" ],
-	                              fullscr = True,
-	                              allowGUI = False
+	                              monitor = conf.acq.monitor_name,
+	                              fullscr = False,
+	                              allowGUI = True
 	                            )
 
 	stat_txt = psychopy.visual.TextStim( win = win,
@@ -129,8 +129,10 @@ def run( subj_id, run_num, order ):
 
 	trig_count = 1
 
+	sshot = np.zeros( ( seq.shape[ 0 ] ) )
+
 	# keep looping until the time has elapsed
-	while run_time < conf[ "exp" ][ "run_len_s" ]:
+	while run_time < conf.exp.run_len_s:
 
 		i_evt = np.where( run_time > seq[ :, seq_ind[ "time_s" ] ] )[ 0 ][ -1 ]
 
@@ -142,26 +144,34 @@ def run( subj_id, run_num, order ):
 
 		# if the event time is less than how long we want the stimulus up for, draw
 		# the stimuli
-		if evt_time < conf[ "exp" ][ "evt_stim_s" ]:
+		if evt_time < conf.exp.evt_stim_s:
 			_ = [ evt_stim.draw() for evt_stim in evt_stims ]
 
 		# set the fixation colour based on the event time, gated by whether it is a
 		# task event or not
-		if ( ( conf[ "task" ][ "evt_on_s" ] <
+		if ( ( conf.task.evt_on_s <
 		       evt_time <
-		       conf[ "task" ][ "evt_off_s" ]
+		       conf.task.evt_off_s
 		     ) and
 		     ( i_evt in task )
 		   ):
-			fixation.setFillColor( conf[ "stim" ][ "fix_col_act" ] )
+			fixation.setFillColor( conf.stim.fix_col_act )
 		else:
-			fixation.setFillColor( conf[ "stim" ][ "fix_col_inact" ] )
+			fixation.setFillColor( conf.stim.fix_col_inact )
 
 		# draw the fixation
 		fixation.draw()
 
 		# draw to the screen
 		win.flip()
+
+		if sshot[ i_evt ] == 0:
+
+			win.getMovieFrame()
+
+			win.saveMovieFrames( "sshots/cap{n:04d}.png".format( n = i_evt ) )
+
+			sshot[ i_evt ] = 1
 
 		# get any responses
 		keys = psychopy.event.getKeys( timeStamped = run_clock )
@@ -218,14 +228,14 @@ def init_fixation( conf, win ):
 
 	"""
 
-	fix_rad_pix = psychopy.misc.deg2pix( conf[ "stim" ][ "fix_rad_deg" ],
+	fix_rad_pix = psychopy.misc.deg2pix( conf.stim.fix_rad_deg,
 	                                     win.monitor
 	                                   )
 
 	fixation = psychopy.visual.Circle( win = win,
 	                                   radius = fix_rad_pix,
 	                                   units = "pix",
-	                                   fillColor = conf[ "stim" ][ "fix_col_inact" ],
+	                                   fillColor = conf.stim.fix_col_inact,
 	                                   lineWidth = 1
 	                                 )
 
@@ -251,10 +261,10 @@ def init_stim( conf, win, stat_txt, hand_txt ):
 
 	"""
 
-	stim_conf = conf[ "stim" ]
+	stim_conf = conf.stim
 
-	im_patch_d = np.round( stim_conf[ "patch_diam_deg" ] *
-	                       ( 1.0 / stim_conf[ "im_deg_pp" ] )
+	im_patch_d = np.round( stim_conf.patch_diam_deg *
+	                       ( 1.0 / stim_conf.im_deg_pp )
 	                     )
 
 	mask_diam = stimuli.utils.nearest_power_of_two( im_patch_d )
@@ -273,20 +283,20 @@ def init_stim( conf, win, stat_txt, hand_txt ):
 	m_dpp = psychopy.misc.pix2deg( 1, win.monitor )
 
 	# scale factor relative to the dpp of the image space
-	scale_fac = stim_conf[ "im_deg_pp" ] / m_dpp
+	scale_fac = stim_conf.im_deg_pp / m_dpp
 
 	patch_size = mask.shape[ 0 ] * scale_fac
 
-	patch_pos = [ psychopy.misc.deg2pix( stim_conf[ "patch_ecc_deg" ], win.monitor ) *
+	patch_pos = [ psychopy.misc.deg2pix( stim_conf.patch_ecc_deg, win.monitor ) *
 	              offset
 	              for offset in ( -1, +1 )
 	            ]
 
-	n = stim_conf[ "img_ids" ].shape[ 0 ]
+	n = stim_conf.img_ids.shape[ 0 ]
 
 	stim = []
 
-	for ( i_im, im_id ) in enumerate( stim_conf[ "img_ids" ] ):
+	for ( i_im, im_id ) in enumerate( stim_conf.img_ids ):
 
 		stat_txt.setText( "Loading stimuli (%d/%d)" % ( i_im + 1, n ) )
 		stat_txt.draw()
@@ -297,14 +307,14 @@ def init_stim( conf, win, stat_txt, hand_txt ):
 
 		im_stim = []
 
-		for ( p_rect, p_pos ) in zip( stim_conf[ "patch_rect" ], patch_pos ):
+		for ( p_rect, p_pos ) in zip( stim_conf.patch_rect, patch_pos ):
 
 			img = stimuli.utils.read_van_hateren( im_id,
-			                                      path = stim_conf[ "db_path" ],
+			                                      path = stim_conf.db_path,
 			                                      pad = True,
 			                                      flip = True,
 			                                      rect = p_rect,
-			                                      scale = stim_conf[ "scale_mode" ]
+			                                      scale = stim_conf.scale_mode
 			                                    )
 
 			tex = psychopy.visual.PatchStim( win = win,
@@ -363,7 +373,7 @@ def get_seq( conf, order ):
 	seq_ind = get_seq_ind()
 
 	# init the empty sequence
-	seq = np.empty( ( conf[ "exp" ][ "n_evt_per_run" ],
+	seq = np.empty( ( conf.exp.n_evt_per_run,
 	                  len( seq_ind )
 	                )
 	              )
@@ -371,7 +381,7 @@ def get_seq( conf, order ):
 
 	# repeat the image indices three times; first for the A blocks, second and
 	# third for the B blocks
-	img_i_set = np.tile( np.arange( conf[ "stim" ][ "img_ids" ].shape[ 0 ] ),
+	img_i_set = np.tile( np.arange( conf.stim.img_ids.shape[ 0 ] ),
 	                     ( 3, 1 )
 	                   )
 
@@ -379,13 +389,13 @@ def get_seq( conf, order ):
 	map( np.random.shuffle, img_i_set )
 
 	# loop through each event
-	for i_evt in xrange( conf[ "exp" ][ "n_evt_per_run" ] ):
+	for i_evt in xrange( conf.exp.n_evt_per_run ):
 
 		# onset time
-		time_s = i_evt * conf[ "exp" ][ "evt_len_s" ]
+		time_s = i_evt * conf.exp.evt_len_s
 
 		# block number (one-indexed)
-		block_num = np.floor( i_evt / conf[ "exp" ][ "n_evt_per_block" ] ) + 1
+		block_num = np.floor( i_evt / conf.exp.n_evt_per_block ) + 1
 
 		# if the block is odd
 		if np.mod( block_num, 2 ) == 1:
@@ -420,7 +430,7 @@ def get_seq( conf, order ):
 	seq[ b_evts, seq_ind[ "img_i_R" ] ] = img_i_set[ 2, : ].copy()
 
 	# get the list of image identifiers
-	id_db = conf[ "stim" ][ "img_ids" ]
+	id_db = conf.stim.img_ids
 
 	# store the image identifier corresponding to each image index
 	seq[ :, seq_ind[ "img_id_L" ] ] = id_db[ seq[ :, seq_ind[ "img_i_L" ] ].astype( "int" ) ]
@@ -439,13 +449,13 @@ def get_seq( conf, order ):
 
 	# * left image set contains all images
 	assert( ( np.unique( seq[ :, seq_ind[ "img_i_L" ] ] ).shape[ 0 ] ==
-	          conf[ "stim" ][ "img_ids" ].shape[ 0 ]
+	          conf.stim.img_ids.shape[ 0 ]
 	        )
 	      )
 
 	# * right image set contains all images
 	assert( ( np.unique( seq[ :, seq_ind[ "img_i_R" ] ] ).shape[ 0 ] ==
-	          conf[ "stim" ][ "img_ids" ].shape[ 0 ]
+	          conf.stim.img_ids.shape[ 0 ]
 	        )
 	      )
 
@@ -510,7 +520,7 @@ def init_task( conf ):
 	# events) from a geometric distribution
 	# the size argument is arbitrary, just needs to be enough to have plenty of
 	# headroom
-	evt_delta = np.random.geometric( p = conf[ "task" ][ "p" ],
+	evt_delta = np.random.geometric( p = conf.task.p,
 	                                 size = 500
 	                               )
 
@@ -527,6 +537,6 @@ def init_task( conf ):
 	task_evts = np.array( task_evts )
 
 	# restrict the events to those falling within the duration of a run
-	task_evts = task_evts[ task_evts <= conf[ "exp" ][ "n_evt_per_run" ] ]
+	task_evts = task_evts[ task_evts <= conf.exp.n_evt_per_run ]
 
 	return task_evts

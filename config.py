@@ -17,7 +17,7 @@ def get_conf( subj_id = None ):
 	conf.acq = _get_acq_conf()
 	conf.exp = _get_exp_conf()
 	conf.ana = _get_ana_conf( conf )
-	conf.task = _get_task_conf(),
+	conf.task = _get_task_conf()
 	conf.all_subj = _get_subj_conf( None )
 
 	if subj_id is not None:

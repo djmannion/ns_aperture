@@ -642,3 +642,70 @@ def write_searchlight( conf, paths, node_num, hemi, base_path ):
 
 	if not node_found:
 		print "Error: node not found"
+
+
+def task_xtr( conf, paths ):
+	"""Extracts the details on task performance"""
+
+	task = []
+
+	# different items are different 'hand's
+	keys = [ { "r" : 0,
+	           "g" : 1,
+	           "y" : 2,
+	           "b" : 3
+	         },
+	         { "r" : 3,
+	           "g" : 2,
+	           "y" : 1,
+	           "b" : 0
+	         }
+	       ]
+
+	# order was ordered for subject s1000, and the order was not stored in the
+	# task file
+	s1000_hand_order = [ 1, 0, 0, 1, 1, 0, 0, 1, 1, 0 ]
+
+	for i_run in xrange( conf.subj.n_exp_runs ):
+
+		task_file = paths.exp_log.task.full( "_" + str( i_run + 1 ) + ".npy" )
+		run_tasks = np.load( task_file )
+
+		seq_file = paths.exp_log.seq.full( "_" + str( i_run + 1 ) + ".npy" )
+		run_seq = np.load( seq_file )
+
+		# potential times that a task could have been cued
+		evt_times = run_seq[ :, 0 ] + conf.task.evt_on_s
+
+		for curr_task in run_tasks:
+
+			if conf.subj.subj_id == "s1000":
+				( resp, time_s ) = curr_task
+				hand_flag = s1000_hand_order[ i_run ]
+			else:
+				( resp, time_s, hand_flag ) = curr_task
+
+			# s1032 had it backwards
+			if conf.subj.subj_id == "s1032":
+				hand_flag = np.logical_not( hand_flag )
+
+			# find the last event where the response time is greater than the
+			# presentation onset time
+			i_evt = np.where( time_s > evt_times )[ 0 ][ -1 ]
+
+			( cond, img_id_L, img_id_R ) = run_seq[ i_evt, [ 2, 5, 6 ] ]
+
+			resp_time = time_s - run_seq[ i_evt, 0 ]
+
+			task.append( [ i_run,
+			               cond,
+			               keys[ hand_flag ][ resp ],
+			               hand_flag,
+			               img_id_L,
+			               img_id_R,
+			               resp_time
+			             ]
+			           )
+
+	np.save( paths.ana.task.full( ".npy" ), task )
+

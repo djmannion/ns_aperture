@@ -642,3 +642,52 @@ def mvpa_test( conf, paths ):
 
 	cluster( conf, paths, "acc" )
 
+
+def task_analysis( conf, paths ):
+	"""Analyses the distribution of task responses"""
+
+
+	subj_ids = conf.all_subj.subj.keys()
+
+	# subj x condition x button
+	hist = np.empty( ( len( subj_ids ), 2, 4 ) )
+	hist.fill( np.NAN )
+
+	rt = np.empty( ( len( subj_ids ), 2 ) )
+	rt.fill( np.NAN )
+
+	for ( i_subj, subj_id ) in enumerate( subj_ids ):
+
+		subj_conf = ns_aperture.config.get_conf( subj_id )
+		subj_paths = ns_aperture.paths.get_subj_paths( subj_conf )
+
+		resp = np.load( subj_paths.ana.task.full( ".npy" ) )
+
+		for i_cond in xrange( 2 ):
+
+			i_cond_resp = ( resp[ :, 1 ] == i_cond )
+
+			# pull out the responses for this condition
+			cond_resp = resp[ i_cond_resp, 2 ]
+
+			hist[ i_subj, i_cond, : ] = [ sum( cond_resp == button )
+			                              for button in range( 4 )
+			                            ]
+
+			hist[ i_subj, i_cond, : ] = ( hist[ i_subj, i_cond, : ].astype( "float" ) /
+			                              np.sum( hist[ i_subj, i_cond, : ] )
+			                            )
+
+			rt[ i_subj, i_cond ] = np.mean( resp[ i_cond_resp, -1 ] )
+
+	np.save( paths.task_hist.full( ".npy" ), hist )
+	np.save( paths.task_rt.full( ".npy" ), rt )
+
+	hist[ :, 1, : ] = hist[ :, 1, ::-1 ]
+
+	fmri_tools.preproc.anova_2way( hist.T,
+	                               paths.base.full(),
+	                               [ "Button", "Cond" ]
+	                             )
+
+	#TODO: oneway on the RTs

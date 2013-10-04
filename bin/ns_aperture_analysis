@@ -43,7 +43,8 @@ def main():
 	               "loc_glm",
 	               "coh_clust_summ",
 	               "mvpa_prep",
-	               "mvpa"
+	               "mvpa",
+	               "task"
 	             )
 
 	parser.add_argument( "proc_step",
@@ -94,6 +95,9 @@ def main():
 
 	elif args.proc_step == "mvpa":
 		ns_aperture.analysis.analysis.mvpa( conf, paths )
+
+	elif args.proc_step == "task":
+		ns_aperture.analysis.analysis.task_xtr( conf, paths )
 
 	else:
 		print "Not implemented"

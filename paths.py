@@ -118,6 +118,8 @@ def _get_ana_paths( conf, paths ):
 
 	ana.clust = ana.base + ( file_base + "clust" )
 
+	ana.task = ana.base + ( file_base + "task" )
+
 	return ana
 
 
@@ -176,6 +178,9 @@ def get_group_paths( conf ):
 
 	grp.acc = ( grp.base / "mvpa" ) + ( file_base + "acc" )
 	grp.acc_clust = ( grp.base / "mvpa" ) + ( file_base + "acc_clust" )
+
+	grp.task_hist = grp.base + ( file_base + "task_hist" )
+	grp.task_rt = grp.base + ( file_base + "task_rt" )
 
 
 	return grp

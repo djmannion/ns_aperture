@@ -37,11 +37,11 @@ current_dir = os.getcwd()
 
 if current_dir[ -len( target_dir ): ] != target_dir:
 
-	raise IOError( "".join( [ "Script needs to be launched from ",
-	                          target_dir
-	                        ]
-	                      )
-	             )
+    raise IOError( "".join( [ "Script needs to be launched from ",
+                              target_dir
+                            ]
+                          )
+                 )
 
 run_info = ( ( "AB", "exp" ),   # 1
              ( "BA", "exp" ),   # 2
@@ -85,28 +85,28 @@ args = parser.parse_args()
 
 # check the arguments are valid
 if len( args.subj_id ) != 5 or args.subj_id[ 0 ] != "s":
-	raise ValueError( "Subject ID needs to be in the format of sXXXX" )
+    raise ValueError( "Subject ID needs to be in the format of sXXXX" )
 
 for i_run in np.arange( args.start - 1, args.end ):
 
-	inf = run_info[ i_run ]
+    inf = run_info[ i_run ]
 
-	if inf[ 1 ] == "exp":
+    if inf[ 1 ] == "exp":
 
-		print "Executing: ns_aperture.fmri.exp.run( %s, %d, %s )" % (
-		      args.subj_id, i_run + 1, inf[ 0 ] )
+        print "Executing: ns_aperture.fmri.exp.run( %s, %d, %s )" % (
+              args.subj_id, i_run + 1, inf[ 0 ] )
 
-		exit_status = ns_aperture.fmri.exp.run( args.subj_id,
+        exit_status = ns_aperture.fmri.exp.run( args.subj_id,
                                             i_run + 1,
                                             inf[ 0 ]  # block order
                                           )
 
-	elif inf[ 1 ] == "loc":
+    elif inf[ 1 ] == "loc":
 
-		print "Executing: ns_aperture.fmri.loc.run( %s )" % ( inf[ 0 ] )
+        print "Executing: ns_aperture.fmri.loc.run( %s )" % ( inf[ 0 ] )
 
-		exit_status = ns_aperture.fmri.loc.run( inf[ 0 ] )
+        exit_status = ns_aperture.fmri.loc.run( inf[ 0 ] )
 
-	if exit_status == 1:
-		print "Aborting sequence"
-		sys.exit( exit_status )
+    if exit_status == 1:
+        print "Aborting sequence"
+        sys.exit( exit_status )

@@ -11,110 +11,110 @@ import ns_aperture.analysis.group_analysis
 
 
 def main():
-	"""Execution function"""
+    """Execution function"""
 
-	desc = "Runs an analysis step for a subject in the ns_aperture fMRI experiment"
+    desc = "Runs an analysis step for a subject in the ns_aperture fMRI experiment"
 
-	eg = """
-	Example usage:
-	  run motion correction on subject s1000:
-	    ns_aperture_preproc s1000 correct
-	
-	Steps:
-	  glm : run the GLM
-	
-	"""
+    eg = """
+    Example usage:
+      run motion correction on subject s1000:
+        ns_aperture_preproc s1000 correct
+    
+    Steps:
+      glm : run the GLM
+    
+    """
 
-	# use this formatter so we can supply our own indentation
-	fmt = argparse.RawDescriptionHelpFormatter
+    # use this formatter so we can supply our own indentation
+    fmt = argparse.RawDescriptionHelpFormatter
 
-	parser = argparse.ArgumentParser( description = desc,
-	                                  epilog = eg,
-	                                  formatter_class = fmt,
-	                                )
+    parser = argparse.ArgumentParser( description = desc,
+                                      epilog = eg,
+                                      formatter_class = fmt,
+                                    )
 
-	proc_steps = ( "group_mask",
-	               "ret_std",
-	               "vis_loc_std",
-	               "coh_test",
-	               "clust_sim",
-	               "loc_test",
-	               "coh_clust",
-	               "loc_clust",
-	               "coh_effect_size",
-	               "mvpa_node_prep",
-	               "mvpa_test",
-	               "task_analysis"
-	             )
+    proc_steps = ( "group_mask",
+                   "ret_std",
+                   "vis_loc_std",
+                   "coh_test",
+                   "clust_sim",
+                   "loc_test",
+                   "coh_clust",
+                   "loc_clust",
+                   "coh_effect_size",
+                   "mvpa_node_prep",
+                   "mvpa_test",
+                   "task_analysis"
+                 )
 
-	parser.add_argument( "proc_step",
-	                     choices = proc_steps,
-	                     help = "Processing step"
-	                   )
+    parser.add_argument( "proc_step",
+                         choices = proc_steps,
+                         help = "Processing step"
+                       )
 
-	args = parser.parse_args()
+    args = parser.parse_args()
 
-	# load the experiment / subject info
-	conf = ns_aperture.config.get_conf()
-	paths = ns_aperture.paths.get_group_paths( conf )
+    # load the experiment / subject info
+    conf = ns_aperture.config.get_conf()
+    paths = ns_aperture.paths.get_group_paths( conf )
 
-	if args.proc_step != "mvpa_node_prep":
-		logger = logging.getLogger()
-		logger.setLevel( logging.INFO )
+    if args.proc_step != "mvpa_node_prep":
+        logger = logging.getLogger()
+        logger.setLevel( logging.INFO )
 
-		log_str = "%(name)s, %(asctime)s, (%(levelname)s)\n-----\n%(message)s\n"
-		log_fmt = logging.Formatter( log_str )
+        log_str = "%(name)s, %(asctime)s, (%(levelname)s)\n-----\n%(message)s\n"
+        log_fmt = logging.Formatter( log_str )
 
-		file_log = logging.FileHandler( paths.log.full() )
-		file_log.setFormatter( log_fmt )
+        file_log = logging.FileHandler( paths.log.full() )
+        file_log.setFormatter( log_fmt )
 
-		logger.addHandler( file_log )
+        logger.addHandler( file_log )
 
-		scr_log = logging.StreamHandler( sys.stdout )
-		scr_log.setLevel( logging.INFO )
-		scr_log.setFormatter( log_fmt )
+        scr_log = logging.StreamHandler( sys.stdout )
+        scr_log.setLevel( logging.INFO )
+        scr_log.setFormatter( log_fmt )
 
-		logger.addHandler( scr_log )
+        logger.addHandler( scr_log )
 
-	if args.proc_step == "group_mask":
-		ns_aperture.analysis.group_analysis.group_mask( conf, paths )
+    if args.proc_step == "group_mask":
+        ns_aperture.analysis.group_analysis.group_mask( conf, paths )
 
-	elif args.proc_step == "ret_std":
-		ns_aperture.analysis.group_analysis.ret_std( conf, paths )
+    elif args.proc_step == "ret_std":
+        ns_aperture.analysis.group_analysis.ret_std( conf, paths )
 
-	elif args.proc_step == "vis_loc_std":
-		ns_aperture.analysis.group_analysis.vis_loc_std( conf, paths )
+    elif args.proc_step == "vis_loc_std":
+        ns_aperture.analysis.group_analysis.vis_loc_std( conf, paths )
 
-	elif args.proc_step == "coh_test":
-		ns_aperture.analysis.group_analysis.coh_test( conf, paths )
+    elif args.proc_step == "coh_test":
+        ns_aperture.analysis.group_analysis.coh_test( conf, paths )
 
-	elif args.proc_step == "clust_sim":
-		ns_aperture.analysis.group_analysis.cluster_sim( conf, paths )
+    elif args.proc_step == "clust_sim":
+        ns_aperture.analysis.group_analysis.cluster_sim( conf, paths )
 
-	elif args.proc_step == "loc_test":
-		ns_aperture.analysis.group_analysis.loc_test( conf, paths )
+    elif args.proc_step == "loc_test":
+        ns_aperture.analysis.group_analysis.loc_test( conf, paths )
 
-	elif args.proc_step == "coh_clust":
-		ns_aperture.analysis.group_analysis.cluster( conf, paths, "coh" )
+    elif args.proc_step == "coh_clust":
+        ns_aperture.analysis.group_analysis.cluster( conf, paths, "coh" )
 
-	elif args.proc_step == "loc_clust":
-		ns_aperture.analysis.group_analysis.cluster( conf, paths, "loc" )
+    elif args.proc_step == "loc_clust":
+        ns_aperture.analysis.group_analysis.cluster( conf, paths, "loc" )
 
-	elif args.proc_step == "coh_effect_size":
-		ns_aperture.analysis.group_analysis.coh_effect_size( conf, paths )
+    elif args.proc_step == "coh_effect_size":
+        ns_aperture.analysis.group_analysis.coh_effect_size( conf, paths )
 
-	elif args.proc_step == "mvpa_node_prep":
-		ns_aperture.analysis.group_analysis.mvpa_node_prep( conf, paths )
+    elif args.proc_step == "mvpa_node_prep":
+        ns_aperture.analysis.group_analysis.mvpa_node_prep( conf, paths )
 
-	elif args.proc_step == "mvpa_test":
-		ns_aperture.analysis.group_analysis.mvpa_test( conf, paths )
+    elif args.proc_step == "mvpa_test":
+        ns_aperture.analysis.group_analysis.mvpa_test( conf, paths )
 
-	elif args.proc_step == "task_analysis":
-		ns_aperture.analysis.group_analysis.task_analysis( conf, paths )
+    elif args.proc_step == "task_analysis":
+        ns_aperture.analysis.group_analysis.task_analysis( conf, paths )
 
-	else:
-		print "Not implemented"
+    else:
+        print "Not implemented"
 
 
 if __name__ == "__main__":
-	main()
+    main()

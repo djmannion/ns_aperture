@@ -11,102 +11,102 @@ import ns_aperture.analysis.preproc
 
 
 def main():
-	"""Execution function"""
+    """Execution function"""
 
-	desc = """Runs a pre-processing step for a subject in the ns_aperture fMRI experiment"""
+    desc = """Runs a pre-processing step for a subject in the ns_aperture fMRI experiment"""
 
-	eg = """
-	Example usage:
-	  run motion correction on subject s1000:
-	    ns_aperture_preproc s1000 correct
-	
-	Steps:
-	  convert : converts the scanner DICOM images to NIFTIs.
-	  correct : performs motion correction.
-	  fieldmap : prepares the fieldmaps.
-	  undistort : applies distortion correction to the functional data.
-	  sess_reg : register to the canonical anatomy.
-	  vol_to_surf : project the volumes onto the cortical surface.
-	
-	"""
+    eg = """
+    Example usage:
+      run motion correction on subject s1000:
+        ns_aperture_preproc s1000 correct
+    
+    Steps:
+      convert : converts the scanner DICOM images to NIFTIs.
+      correct : performs motion correction.
+      fieldmap : prepares the fieldmaps.
+      undistort : applies distortion correction to the functional data.
+      sess_reg : register to the canonical anatomy.
+      vol_to_surf : project the volumes onto the cortical surface.
+    
+    """
 
-	# use this formatter so we can supply our own indentation
-	fmt = argparse.RawDescriptionHelpFormatter
+    # use this formatter so we can supply our own indentation
+    fmt = argparse.RawDescriptionHelpFormatter
 
-	parser = argparse.ArgumentParser( description = desc,
-	                                  epilog = eg,
-	                                  formatter_class = fmt,
-	                                )
+    parser = argparse.ArgumentParser( description = desc,
+                                      epilog = eg,
+                                      formatter_class = fmt,
+                                    )
 
-	parser.add_argument( "subj_id",
-	                     help = "Subject identifier"
-	                   )
+    parser.add_argument( "subj_id",
+                         help = "Subject identifier"
+                       )
 
-	preproc_steps = ( "convert",
-	                  "fieldmap",
-	                  "mc_unwarp",
-	                  "sess_reg",
-	                  "vol_to_surf",
-	                  "vol_to_surf_std",
-	                  "smooth",
-	                  "filter_tc",
-	                  "surf_mask"
-	                )
+    preproc_steps = ( "convert",
+                      "fieldmap",
+                      "mc_unwarp",
+                      "sess_reg",
+                      "vol_to_surf",
+                      "vol_to_surf_std",
+                      "smooth",
+                      "filter_tc",
+                      "surf_mask"
+                    )
 
-	parser.add_argument( "preproc_step",
-	                     choices = preproc_steps,
-	                     help = "Preprocessing step"
-	                   )
+    parser.add_argument( "preproc_step",
+                         choices = preproc_steps,
+                         help = "Preprocessing step"
+                       )
 
-	args = parser.parse_args()
+    args = parser.parse_args()
 
-	# load the experiment / subject info
-	conf = ns_aperture.config.get_conf( args.subj_id )
-	paths = ns_aperture.paths.get_subj_paths( conf )
+    # load the experiment / subject info
+    conf = ns_aperture.config.get_conf( args.subj_id )
+    paths = ns_aperture.paths.get_subj_paths( conf )
 
-	logger = logging.getLogger()
-	logger.setLevel( logging.INFO )
+    logger = logging.getLogger()
+    logger.setLevel( logging.INFO )
 
-	log_fmt = logging.Formatter( "%(name)s, %(asctime)s, (%(levelname)s)\n-----\n%(message)s\n" )
+    log_fmt = logging.Formatter( "%(name)s, %(asctime)s, (%(levelname)s)\n-----\n%(message)s\n" )
 
-	file_log = logging.FileHandler( paths.log.full() )
-	file_log.setFormatter( log_fmt )
+    file_log = logging.FileHandler( paths.log.full() )
+    file_log.setFormatter( log_fmt )
 
-	logger.addHandler( file_log )
+    logger.addHandler( file_log )
 
-	scr_log = logging.StreamHandler( sys.stdout )
-	scr_log.setLevel( logging.INFO )
-	scr_log.setFormatter( log_fmt )
+    scr_log = logging.StreamHandler( sys.stdout )
+    scr_log.setLevel( logging.INFO )
+    scr_log.setFormatter( log_fmt )
 
-	logger.addHandler( scr_log )
+    logger.addHandler( scr_log )
 
-	if args.preproc_step == "convert":
-		ns_aperture.analysis.preproc.convert( conf, paths )
+    if args.preproc_step == "convert":
+        ns_aperture.analysis.preproc.convert( conf, paths )
 
-	elif args.preproc_step == "mc_unwarp":
-		ns_aperture.analysis.preproc.mc_unwarp( conf, paths )
+    elif args.preproc_step == "mc_unwarp":
+        ns_aperture.analysis.preproc.mc_unwarp( conf, paths )
 
-	elif args.preproc_step == "fieldmap":
-		ns_aperture.analysis.preproc.fieldmaps( conf, paths )
+    elif args.preproc_step == "fieldmap":
+        ns_aperture.analysis.preproc.fieldmaps( conf, paths )
 
-	elif args.preproc_step == "sess_reg":
-		ns_aperture.analysis.preproc.sess_reg( conf, paths )
+    elif args.preproc_step == "sess_reg":
+        ns_aperture.analysis.preproc.sess_reg( conf, paths )
 
-	elif args.preproc_step == "vol_to_surf":
-		ns_aperture.analysis.preproc.vol_to_surf( conf, paths )
+    elif args.preproc_step == "vol_to_surf":
+        ns_aperture.analysis.preproc.vol_to_surf( conf, paths )
 
-	elif args.preproc_step == "smooth":
-		ns_aperture.analysis.preproc.smooth_surfs( conf, paths )
+    elif args.preproc_step == "smooth":
+        ns_aperture.analysis.preproc.smooth_surfs( conf, paths )
 
-	elif args.preproc_step == "filter_tc":
-		ns_aperture.analysis.preproc.filter_tc( conf, paths )
+    elif args.preproc_step == "filter_tc":
+        ns_aperture.analysis.preproc.filter_tc( conf, paths )
 
-	elif args.preproc_step == "surf_mask":
-		ns_aperture.analysis.preproc.surf_mask( conf, paths )
+    elif args.preproc_step == "surf_mask":
+        ns_aperture.analysis.preproc.surf_mask( conf, paths )
 
-	else:
-		print "Not implemented"
+    else:
+        print "Not implemented"
 
 
 if __name__ == "__main__":
-	main()
+    main()

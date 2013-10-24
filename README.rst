@@ -280,6 +280,10 @@ Runs a one-sample t-test on the ( either > 0 ) regressor::
 Cluster threshold
 ~~~~~~~~~~~~~~~~~
 
+Run::
+
+    ns_aperture_group_analysis loc_clust
+
 
 Multivariate analysis
 =====================
@@ -298,12 +302,35 @@ This saves the node info, the condition info, and the z-scored block data for a 
 Classification
 ~~~~~~~~~~~~~~
 
+Run::
+
+    ns_aperture_analysis sXXXX mvpa
+
+
 Group-level
 -----------
 
-Height threshold
-~~~~~~~~~~~~~~~~
+Height threshold and cluster
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Cluster threshold
-~~~~~~~~~~~~~~~~~
+Run::
 
+    ns_aperture_group_analysis mvpa_test
+
+
+Task analysis
+=============
+
+Subject-level
+-------------
+
+Run::
+
+    ns_aperture_analysis sXXXX task
+
+Group-level
+-----------
+
+Run::
+
+    ns_aperture_group_analysis task_analysis
